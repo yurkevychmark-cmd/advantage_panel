@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADvantage Revenue Panel V8 (Secure Cloud)</title>
+  
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+    const supabaseUrl = 'https://tfzznkimnwimoqxwmyrp.supabase.co';
+    const supabaseKey = 'sb_publishable_cZPHArLF4Mx8k_8-0Zzsow_WOuOtgid';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    const WORKER_COLORS = [
+      { bg: "#F5E6A3", bgLight: "#FDF8E1", text: "#6B5D1F", border: "#E8D77B" },
+      { bg: "#B8B8B8", bgLight: "#E8E8E8", text: "#3A3A3A", border: "#9A9A9A" },
+      { bg: "#C4A8E0", bgLight: "#EDE3F5", text: "#4A2D6B", border: "#A87FCC" },
+      { bg: "#A3D9A5", bgLight: "#DFF2E0", text: "#2D6B30", border: "#7BC97E" },
+      { bg: "#A5C8D9", bgLight: "#DFF0F2", text: "#2D5A6B", border: "#7EB0C9" },
+      { bg: "#D9B8A5", bgLight: "#F2E8DF", text: "#6B4A2D", border: "#C99E7E" },
+      { bg: "#D9A5A5", bgLight: "#F2DFDF", text: "#6B2D2D", border: "#C97E7E" },
+      { bg: "#D9D5A5", bgLight: "#F2F0DF", text: "#6B672D", border: "#C9C57E" },
+    ];
+
+    const MONTHS_UA = ["Січень","Лютий","Березень","Квітень","Травень","Червень","Липень","Серпень","Вересень","Жовтень","Листопад","Грудень"];
+
+    const LOGO_SRC = "data:image/webp;base64,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PSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIj4KICAgICAgICAgPGV4aWY6UGl4ZWxZRGltZW5zaW9uPjEyMDwvZXhpZjpQaXhlbFlEaW1lbnNpb24+CiAgICAgICAgIDxleGlmOlBpeGVsWERpbWVuc2lvbj41NTA8L2V4aWY6UGl4ZWxYRGltZW5zaW9uPgogICAgICAgICA8dGlmZjpSZXNvbHV0aW9uVW5pdD4yPC90aWZmOlJlc29sdXRpb25Vbml0PgogICAgICAgICA8dGlmZjpYUmVzb2x1dGlvbj43MjAwMDAvMTAwMDA8L3RpZmY6WFJlc29sdXRpb24+CiAgICAgICAgIDx0aWZmOk9yaWVudGF0aW9uPjE8L3RpZmY6T3JpZW50YXRpb24+CiAgICAgICAgIDx0aWZmOllSZXNvbHV0aW9uPjcyMDAwMC8xMDAwMDwvdGlmZjpZUmVzb2x1dGlvbj4KICAgICAgICAgPHhtcDpNZXRhZGF0YURhdGU+MjAyNS0wNS0wNlQwODo1NjoyMyswMjowMDwveG1wOk1ldGFkYXRhRGF0ZT4KICAgICAgICAgPHhtcDpDcmVhdG9yVG9vbD5QaXhlbG1hdG9yIFBybyAzLjYuMTwveG1wOkNyZWF0b3JUb29sPgogICAgICAgICA8eG1wOkNyZWF0ZURhdGU+MjAyNS0wNS0wNVQxMzoxMDozMiswMjowMDwveG1wOkNyZWF0ZURhdGU+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgo=";
+
+    const fmt = (n) => {
+      if (n == null || isNaN(n)) return "$0.00";
+      const abs = Math.abs(n);
+      const s = abs.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return n < 0 ? `-$${s}` : `$${s}`;
+    };
+    
+    const parseNum = (v) => {
+      if (v === "" || v == null) return 0;
+      const s = String(v).replace(/[^0-9.,-]/g, "").replace(",", ".");
+      return parseFloat(s) || 0;
+    };
+    
+    const uid = () => Math.random().toString(36).slice(2, 9);
+
+    const incrementDate = (dateStr) => {
+      if (!dateStr || !dateStr.includes('.')) return dateStr;
+      const parts = dateStr.split('.');
+      let day = parseInt(parts[0]) || 1;
+      let month = parseInt(parts[1]) || 1;
+      month += 1;
+      if (month > 12) { month = 1; }
+      return String(day).padStart(2, '0') + '.' + String(month).padStart(2, '0');
+    };
+
+    const arrayMove = (arr, from, to) => {
+      const next = [...arr];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    };
+
+    const DragHandle = () => (
+      <span style={{ cursor: 'grab', color: '#bbb', fontSize: 11, userSelect: 'none', padding: '0 2px', display: 'inline-block', lineHeight: 1 }} title="Drag to reorder">⋮⋮</span>
+    );
+
+    const makeWorkerPay = (workers) => {
+      const o = {};
+      workers.forEach((w) => { o[w.id] = { amount: 0, paid: false }; });
+      return o;
+    };
+
+    const resolveAccount = (raw) => {
+      if (!raw) return "";
+      if (raw.includes(">")) return raw.split(">").pop().trim();
+      return raw.trim();
+    };
+
+    const EditableCell = ({ value, onChange, type = "text", className = "", style = {}, mono = false, isDate = false, activeMonthIdx = 0, multiline = false }) => {
+      const [editing, setEditing] = useState(false);
+      const [draft, setDraft] = useState(value === 0 && type === "number" ? "" : String(value ?? ""));
+      const inputRef = useRef(null);
+      
+      useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
+      useEffect(() => { if (!editing) setDraft(value === 0 && type === "number" ? "" : String(value ?? "")); }, [value, editing, type]);
+      
+      const commit = () => { 
+        let finalVal = draft;
+        if (isDate && /^\d{1,2}$/.test(finalVal.trim())) {
+          finalVal = `${finalVal.trim().padStart(2, '0')}.${String(activeMonthIdx + 1).padStart(2, '0')}`;
+        }
+        onChange(type === "number" ? parseNum(finalVal) : finalVal); 
+        setEditing(false); 
+      };
+      
+      const cancel = () => { setDraft(value === 0 && type === "number" ? "" : String(value ?? "")); setEditing(false); };
+      
+      if (editing) {
+        if (multiline) {
+           return <textarea ref={inputRef} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") cancel(); }} onBlur={commit} style={{ width: "100%", boxSizing: "border-box", padding: "4px 6px", border: "2px solid #4A90D9", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 11, outline: "none", background: "#fff", resize: "vertical", minHeight: 50, ...style }} className={className} />
+        }
+        return (<input ref={inputRef} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") cancel(); }} onBlur={commit} style={{ width: "100%", boxSizing: "border-box", padding: "4px 6px", border: "2px solid #4A90D9", borderRadius: 3, fontFamily: mono ? "'JetBrains Mono',monospace" : "'DM Sans',sans-serif", fontSize: 13, outline: "none", background: "#fff", ...style }} className={className} />);
+      }
+      return (<div onClick={() => setEditing(true)} style={{ cursor: "text", padding: "4px 6px", minHeight: 22, borderRadius: 3, fontFamily: mono ? "'JetBrains Mono',monospace" : "'DM Sans',sans-serif", fontSize: 13, transition: "background .15s", ...style }} className={`editable-cell ${className}`} title={type !== "number" ? value : undefined}>{type === "number" ? fmt(value) : (value || "")}</div>);
+    };
+
+    const CommentCell = ({ value, onChange }) => {
+      const [expanded, setExpanded] = useState(false);
+      const handleToggle = (e) => { e.stopPropagation(); setExpanded(!expanded); };
+      
+      if (!value) return <span className="comment-icon" onClick={() => onChange("...")} style={{ padding: "0 6px", display: "inline-block" }}>💬</span>;
+      
+      return (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+          <div style={{ maxWidth: 140, overflow: expanded ? 'visible' : 'hidden', textOverflow: expanded ? 'clip' : 'ellipsis', whiteSpace: expanded ? 'pre-wrap' : 'nowrap' }}>
+            <EditableCell value={value} onChange={onChange} multiline={true} style={{ fontSize: 10, color: "#888", padding: "0 2px", width: "100%" }} />
+          </div>
+          {value.length > 15 && (
+            <button onClick={handleToggle} style={{ background: 'none', border: 'none', color: '#4A90D9', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }}>
+              {expanded ? '▴' : '▾'}
+            </button>
+          )}
+        </div>
+      );
+    };
+
+    const LoginScreen = () => {
+      const [email, setEmail] = useState("");
+      const [pass, setPass] = useState("");
+      const [error, setError] = useState("");
+      const [shake, setShake] = useState(false);
+      const [isLoading, setIsLoading] = useState(false);
+      
+      const handleSubmit = async () => {
+        setIsLoading(true);
+        setError("");
+        
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password: pass,
+        });
+
+        if (error) {
+          setError("Невірний email або пароль");
+          setShake(true);
+          setTimeout(() => setShake(false), 500);
+        }
+        setIsLoading(false);
+      };
+      
+      return (
+        <div style={{ minHeight: "100vh", background: "#1A1A1A", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',sans-serif" }}>
+          <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+            @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}.login-shake{animation:shake .4s ease}`}</style>
+          <div className={shake ? "login-shake" : ""} style={{ background: "#fff", borderRadius: 16, padding: "48px 40px", width: 400, maxWidth: "90vw", boxShadow: "0 24px 80px rgba(0,0,0,.5)" }}>
+            <div style={{ textAlign: "center", marginBottom: 32 }}>
+              <img src={LOGO_SRC} alt="ADvantage" style={{ height: 36 }} />
+              <div style={{ fontSize: 14, color: "#888", marginTop: 8 }}>Revenue Panel</div>
+            </div>
+            <label style={{ display: "block", marginBottom: 16 }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#555", display: "block", marginBottom: 4 }}>Email</span>
+              <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} placeholder="your@email.com" style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #ddd", borderRadius: 8, fontSize: 14, fontFamily: "'DM Sans',sans-serif", boxSizing: "border-box", outline: "none" }} autoFocus />
+            </label>
+            <label style={{ display: "block", marginBottom: 20 }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#555", display: "block", marginBottom: 4 }}>Пароль</span>
+              <input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setError(""); }} placeholder="••••••••••" onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }} style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #ddd", borderRadius: 8, fontSize: 14, fontFamily: "'DM Sans',sans-serif", boxSizing: "border-box", outline: "none" }} />
+            </label>
+            {error && <div style={{ color: "#DC2626", fontSize: 13, marginBottom: 12, textAlign: "center" }}>{error}</div>}
+            <button onClick={handleSubmit} disabled={isLoading} style={{ width: "100%", padding: "12px", background: "#1A1A1A", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: isLoading ? "wait" : "pointer", fontFamily: "'DM Sans',sans-serif", opacity: isLoading ? 0.7 : 1 }}>
+               {isLoading ? "Вхід..." : "Увійти"}
+            </button>
+          </div>
+        </div>
+      );
+    };
+
+    const Dashboard = ({ userEmail, onLogout }) => {
+      const [isInitialLoad, setIsInitialLoad] = useState(true);
+      const [currentMonth, setCurrentMonth] = useState(2);
+      const [currentYear, setCurrentYear] = useState(2026);
+      
+      const [workers, setWorkers] = useState([]);
+      const [accounts, setAccounts] = useState([]);
+      const [monthData, setMonthData] = useState({});
+      
+      const [showAddWorker, setShowAddWorker] = useState(false);
+      const [showAddExpense, setShowAddExpense] = useState(false);
+      const [showAddAccount, setShowAddAccount] = useState(false);
+      const [showTransfer, setShowTransfer] = useState(false);
+      const [editExpense, setEditExpense] = useState(null);
+      const [editAccount, setEditAccount] = useState(null);
+      
+      const [newWorker, setNewWorker] = useState({ name: "", role: "", colorIdx: 5 });
+      const [newExpense, setNewExpense] = useState({ service: "", persona: "", method: "USDT", date: "", cost: 0 });
+      const [newAccountForm, setNewAccountForm] = useState({ name: "", owner: "", limit: 10000 });
+      const [newTransfer, setNewTransfer] = useState({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" });
+      
+      const [expandedAcct, setExpandedAcct] = useState(null);
+      
+      const [selectedTx, setSelectedTx] = useState(new Set());
+      const [selectedExp, setSelectedExp] = useState(new Set());
+      const [dragTxIdx, setDragTxIdx] = useState(null);
+      const [dragExpIdx, setDragExpIdx] = useState(null);
+
+      const [bulkTargetMonth, setBulkTargetMonth] = useState(`${currentMonth === 11 ? currentYear + 1 : currentYear}-${currentMonth === 11 ? 0 : currentMonth + 1}`);
+      
+      const historyRef = useRef([]);
+      const MAX_HISTORY = 30;
+
+      useEffect(() => {
+        async function fetchData() {
+          const { data: settings } = await supabase.from('global_settings').select('*').eq('id', 1).single();
+          if (settings) {
+            if (settings.workers && settings.workers.length > 0) setWorkers(settings.workers);
+            if (settings.accounts && settings.accounts.length > 0) setAccounts(settings.accounts);
+          }
+
+          const { data: months } = await supabase.from('monthly_data').select('*');
+          if (months && months.length > 0) {
+            const md = {};
+            months.forEach(m => { md[m.month_key] = m.data; });
+            setMonthData(md);
+          } else {
+             setMonthData({ "2026-2": { transactions: [], expenses: [], transfers: [], carryover: 0 } });
+          }
+          setIsInitialLoad(false);
+        }
+        fetchData();
+      }, []);
+
+      useEffect(() => {
+        if (isInitialLoad) return;
+        const timer = setTimeout(async () => {
+          await supabase.from('global_settings').upsert({ id: 1, workers, accounts });
+          
+          const updates = Object.keys(monthData).map(key => ({ month_key: key, data: monthData[key] }));
+          if (updates.length > 0) {
+             await supabase.from('monthly_data').upsert(updates);
+          }
+        }, 1500); 
+        return () => clearTimeout(timer);
+      }, [workers, accounts, monthData, isInitialLoad]);
+
+      const pushHistory = useCallback(() => {
+        historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), JSON.parse(JSON.stringify(monthData))];
+      }, [monthData]);
+
+      const undo = useCallback(() => {
+        if (historyRef.current.length === 0) return;
+        const prev = historyRef.current.pop();
+        setMonthData(prev);
+      }, []);
+
+      const monthKey = `${currentYear}-${currentMonth}`;
+      const data = monthData[monthKey] || { transactions: [], expenses: [], transfers: [], carryover: 0 };
+      const transactions = data.transactions || [];
+      const expenses = data.expenses || [];
+      const transfers = data.transfers || [];
+      const carryover = data.carryover || 0;
+
+      const setTransactions = (txs) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, transactions: typeof txs === "function" ? txs(data.transactions || []) : txs } })); };
+      const setExpenses = (exps) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, expenses: typeof exps === "function" ? exps(data.expenses || []) : exps } })); };
+      const setTransfers = (trfs) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, transfers: typeof trfs === "function" ? trfs(data.transfers || []) : trfs } })); };
+
+      const totalPayment = useMemo(() => transactions.reduce((s, t) => s + parseNum(t.payment), 0), [transactions]);
+      const totalRev = useMemo(() => transactions.reduce((s, t) => s + parseNum(t.agencyRev), 0), [transactions]);
+      const totalCosts = useMemo(() => transactions.reduce((s, t) => s + parseNum(t.costTax), 0), [transactions]);
+      const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + parseNum(e.cost), 0), [expenses]);
+      const agencyBudget = totalRev - totalExpenses + carryover;
+
+      const workerTotals = useMemo(() => {
+        const m = {};
+        workers.forEach((w) => { m[w.id] = { paid: 0, pending: 0 }; });
+        transactions.forEach((t) => { workers.forEach((w) => { const wp = t.workerPay?.[w.id]; if (wp && wp.amount) { if (wp.paid) m[w.id].paid += parseNum(wp.amount); else m[w.id].pending += parseNum(wp.amount); } }); });
+        return m;
+      }, [transactions, workers]);
+
+      const accountUsage = useMemo(() => {
+        const allTx = []; const allExp = []; const allTransfers = [];
+        Object.values(monthData).forEach(md => {
+          if (md.transactions) allTx.push(...md.transactions);
+          if (md.expenses) allExp.push(...md.expenses);
+          if (md.transfers) allTransfers.push(...md.transfers);
+        });
+        
+        return accounts.map(acc => {
+          const txListGlobal = allTx.filter(tx => resolveAccount(tx.platforma) === acc.name);
+          const expListGlobal = allExp.filter(ex => ex.persona === acc.name);
+          const transfersOutGlobal = allTransfers.filter(tr => tr.fromAcc === acc.name);
+          const transfersInGlobal = allTransfers.filter(tr => tr.toAcc === acc.name);
+          
+          const agencyRevTotal = txListGlobal.reduce((s, tx) => s + parseNum(tx.agencyRev), 0);
+          const txTotal = txListGlobal.reduce((s, tx) => s + parseNum(tx.payment), 0);
+          const expTotalAcc = expListGlobal.reduce((s, ex) => s + parseNum(ex.cost), 0);
+          const trOutTotal = transfersOutGlobal.reduce((s, tr) => s + parseNum(tr.amount) + parseNum(tr.fee), 0);
+          const trInTotal = transfersInGlobal.reduce((s, tr) => s + parseNum(tr.amount), 0);
+          
+          const used = txTotal + expTotalAcc + trOutTotal - trInTotal;
+          const pct = acc.limit > 0 ? (used / acc.limit) * 100 : 0;
+          const accountBudget = agencyRevTotal - expTotalAcc - trOutTotal + trInTotal;
+          
+          const txList = transactions.filter(tx => resolveAccount(tx.platforma) === acc.name);
+          const expList = expenses.filter(ex => ex.persona === acc.name);
+          const trOutList = transfers.filter(tr => tr.fromAcc === acc.name);
+          const trInList = transfers.filter(tr => tr.toAcc === acc.name);
+          
+          return { ...acc, used, remaining: acc.limit - used, pct, accountBudget, txList, expList, trOutList, trInList };
+        });
+      }, [accounts, monthData, transactions, expenses, transfers]);
+
+      const rowDiff = useCallback((t) => {
+        const wp = workers.reduce((s, w) => s + parseNum(t.workerPay?.[w.id]?.amount), 0);
+        return parseNum(t.payment) - wp - parseNum(t.costTax) - parseNum(t.agencyRev);
+      }, [workers]);
+
+      const prevMonth = () => { if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); } else setCurrentMonth(m => m - 1); };
+      const nextMonth = () => { 
+        const nm = currentMonth === 11 ? 0 : currentMonth + 1; 
+        const ny = currentMonth === 11 ? currentYear + 1 : currentYear; 
+        const nk = `${ny}-${nm}`; 
+        setMonthData(p => ({ ...p, [nk]: { transactions: p[nk]?.transactions || [], expenses: p[nk]?.expenses || [], transfers: p[nk]?.transfers || [], carryover: agencyBudget } })); 
+        setCurrentMonth(nm); 
+        setCurrentYear(ny); 
+      };
+
+      const monthSuffix = '.' + String(currentMonth + 1).padStart(2, '0');
+      const autoDate = (val) => {
+        if (!val) return val;
+        const clean = String(val).trim();
+        if (/^\d{1,2}$/.test(clean)) return clean.padStart(2, '0') + monthSuffix;
+        return clean;
+      };
+
+      const updateTx = (txId, field, val) => setTransactions(p => p.map(t => t.id === txId ? { ...t, [field]: field === 'date' ? autoDate(val) : val } : t));
+      const updateWorkerPay = (txId, wId, field, val) => setTransactions(p => p.map(t => { if (t.id !== txId) return t; return { ...t, workerPay: { ...t.workerPay, [wId]: { ...t.workerPay[wId], [field]: val } } }; }));
+      const addTransaction = () => setTransactions(p => [...p, { id: uid(), client: "", service: "", platforma: "", payment: 0, date: "", costTax: 0, agencyRev: 0, comment: "", invoice: null, workerPay: makeWorkerPay(workers) }]);
+      const removeTx = (id) => setTransactions(p => p.filter(t => t.id !== id));
+
+      const handleBulkAction = (actionType) => {
+        if (!bulkTargetMonth) return;
+        const [tYear, tMonth] = bulkTargetMonth.split('-');
+        const targetMonthIdx = parseInt(tMonth);
+        
+        const formatTransferredDate = (oldDate) => {
+            if(!oldDate) return "";
+            const parts = oldDate.split('.');
+            if(parts.length >= 1) return `${parts[0].padStart(2, '0')}.${String(targetMonthIdx + 1).padStart(2, '0')}`;
+            return oldDate;
+        };
+
+        const txsToProcess = transactions.filter(t => selectedTx.has(t.id));
+        const expsToProcess = expenses.filter(e => selectedExp.has(e.id));
+        
+        pushHistory();
+        
+        setMonthData(prev => {
+           const nextState = {...prev};
+           if (!nextState[bulkTargetMonth]) nextState[bulkTargetMonth] = { transactions: [], expenses: [], transfers: [], carryover: 0 };
+           
+           const newTxs = txsToProcess.map(t => ({
+             ...t, 
+             id: uid(), 
+             date: formatTransferredDate(t.date), 
+             workerPay: Object.fromEntries(Object.entries(t.workerPay || {}).map(([k, v]) => [k, { ...v, paid: false }])) 
+           }));
+           
+           const newExps = expsToProcess.map(e => ({
+             ...e, 
+             id: uid(), 
+             date: formatTransferredDate(e.date) 
+           }));
+           
+           nextState[bulkTargetMonth].transactions = [...(nextState[bulkTargetMonth].transactions || []), ...newTxs];
+           nextState[bulkTargetMonth].expenses = [...(nextState[bulkTargetMonth].expenses || []), ...newExps];
+           
+           return nextState;
+        });
+        
+        if (actionType === 'move') {
+           setTransactions(prev => prev.filter(t => !selectedTx.has(t.id)));
+           setExpenses(prev => prev.filter(e => !selectedExp.has(e.id)));
+        }
+        
+        setSelectedTx(new Set());
+        setSelectedExp(new Set());
+      };
+
+      const exportSelected = () => {
+        const txToExport = selectedTx.size > 0 ? transactions.filter(t => selectedTx.has(t.id)) : transactions;
+        const expToExport = selectedExp.size > 0 ? expenses.filter(e => selectedExp.has(e.id)) : expenses;
+        const payload = { month: monthKey, transactions: txToExport, expenses: expToExport, transfers: transfers, exportedAt: new Date().toISOString() };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `advantage-backup-${monthKey}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      const importInputRef = useRef(null);
+      const handleImport = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const imported = JSON.parse(reader.result);
+            pushHistory();
+            setMonthData(p => {
+              const cur = p[monthKey] || { transactions: [], expenses: [], transfers: [], carryover: 0 };
+              const updated = { ...cur };
+              if (imported.transactions && Array.isArray(imported.transactions)) {
+                updated.transactions = [...(cur.transactions || []), ...imported.transactions.map(t => ({ ...t, id: uid() }))];
+              }
+              if (imported.expenses && Array.isArray(imported.expenses)) {
+                updated.expenses = [...(cur.expenses || []), ...imported.expenses.map(ex => ({ ...ex, id: uid() }))];
+              }
+              if (imported.transfers && Array.isArray(imported.transfers)) {
+                updated.transfers = [...(cur.transfers || []), ...imported.transfers.map(tr => ({ ...tr, id: uid() }))];
+              }
+              return { ...p, [monthKey]: updated };
+            });
+          } catch (err) { alert('Invalid JSON file'); }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      };
+
+      const onTxDragStart = (i) => setDragTxIdx(i);
+      const onTxDragOver = (e, i) => { e.preventDefault(); };
+      const onTxDrop = (i) => { if (dragTxIdx !== null && dragTxIdx !== i) setTransactions(p => arrayMove(p, dragTxIdx, i)); setDragTxIdx(null); };
+      
+      const onExpDragStart = (i) => setDragExpIdx(i);
+      const onExpDragOver = (e, i) => { e.preventDefault(); };
+      const onExpDrop = (i) => { if (dragExpIdx !== null && dragExpIdx !== i) setExpenses(p => arrayMove(p, dragExpIdx, i)); setDragExpIdx(null); };
+
+      const toggleSelectTx = (id) => setSelectedTx(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+      const toggleSelectExp = (id) => setSelectedExp(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+      const toggleAllTx = () => { if (selectedTx.size === transactions.length) setSelectedTx(new Set()); else setSelectedTx(new Set(transactions.map(t => t.id))); };
+      const toggleAllExp = () => { if (selectedExp.size === expenses.length) setSelectedExp(new Set()); else setSelectedExp(new Set(expenses.map(e => e.id))); };
+
+      const invoiceInputRef = useRef(null);
+      const [invoiceTxId, setInvoiceTxId] = useState(null);
+      const handleInvoiceUpload = (e) => { const file = e.target.files?.[0]; if (!file || !invoiceTxId) return; const r = new FileReader(); r.onload = () => { updateTx(invoiceTxId, "invoice", { name: file.name, data: r.result }); setInvoiceTxId(null); }; r.readAsDataURL(file); e.target.value = ""; };
+      const triggerInvoiceUpload = (txId) => { setInvoiceTxId(txId); setTimeout(() => invoiceInputRef.current?.click(), 50); };
+      const downloadInvoice = (inv) => { const a = document.createElement("a"); a.href = inv.data; a.download = inv.name; a.click(); };
+
+      const addWorker = () => { if (!newWorker.name.trim()) return; const w = { id: uid(), name: newWorker.name.trim(), role: newWorker.role.trim(), colorIdx: newWorker.colorIdx % WORKER_COLORS.length }; setWorkers(p => [...p, w]); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => ({ ...t, workerPay: { ...t.workerPay, [w.id]: { amount: 0, paid: false } } })) }; }); return n; }); setNewWorker({ name: "", role: "", colorIdx: (newWorker.colorIdx + 1) % WORKER_COLORS.length }); setShowAddWorker(false); };
+      const removeWorker = (wId) => { setWorkers(p => p.filter(w => w.id !== wId)); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => { const wp = { ...t.workerPay }; delete wp[wId]; return { ...t, workerPay: wp }; }) }; }); return n; }); };
+
+      const addExpense = () => { if (!newExpense.service.trim()) return; const expData = { ...newExpense, date: autoDate(newExpense.date) }; if (editExpense) setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); else setExpenses(p => [...p, { id: uid(), ...expData }]); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0 }); setShowAddExpense(false); setEditExpense(null); };
+      const removeExpense = (id) => setExpenses(p => p.filter(e => e.id !== id));
+      const startEditExpense = (e) => { setEditExpense(e); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost }); setShowAddExpense(true); };
+
+      const addTransfer = () => { if (!newTransfer.fromAcc || !newTransfer.toAcc) return; setTransfers(p => [...p, { id: uid(), ...newTransfer, date: autoDate(newTransfer.date) }]); setNewTransfer({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" }); setShowTransfer(false); };
+      const removeTransfer = (id) => setTransfers(p => p.filter(t => t.id !== id));
+
+      const submitAccountForm = () => { 
+        if (!newAccountForm.name.trim()) return; 
+        if (editAccount) {
+          setAccounts(p => p.map(a => a.id === editAccount.id ? { ...a, name: newAccountForm.name.trim(), owner: newAccountForm.owner.trim(), limit: parseNum(newAccountForm.limit) } : a));
+        } else {
+          setAccounts(p => [...p, { id: uid(), name: newAccountForm.name.trim(), owner: newAccountForm.owner.trim(), limit: parseNum(newAccountForm.limit), isActive: true }]); 
+        }
+        setNewAccountForm({ name: "", owner: "", limit: 10000 }); 
+        setShowAddAccount(false); 
+        setEditAccount(null);
+      };
+      
+      const startEditAccount = (acc) => {
+         setEditAccount(acc);
+         setNewAccountForm({ name: acc.name, owner: acc.owner, limit: acc.limit });
+         setShowAddAccount(true);
+      };
+      
+      const confirmRemoveAccount = (id) => {
+         if(window.confirm("Дійсно видалити цю платіжку? Це вплине на відображення лімітів.")) {
+            setAccounts(p => p.filter(a => a.id !== id));
+         }
+      };
+
+      const toggleAccount = (id) => setAccounts(p => p.map(a => a.id === id ? { ...a, isActive: !a.isActive } : a));
+
+      const wc = (w) => WORKER_COLORS[w.colorIdx % WORKER_COLORS.length];
+      const barColor = (pct) => pct >= 100 ? "#DC2626" : pct >= 85 ? "#DC2626" : pct >= 60 ? "#F59E0B" : "#16A34A";
+
+      const getMonthOptions = () => {
+         const opts = [];
+         for(let i=0; i<12; i++){ opts.push(<option key={`${currentYear}-${i}`} value={`${currentYear}-${i}`}>{MONTHS_UA[i]} {currentYear}</option>); }
+         for(let i=0; i<12; i++){ opts.push(<option key={`${currentYear+1}-${i}`} value={`${currentYear+1}-${i}`}>{MONTHS_UA[i]} {currentYear+1}</option>); }
+         return opts;
+      };
+
+      if (isInitialLoad) {
+        return (
+          <div style={{ minHeight: "100vh", background: "#1A1A1A", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "'DM Sans', sans-serif" }}>
+            <h2>Завантаження даних з хмари...</h2>
+          </div>
+        );
+      }
+
+      return (
+        <div style={{ minHeight: "100vh", background: "#E8E4DE", fontFamily: "'DM Sans',sans-serif" }}>
+          <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+            *{box-sizing:border-box;margin:0;padding:0}
+            .editable-cell:hover{background:rgba(0,0,0,.06)!important}
+            .tx-row:hover .row-delete{opacity:1!important}
+            .tx-row{transition:background .2s}.tx-row.invalid{background:#FEE2E2!important}
+            table{border-collapse:collapse}
+            ::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-track{background:#d5d1cb;border-radius:4px}::-webkit-scrollbar-thumb{background:#999;border-radius:4px}
+            .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
+            .modal{background:#fff;border-radius:12px;padding:28px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+            .modal h3{margin-bottom:18px;font-size:18px}
+            .modal label{display:block;margin-bottom:12px;font-size:13px;font-weight:500;color:#555}
+            .modal input,.modal select, .modal textarea{width:100%;padding:8px 12px;border:1.5px solid #ddd;border-radius:6px;font-size:14px;font-family:'DM Sans',sans-serif;margin-top:4px}
+            .modal input:focus,.modal select:focus, .modal textarea:focus{border-color:#4A90D9;outline:none}
+            .btn{padding:8px 18px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s; display:inline-flex; align-items:center; gap:6px}
+            .btn-primary{background:#1A1A1A;color:#fff}.btn-primary:hover{background:#333}
+            .btn-secondary{background:#E8E4DE;color:#333}.btn-secondary:hover{background:#d5d1cb}
+            .btn-action{background:#fff; border:1px solid #ddd; color:#333}.btn-action:hover{background:#f5f5f5}
+            .kpi-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:16px 20px;min-width:170px}
+            .kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.5);margin-bottom:4px}
+            .kpi-value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:#fff}
+            .checkbox-paid{width:16px;height:16px;cursor:pointer;accent-color:#16A34A}
+            .comment-icon{cursor:pointer;font-size:12px;opacity:.5;transition:opacity .15s}.comment-icon:hover{opacity:1}
+            .invoice-btn{border:none;background:none;cursor:pointer;font-size:12px;padding:2px 4px;border-radius:3px;transition:background .15s}.invoice-btn:hover{background:rgba(0,0,0,.08)}
+            @keyframes pulse-red{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.4)}50%{box-shadow:0 0 8px 4px rgba(220,38,38,.2)}}
+            .acct-over{animation:pulse-red 1.5s infinite}
+            .acct-scroll::-webkit-scrollbar{height:6px}
+            .acct-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,.08);border-radius:3px;margin:0 10px}
+            .acct-scroll::-webkit-scrollbar-thumb{background:#4ADE80;border-radius:3px}
+            .acct-scroll::-webkit-scrollbar-thumb:hover{background:#22C55E}
+            .acct-scroll{scrollbar-width:thin;scrollbar-color:#4ADE80 rgba(255,255,255,.08)}
+            select.bulk-select { padding: 6px 12px; border: 1px solid #ddd; border-radius: 6px; outline: none; font-family: 'DM Sans', sans-serif; font-size: 13px;}
+          `}</style>
+
+          <datalist id="accounts-list">
+             {accounts.map(a => <option key={a.id} value={a.name} />)}
+          </datalist>
+
+          <input ref={invoiceInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" style={{ display: "none" }} onChange={handleInvoiceUpload} />
+          <input ref={importInputRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleImport} />
+
+          {/* TOPBAR */}
+          <div style={{ background: "#1A1A1A", padding: "12px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, borderBottom: "1px solid #333" }}>
+            <img src={LOGO_SRC} alt="ADvantage" style={{ height: 26, filter: "invert(1) brightness(2)" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <button onClick={prevMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "6px 14px", fontSize: 18 }}>‹</button>
+              <span style={{ color: "#fff", fontSize: 16, fontWeight: 600, minWidth: 160, textAlign: "center" }}>{MONTHS_UA[currentMonth]} {currentYear}</span>
+              <button onClick={nextMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "6px 14px", fontSize: 18 }}>›</button>
+              <button onClick={undo} className="btn" title="Відмінити дію" style={{ background: historyRef.current.length > 0 ? "rgba(255,200,50,.2)" : "rgba(255,255,255,.05)", border: historyRef.current.length > 0 ? "1px solid rgba(255,200,50,.3)" : "1px solid transparent", color: historyRef.current.length > 0 ? "#FBBF24" : "#555", padding: "6px 10px", fontSize: 14, marginLeft: 6 }}>↩ Відмінити</button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ color: "rgba(255,255,255,.5)", fontSize: 12 }}>{userEmail}</span>
+              <button onClick={onLogout} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "6px 14px", fontSize: 12 }}>Вийти</button>
+            </div>
+          </div>
+
+          {/* KPI */}
+          <div style={{ background: "#1A1A1A", padding: "20px 28px 24px" }}>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              {[{ label: "Agency Turnover", value: totalPayment }, { label: "Revenue (REV)", value: totalRev, color: "#4ADE80" }, { label: "Agency Budget", value: agencyBudget, color: agencyBudget >= 0 ? "#4ADE80" : "#F87171" }, { label: "Carryover (попередній)", value: carryover, color: "#FBBF24" }, { label: "REV Fees / Costs", value: totalCosts, color: "#FB923C" }, { label: "Total Expenses", value: totalExpenses, color: "#F87171" }].map((k, i) => (
+                <div key={i} className="kpi-card"><div className="kpi-label">{k.label}</div><div className="kpi-value" style={k.color ? { color: k.color } : {}}>{fmt(k.value)}</div></div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ padding: "24px 28px" }}>
+            {/* TABLE */}
+            <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", minWidth: 950 + workers.length * 160 }}>
+                  <colgroup>
+                    <col style={{ width: 36 }} /><col style={{ width: 30 }} /><col style={{ width: 150 }} /><col style={{ width: 170 }} /><col style={{ width: 140 }} /><col style={{ width: 110 }} /><col style={{ width: 70 }} /><col style={{ width: 90 }} /><col style={{ width: 110 }} /><col style={{ width: 46 }} />
+                    {workers.map(w => <col key={w.id} style={{ width: 150 }} />)}
+                    <col style={{ width: 40 }} />
+                  </colgroup>
+                  <thead>
+                    <tr style={{ background: "#444", color: "#fff" }}>
+                      <th colSpan={9} style={{ padding: "0" }}></th>
+                      <th style={{ padding: "6px 4px", fontSize: 11, fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", verticalAlign: "top" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,.7)", fontSize: 11, letterSpacing: .5 }}>Total Revenue Per Person:<button onClick={() => setShowAddWorker(true)} style={{ background: "rgba(255,255,255,.15)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600, marginLeft: 2 }}>➕</button></span>
+                      </th>
+                      {workers.map(w => { const c = wc(w); const t = workerTotals[w.id] || { paid: 0, pending: 0 }; return (
+                        <th key={w.id} style={{ padding: "10px 6px 0", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, textAlign: "center", position: "relative", verticalAlign: "top" }}>
+                          <button onClick={() => removeWorker(w.id)} style={{ position: "absolute", top: 3, right: 4, background: "none", border: "none", cursor: "pointer", fontSize: 11, color: c.text, opacity: .3 }}>🗑️</button>
+                          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 18, color: c.text, marginBottom: 2 }}>{fmt(t.paid)}</div>
+                          {t.pending > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: c.text, opacity: .55, marginBottom: 4 }}>pending: {fmt(t.pending)}</div>}
+                          <div style={{ fontWeight: 700, fontSize: 15, fontStyle: "italic", color: c.text, marginTop: 6, marginBottom: 2 }}>{w.name}</div>
+                          <div style={{ fontSize: 11, color: c.text, opacity: .7, fontWeight: 400, paddingBottom: 8, lineHeight: 1.3 }}>{w.role}</div>
+                        </th>
+                      ); })}
+                      <th style={{ background: "#444" }}></th>
+                    </tr>
+                    
+                    <tr style={{ background: "#3A3A3A" }}>
+                      <th colSpan={10} style={{ padding: 0, verticalAlign: "top", maxWidth: 900, overflow: 'hidden' }}>
+                        <div className="acct-scroll" style={{ padding: "12px 10px 6px", display: "flex", gap: 8, alignItems: "stretch", overflowX: "auto", paddingBottom: 10, width: "100%" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: "fit-content", paddingRight: 8, borderRight: "1px solid rgba(255,255,255,.15)" }}>
+                            <span style={{ color: "rgba(255,255,255,.6)", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, whiteSpace: "nowrap" }}>Платіжки</span>
+                            <button onClick={() => { setEditAccount(null); setNewAccountForm({name:"", owner:"", limit:10000}); setShowAddAccount(true); }} style={{ background: "rgba(255,255,255,.12)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>➕</button>
+                          </div>
+                          {accountUsage.map(a => {
+                            const pct = Math.min(a.pct, 100);
+                            const over = a.pct > 100;
+                            const isExpanded = expandedAcct === a.id;
+                            return (
+                              <div key={a.id} className={over ? "acct-over" : ""} onClick={() => setExpandedAcct(isExpanded ? null : a.id)} style={{ background: a.isActive ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.03)", border: `1px solid ${a.isActive ? "rgba(255,255,255,.15)" : "rgba(255,255,255,.06)"}`, borderRadius: 8, padding: "8px 12px", minWidth: 160, cursor: "pointer", opacity: a.isActive ? 1 : .5, position: "relative", transition: "all .2s" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                                  <span style={{ color: "#fff", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>{a.name}</span>
+                                  <div style={{ display: "flex", gap: 4 }}>
+                                    <button onClick={(e) => { e.stopPropagation(); startEditAccount(a); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4A90D9", padding: 0 }}>✏️</button>
+                                    <button onClick={(e) => { e.stopPropagation(); toggleAccount(a.id); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 9, color: a.isActive ? "#4ADE80" : "#F87171", padding: 0 }}>{a.isActive ? "●" : "○"}</button>
+                                    <button onClick={(e) => { e.stopPropagation(); confirmRemoveAccount(a.id); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "rgba(255,255,255,.3)", padding: 0 }}>🗑️</button>
+                                  </div>
+                                </div>
+                                <div style={{ background: "rgba(255,255,255,.1)", borderRadius: 3, height: 6, marginBottom: 4, overflow: "hidden" }}>
+                                  <div style={{ width: `${pct}%`, height: "100%", background: barColor(a.pct), borderRadius: 3, transition: "width .3s" }} />
+                                </div>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                                  <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, fontWeight: 600, color: barColor(a.pct) }}>{fmt(a.used)}</span>
+                                  <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: "rgba(255,255,255,.4)" }}>{fmt(a.limit)}</span>
+                                </div>
+                                <div style={{ fontSize: 9, color: over ? "#F87171" : "rgba(255,255,255,.4)", marginTop: 2, textAlign: "center" }}>
+                                  {over ? `ПЕРЕВИЩЕНО на ${fmt(a.used - a.limit)}` : `Оборот: залишок ${fmt(a.remaining)}`}
+                                </div>
+                                
+                                {isExpanded && (
+                                  <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,.1)", paddingTop: 6, maxHeight: 150, overflowY: "auto" }}>
+                                    <div style={{ fontSize: 10, color: "#4ADE80", display: "flex", justifyContent: "space-between", padding: "4px 0", marginBottom: 6, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                                      <span>Бюджет агенції:</span>
+                                      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 600 }}>{fmt(a.accountBudget)}</span>
+                                    </div>
+                                    {a.txList.length > 0 && a.txList.map(tx => <div key={tx.id} style={{ fontSize: 10, color: "rgba(255,255,255,.6)", display: "flex", justifyContent: "space-between", padding: "1px 0" }}><span>{tx.client}</span><span style={{ fontFamily: "'JetBrains Mono',monospace" }}>{fmt(tx.payment)}</span></div>)}
+                                    {a.expList.length > 0 && a.expList.map(ex => <div key={ex.id} style={{ fontSize: 10, color: "#F87171", display: "flex", justifyContent: "space-between", padding: "1px 0" }}><span>{ex.service}</span><span style={{ fontFamily: "'JetBrains Mono',monospace" }}>-{fmt(ex.cost)}</span></div>)}
+                                    {a.trOutList && a.trOutList.map(tr => <div key={tr.id} style={{ fontSize: 10, color: "#FBBF24", display: "flex", justifyContent: "space-between", padding: "1px 0" }}><span>Переказ ({tr.toAcc})</span><span style={{ fontFamily: "'JetBrains Mono',monospace" }}>-{fmt(parseNum(tr.amount) + parseNum(tr.fee))}</span></div>)}
+                                    {a.trInList && a.trInList.map(tr => <div key={tr.id} style={{ fontSize: 10, color: "#4ADE80", display: "flex", justifyContent: "space-between", padding: "1px 0" }}><span>Отримано ({tr.fromAcc})</span><span style={{ fontFamily: "'JetBrains Mono',monospace" }}>+{fmt(tr.amount)}</span></div>)}
+                                    {a.txList.length === 0 && a.expList.length === 0 && (!a.trOutList || a.trOutList.length === 0) && (!a.trInList || a.trInList.length === 0) && <div style={{ fontSize: 10, color: "rgba(255,255,255,.3)", textAlign: "center" }}>Немає операцій</div>}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </th>
+                      {workers.map(w => { const c = wc(w); return (
+                        <th key={w.id} style={{ background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}` }}></th>
+                      ); })}
+                      <th style={{ background: "#3A3A3A" }}></th>
+                    </tr>
+                    
+                    <tr style={{ background: "#1A1A1A", color: "#fff" }}>
+                      <th style={{ padding: "6px 4px", textAlign: "center", verticalAlign: "middle" }}>
+                        <input type="checkbox" checked={transactions.length > 0 && selectedTx.size === transactions.length} onChange={toggleAllTx} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9" }} title="Select all" />
+                      </th>
+                      <th style={{ padding: "10px 6px", fontSize: 11 }}>#</th>
+                      <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Clients</th>
+                      <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Our service</th>
+                      <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Платіжка</th>
+                      <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "right" }}>Payment</th>
+                      <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "center" }}>Date</th>
+                      <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "right" }}>Cost/tax</th>
+                      <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "right" }}>Agency REV</th>
+                      <th style={{ padding: "10px 6px", fontSize: 10, textAlign: "center" }}>Inv.</th>
+                      {workers.map(w => { const c = wc(w); return (<th key={w.id} style={{ padding: "8px 6px", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}` }}></th>); })}
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.map((t, i) => {
+                      const diff = rowDiff(t); const isInvalid = Math.abs(diff) > 0.01;
+                      return (
+                        <tr key={t.id} className={`tx-row ${isInvalid ? "invalid" : ""}`} draggable onDragStart={() => onTxDragStart(i)} onDragOver={(e) => onTxDragOver(e, i)} onDrop={() => onTxDrop(i)} style={{ borderBottom: "1px solid #eee", opacity: dragTxIdx === i ? 0.4 : 1 }}>
+                          <td style={{ padding: "2px 2px", textAlign: "center" }}>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                              <DragHandle />
+                              <input type="checkbox" checked={selectedTx.has(t.id)} onChange={() => toggleSelectTx(t.id)} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9" }} />
+                            </div>
+                            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 600, color: diff > 0 ? "#16A34A" : diff < 0 ? "#DC2626" : "#999", marginTop: 1 }}>{isInvalid ? (diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)) : "✓"}</div>
+                          </td>
+                          <td style={{ padding: "6px", fontSize: 12, color: "#999", textAlign: "center" }}>{i + 1}</td>
+                          <td style={{ padding: "2px" }}>
+                            <EditableCell value={t.client} onChange={v => updateTx(t.id, "client", v)} />
+                            <CommentCell value={t.comment} onChange={v => updateTx(t.id, "comment", v)} />
+                          </td>
+                          <td style={{ padding: "2px" }}><EditableCell value={t.service} onChange={v => updateTx(t.id, "service", v)} /></td>
+                          <td style={{ padding: "2px" }}>
+                             <input list="accounts-list" value={t.platforma || ""} onChange={e => updateTx(t.id, "platforma", e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", transition: "border .2s", background: "transparent" }} onFocus={e => e.target.style.border="1px solid #4A90D9"} onBlur={e => e.target.style.border="1px solid transparent"} placeholder="Акаунт" />
+                          </td>
+                          <td style={{ padding: "2px" }}><EditableCell value={t.payment} onChange={v => updateTx(t.id, "payment", v)} type="number" mono style={{ textAlign: "right" }} /></td>
+                          <td style={{ padding: "2px" }}><EditableCell value={t.date} onChange={v => updateTx(t.id, "date", v)} isDate={true} activeMonthIdx={currentMonth} style={{ textAlign: "center" }} /></td>
+                          <td style={{ padding: "2px" }}><EditableCell value={t.costTax} onChange={v => updateTx(t.id, "costTax", v)} type="number" mono style={{ textAlign: "right" }} /></td>
+                          <td style={{ padding: "2px" }}><EditableCell value={t.agencyRev} onChange={v => updateTx(t.id, "agencyRev", v)} type="number" mono style={{ textAlign: "right" }} /></td>
+                          <td style={{ padding: "2px 4px", textAlign: "center" }}>
+                            {t.invoice ? (<div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "center" }}><button className="invoice-btn" onClick={() => downloadInvoice(t.invoice)} title={t.invoice.name} style={{ color: "#16A34A", fontSize: 14 }}>📄</button><button className="invoice-btn" onClick={() => updateTx(t.id, "invoice", null)} style={{ color: "#DC2626", fontSize: 10 }}>🗑️</button></div>) : (<button className="invoice-btn" onClick={() => triggerInvoiceUpload(t.id)} style={{ color: "#999", fontSize: 13 }}>📎</button>)}
+                          </td>
+                          {workers.map(w => { const c = wc(w); const wp = t.workerPay?.[w.id] || { amount: 0, paid: false }; return (
+                            <td key={w.id} style={{ padding: "2px 4px", background: c.bgLight, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}` }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                <div style={{ flex: 1 }}><EditableCell value={wp.amount} onChange={v => updateWorkerPay(t.id, w.id, "amount", v)} type="number" mono style={{ textAlign: "right", fontSize: 12, color: wp.paid ? c.text : "#999" }} /></div>
+                                <input type="checkbox" className="checkbox-paid" checked={wp.paid} onChange={e => updateWorkerPay(t.id, w.id, "paid", e.target.checked)} />
+                              </div>
+                            </td>
+                          ); })}
+                          <td style={{ padding: "2px 4px", textAlign: "center" }}>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                              <button className="row-delete" onClick={() => duplicateTxToNext(t)} title="Копіювати в наступний місяць" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#4A90D9", fontSize: 13, transition: "opacity .15s" }}>⧉</button>
+                              <button className="row-delete" onClick={() => removeTx(t.id)} title="Видалити" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#DC2626", fontSize: 14, transition: "opacity .15s" }}>🗑️</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ background: "#F5F3F0", fontWeight: 600 }}>
+                      <td></td><td></td><td colSpan={3} style={{ padding: "10px 6px", fontSize: 13 }}>TOTALS</td>
+                      <td style={{ padding: "10px 6px", fontFamily: "'JetBrains Mono',monospace", fontSize: 13, textAlign: "right" }}>{fmt(totalPayment)}</td><td></td>
+                      <td style={{ padding: "10px 6px", fontFamily: "'JetBrains Mono',monospace", fontSize: 13, textAlign: "right" }}>{fmt(totalCosts)}</td>
+                      <td style={{ padding: "10px 6px", fontFamily: "'JetBrains Mono',monospace", fontSize: 13, textAlign: "right" }}>{fmt(totalRev)}</td><td></td>
+                      {workers.map(w => { const c = wc(w); const t = workerTotals[w.id] || { paid: 0, pending: 0 }; return (<td key={w.id} style={{ padding: "10px 6px", background: c.bg, fontFamily: "'JetBrains Mono',monospace", fontSize: 13, textAlign: "center", color: c.text }}>{fmt(t.paid + t.pending)}</td>); })}
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <div style={{ padding: "12px 16px", borderTop: "1px solid #eee", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <button className="btn btn-primary" onClick={addTransaction}>➕ Додати транзакцію</button>
+              </div>
+            </div>
+
+            {/* EXPENSES & TRANSFERS GRID */}
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, marginBottom: 40 }}>
+               
+               {/* EXPENSES */}
+               <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)" }}>
+                 <div style={{ padding: "16px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                   <h2 style={{ fontSize: 16, fontWeight: 700, color: "#333" }}>Expenses</h2>
+                   <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, fontSize: 16, color: "#DC2626" }}>{fmt(totalExpenses)}</span>
+                 </div>
+                 <div style={{ overflowX: "auto" }}>
+                   <table style={{ width: "100%", minWidth: 600 }}>
+                     <colgroup><col style={{ width: 40 }} /><col style={{ width: "22%" }} /><col style={{ width: "18%" }} /><col style={{ width: "12%" }} /><col style={{ width: "12%" }} /><col style={{ width: "14%" }} /><col style={{ width: 80 }} /></colgroup>
+                     <thead>
+                       <tr style={{ background: "#F5F3F0" }}>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>
+                            <input type="checkbox" checked={expenses.length > 0 && selectedExp.size === expenses.length} onChange={toggleAllExp} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9" }} title="Select all" />
+                         </th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "left" }}>Service</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "left" }}>Платіжка</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>Method</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>Date</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "right" }}>Cost</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>Дії</th>
+                       </tr>
+                     </thead>
+                     <tbody>
+                       {expenses.map((e, i) => (
+                         <tr key={e.id} draggable onDragStart={() => onExpDragStart(i)} onDragOver={(ev) => onExpDragOver(ev, i)} onDrop={() => onExpDrop(i)} style={{ borderBottom: "1px solid #f0f0f0", opacity: dragExpIdx === i ? 0.4 : 1 }}>
+                           <td style={{ padding: "4px 4px", fontSize: 12, color: "#999", textAlign: "center" }}>
+                             <DragHandle />
+                             <input type="checkbox" checked={selectedExp.has(e.id)} onChange={() => toggleSelectExp(e.id)} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9", display: "block", margin: "2px auto 0" }} />
+                           </td>
+                           <td style={{ padding: "8px 6px", fontSize: 13 }}><EditableCell value={e.service} onChange={v => { const x = [...expenses]; x[i].service = v; setExpenses(x); }} /></td>
+                           <td style={{ padding: "8px 6px", fontSize: 13 }}>
+                              <input list="accounts-list" value={e.persona || ""} onChange={ev => { const x = [...expenses]; x[i].persona = ev.target.value; setExpenses(x); }} style={{ width: "100%", boxSizing: "border-box", padding: "2px 4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", background: "transparent" }} onFocus={ev => ev.target.style.border="1px solid #4A90D9"} onBlur={ev => ev.target.style.border="1px solid transparent"} />
+                           </td>
+                           <td style={{ padding: "8px 6px", fontSize: 12, textAlign: "center", fontFamily: "'JetBrains Mono',monospace" }}><EditableCell value={e.method} onChange={v => { const x = [...expenses]; x[i].method = v; setExpenses(x); }} /></td>
+                           <td style={{ padding: "8px 6px", fontSize: 12, textAlign: "center" }}>
+                             <EditableCell value={e.date} onChange={v => {
+                                const newExps = [...expenses];
+                                newExps[i].date = v;
+                                setExpenses(newExps);
+                             }} isDate={true} activeMonthIdx={currentMonth} />
+                           </td>
+                           <td style={{ padding: "8px 6px", fontSize: 13, textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, color: "#DC2626" }}><EditableCell value={e.cost} onChange={v => { const x = [...expenses]; x[i].cost = v; setExpenses(x); }} type="number" mono style={{textAlign: "right"}} /></td>
+                           <td style={{ padding: "8px 6px", textAlign: "center", display: "flex", gap: 8, justifyContent: "center" }}>
+                             <button onClick={() => duplicateExpToNext(e)} title="Копіювати в наступний місяць" style={{ border: "none", background: "none", cursor: "pointer", fontSize: 13 }}>⧉</button>
+                             <button onClick={() => removeExpense(e.id)} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 14 }}>🗑️</button>
+                           </td>
+                         </tr>
+                       ))}
+                       {expenses.length === 0 && <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: "#999" }}>Немає витрат</td></tr>}
+                     </tbody>
+                   </table>
+                 </div>
+                 <div style={{ padding: "12px 16px", borderTop: "1px solid #eee" }}>
+                   <button className="btn btn-primary" onClick={() => { setEditExpense(null); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0 }); setShowAddExpense(true); }}>➕ Додати витрати</button>
+                 </div>
+               </div>
+
+               {/* TRANSFERS */}
+               <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)", height: "fit-content" }}>
+                 <div style={{ padding: "16px 20px", borderBottom: "1px solid #eee" }}>
+                   <h2 style={{ fontSize: 16, fontWeight: 700, color: "#333" }}>Перекази бюджету</h2>
+                   <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Внутрішні перекази між платіжками</div>
+                 </div>
+                 <div style={{ overflowX: "auto" }}>
+                   <table style={{ width: "100%", minWidth: 300 }}>
+                     <thead>
+                       <tr style={{ background: "#F5F3F0" }}>
+                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#666", textAlign: "left" }}>From → To</th>
+                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#666", textAlign: "right" }}>Amount</th>
+                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#666", textAlign: "center" }}>Дії</th>
+                       </tr>
+                     </thead>
+                     <tbody>
+                       {transfers.map(tr => (
+                         <tr key={tr.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                           <td style={{ padding: "8px 6px" }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: "#333" }}>{tr.fromAcc}</div>
+                              <div style={{ fontSize: 10, color: "#888" }}>↓ {tr.toAcc}</div>
+                           </td>
+                           <td style={{ padding: "8px 6px", textAlign: "right" }}>
+                              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 600 }}>{fmt(tr.amount)}</div>
+                              {tr.fee > 0 && <div style={{ fontSize: 10, color: "#DC2626" }}>Fee: {fmt(tr.fee)}</div>}
+                           </td>
+                           <td style={{ padding: "8px 6px", textAlign: "center" }}>
+                              <button onClick={() => removeTransfer(tr.id)} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 12 }}>🗑️</button>
+                           </td>
+                         </tr>
+                       ))}
+                       {transfers.length === 0 && <tr><td colSpan={3} style={{ padding: 16, textAlign: "center", fontSize: 12, color: "#999" }}>Немає переказів</td></tr>}
+                     </tbody>
+                   </table>
+                 </div>
+                 <div style={{ padding: "12px 16px", borderTop: "1px solid #eee" }}>
+                   <button className="btn btn-secondary" onClick={() => setShowTransfer(true)}>🔄 Додати переказ</button>
+                 </div>
+               </div>
+
+            </div>
+            
+            {/* BULK ACTIONS & EXPORT */}
+            <div style={{ background: "#fff", borderRadius: 10, padding: "16px 20px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#555" }}>Вибрано: {selectedTx.size} транзакцій, {selectedExp.size} витрат</span>
+                  <select className="bulk-select" value={bulkTargetMonth} onChange={(e) => setBulkTargetMonth(e.target.value)}>
+                     {getMonthOptions()}
+                  </select>
+                  <button className="btn btn-action" onClick={() => handleBulkAction('copy')} disabled={selectedTx.size === 0 && selectedExp.size === 0}>📋 Копіювати в</button>
+                  <button className="btn btn-action" onClick={() => handleBulkAction('move')} disabled={selectedTx.size === 0 && selectedExp.size === 0} style={{color: "#DC2626"}}>📦 Перенести в</button>
+               </div>
+               
+               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <button className="btn btn-secondary" onClick={exportSelected} style={{ fontSize: 13 }}>📥 Експорт</button>
+                  <button className="btn btn-secondary" onClick={() => importInputRef.current?.click()} style={{ fontSize: 13 }}>📤 Імпорт JSON</button>
+               </div>
+            </div>
+            
+          </div>
+
+          {/* MODAL: Add Worker */}
+          {showAddWorker && (<div className="modal-overlay" onClick={() => setShowAddWorker(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Додати працівника</h3>
+            <label>Ім'я<input value={newWorker.name} onChange={e => setNewWorker({ ...newWorker, name: e.target.value })} placeholder="Ім'я" autoFocus /></label>
+            <label>Роль<input value={newWorker.role} onChange={e => setNewWorker({ ...newWorker, role: e.target.value })} placeholder="Посада" /></label>
+            <label>Колір<div style={{ display: "flex", gap: 8, marginTop: 6 }}>{WORKER_COLORS.map((c, i) => (<div key={i} onClick={() => setNewWorker({ ...newWorker, colorIdx: i })} style={{ width: 32, height: 32, borderRadius: 6, background: c.bg, cursor: "pointer", border: newWorker.colorIdx === i ? `3px solid ${c.text}` : "2px solid transparent" }} />))}</div></label>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowAddWorker(false)}>Скасувати</button><button className="btn btn-primary" onClick={addWorker}>Додати</button></div>
+          </div></div>)}
+
+          {/* MODAL: Add/Edit Expense */}
+          {showAddExpense && (<div className="modal-overlay" onClick={() => { setShowAddExpense(false); setEditExpense(null); }}><div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>{editExpense ? "Редагувати витрату" : "Додати витрату"}</h3>
+            <label>Сервіс<input value={newExpense.service} onChange={e => setNewExpense({ ...newExpense, service: e.target.value })} placeholder="Назва сервісу" autoFocus /></label>
+            <label>Платіжка<input list="accounts-list" value={newExpense.persona} onChange={e => setNewExpense({ ...newExpense, persona: e.target.value })} style={{ marginTop: 4 }} placeholder="Звідки платимо" /></label>
+            <label>Метод оплати<select value={newExpense.method} onChange={e => setNewExpense({ ...newExpense, method: e.target.value })}><option>USDT</option><option>USD</option><option>EUR</option><option>UAH</option><option>Card</option></select></label>
+            <label>Дата<input value={newExpense.date} onChange={e => setNewExpense({ ...newExpense, date: e.target.value })} placeholder="ДД.ММ" /></label>
+            <label>Сума ($)<input type="number" value={newExpense.cost} onChange={e => setNewExpense({ ...newExpense, cost: parseFloat(e.target.value) || 0 })} /></label>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => { setShowAddExpense(false); setEditExpense(null); }}>Скасувати</button><button className="btn btn-primary" onClick={addExpense}>{editExpense ? "Зберегти" : "Додати"}</button></div>
+          </div></div>)}
+
+          {/* MODAL: Add Transfer */}
+          {showTransfer && (<div className="modal-overlay" onClick={() => setShowTransfer(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Переказ між платіжками</h3>
+            <label>Відправник (Звідки)<input list="accounts-list" value={newTransfer.fromAcc} onChange={e => setNewTransfer({ ...newTransfer, fromAcc: e.target.value })} placeholder="Виберіть або введіть..." autoFocus /></label>
+            <label>Отримувач (Куди)<input list="accounts-list" value={newTransfer.toAcc} onChange={e => setNewTransfer({ ...newTransfer, toAcc: e.target.value })} placeholder="Виберіть або введіть..." /></label>
+            <label>Сума ($)<input type="number" value={newTransfer.amount} onChange={e => setNewTransfer({ ...newTransfer, amount: parseFloat(e.target.value) || 0 })} /></label>
+            <label>Комісія за переказ ($)<input type="number" value={newTransfer.fee} onChange={e => setNewTransfer({ ...newTransfer, fee: parseFloat(e.target.value) || 0 })} /></label>
+            <label>Дата<input value={newTransfer.date} onChange={e => setNewTransfer({ ...newTransfer, date: e.target.value })} placeholder="ДД.ММ" /></label>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowTransfer(false)}>Скасувати</button><button className="btn btn-primary" onClick={addTransfer}>Додати</button></div>
+          </div></div>)}
+
+          {/* MODAL: Add Account */}
+          {showAddAccount && (<div className="modal-overlay" onClick={() => setShowAddAccount(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>{editAccount ? "Редагувати платіжку" : "Додати платіжку"}</h3>
+            <label>Назва<input value={newAccountForm.name} onChange={e => setNewAccountForm({ ...newAccountForm, name: e.target.value })} placeholder="Назва рахунку" autoFocus /></label>
+            <label>Власник<input value={newAccountForm.owner} onChange={e => setNewAccountForm({ ...newAccountForm, owner: e.target.value })} placeholder="Власник" /></label>
+            <label>Ліміт обороту ($)<input type="number" value={newAccountForm.limit} onChange={e => setNewAccountForm({ ...newAccountForm, limit: parseFloat(e.target.value) || 0 })} /></label>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowAddAccount(false)}>Скасувати</button><button className="btn btn-primary" onClick={submitAccountForm}>{editAccount ? "Зберегти" : "Додати"}</button></div>
+          </div></div>)}
+        </div>
+      );
+    };
+
+    function App() {
+      const [session, setSession] = useState(null);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          setSession(session);
+          setLoading(false);
+        });
+
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+          setSession(session);
+        });
+
+        return () => subscription.unsubscribe();
+      }, []);
+
+      if (loading) return <div style={{ minHeight: "100vh", background: "#1A1A1A", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "'DM Sans', sans-serif" }}><h2>Перевірка безпеки...</h2></div>;
+
+      return session ? <Dashboard userEmail={session.user.email} onLogout={() => supabase.auth.signOut()} /> : <LoginScreen />;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
