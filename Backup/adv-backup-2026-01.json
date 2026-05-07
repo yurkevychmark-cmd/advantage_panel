@@ -1,0 +1,409 @@
+{
+  "month": "2026-0",
+  "transactions": [
+    {
+      "id": "gh2b9rk",
+      "client": "Etalon Lutsk Part 4",
+      "service": "SIte",
+      "platforma": "Pavlo UA",
+      "payment": 300,
+      "date": "?",
+      "costTax": 0,
+      "agencyRev": 0,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "46gbotb": {
+          "amount": 0,
+          "paid": false
+        },
+        "cm0t5nm": {
+          "amount": 0,
+          "paid": false
+        },
+        "6c9zfvo": {
+          "amount": 300,
+          "paid": true
+        },
+        "2ll01iv": {
+          "amount": 0,
+          "paid": false
+        },
+        "70lhzqw": {
+          "amount": 0,
+          "paid": false
+        },
+        "i415rni": {
+          "amount": 0,
+          "paid": false
+        },
+        "7z0bx0j": {
+          "amount": 0,
+          "paid": false
+        }
+      }
+    },
+    {
+      "id": "k2mt4df",
+      "client": "Volf Partenrs Part 2",
+      "service": "Mentorship BH",
+      "platforma": "Alisa Wise",
+      "payment": 1169,
+      "date": "11.1",
+      "costTax": 0,
+      "agencyRev": 0,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "46gbotb": {
+          "amount": 450,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 449,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 170,
+          "paid": true
+        },
+        "2ll01iv": {
+          "amount": 0,
+          "paid": false
+        },
+        "70lhzqw": {
+          "amount": 0,
+          "paid": false
+        },
+        "i415rni": {
+          "amount": 0,
+          "paid": false
+        },
+        "7z0bx0j": {
+          "amount": 100,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "vn3flwj",
+      "client": "Vincent Part 1",
+      "service": "Mentorship BH",
+      "platforma": "Alisa Wise",
+      "payment": 2337,
+      "date": "06.01",
+      "costTax": 2,
+      "agencyRev": 105,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "46gbotb": {
+          "amount": 865,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 865,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 300,
+          "paid": true
+        },
+        "2ll01iv": {
+          "amount": 200,
+          "paid": true
+        },
+        "70lhzqw": {
+          "amount": 0,
+          "paid": false
+        },
+        "i415rni": {
+          "amount": 0,
+          "paid": false
+        },
+        "7z0bx0j": {
+          "amount": 0,
+          "paid": false
+        }
+      }
+    },
+    {
+      "id": "ix9fzgz",
+      "client": "Multiple Part 2",
+      "service": "Mentorship BH",
+      "platforma": "Alisa Wise",
+      "payment": 1000,
+      "date": "?",
+      "costTax": 0,
+      "agencyRev": 100,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "46gbotb": {
+          "amount": 400,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 400,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 100,
+          "paid": true
+        },
+        "2ll01iv": {
+          "amount": 0,
+          "paid": false
+        },
+        "70lhzqw": {
+          "amount": 0,
+          "paid": false
+        },
+        "i415rni": {
+          "amount": 0,
+          "paid": false
+        },
+        "7z0bx0j": {
+          "amount": 0,
+          "paid": false
+        }
+      }
+    },
+    {
+      "id": "nj87r1k",
+      "client": "Crads media Part 2",
+      "service": "Mentorship BH",
+      "platforma": "Trustee Adv",
+      "payment": 1150,
+      "date": "08.01",
+      "costTax": 0,
+      "agencyRev": 100,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "46gbotb": {
+          "amount": 440,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 435,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 175,
+          "paid": true
+        },
+        "2ll01iv": {
+          "amount": 0,
+          "paid": false
+        },
+        "70lhzqw": {
+          "amount": 0,
+          "paid": false
+        },
+        "i415rni": {
+          "amount": 0,
+          "paid": false
+        },
+        "7z0bx0j": {
+          "amount": 0,
+          "paid": false
+        }
+      }
+    },
+    {
+      "id": "rwo6e1v",
+      "client": "Irregular Part 1",
+      "service": "Mentorship BH",
+      "platforma": "Marko Trustee",
+      "payment": 1742,
+      "date": "16.1",
+      "costTax": 142,
+      "agencyRev": 0,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "46gbotb": {
+          "amount": 700,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 700,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 200,
+          "paid": true
+        },
+        "2ll01iv": {
+          "amount": 0,
+          "paid": false
+        },
+        "70lhzqw": {
+          "amount": 0,
+          "paid": false
+        },
+        "i415rni": {
+          "amount": 0,
+          "paid": false
+        },
+        "7z0bx0j": {
+          "amount": 0,
+          "paid": false
+        }
+      }
+    },
+    {
+      "id": "kbd9whs",
+      "client": "Tarmo Part 2",
+      "service": "Mentorship BH",
+      "platforma": "Trustee Adv",
+      "payment": 2000,
+      "date": "15.01",
+      "costTax": 300,
+      "agencyRev": 100,
+      "comment": "300 - Марціну за ліда",
+      "invoice": null,
+      "workerPay": {
+        "46gbotb": {
+          "amount": 655,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 655,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 250,
+          "paid": true
+        },
+        "2ll01iv": {
+          "amount": 0,
+          "paid": false
+        },
+        "70lhzqw": {
+          "amount": 0,
+          "paid": false
+        },
+        "i415rni": {
+          "amount": 0,
+          "paid": false
+        },
+        "7z0bx0j": {
+          "amount": 40,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "5ohdt1u",
+      "client": "Antonio Filipe Part 1",
+      "service": "Mentorship BH",
+      "platforma": "Trustee Adv",
+      "payment": 1523,
+      "date": "22.01",
+      "costTax": 0,
+      "agencyRev": 218,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "46gbotb": {
+          "amount": 600,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 600,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 105,
+          "paid": true
+        },
+        "2ll01iv": {
+          "amount": 0,
+          "paid": false
+        },
+        "70lhzqw": {
+          "amount": 0,
+          "paid": false
+        },
+        "i415rni": {
+          "amount": 0,
+          "paid": false
+        },
+        "7z0bx0j": {
+          "amount": 0,
+          "paid": false
+        }
+      }
+    }
+  ],
+  "expenses": [
+    {
+      "id": "7pruo52",
+      "cost": 26,
+      "date": "01.01",
+      "method": "USDT",
+      "persona": "Stepan PL",
+      "service": "stepan@advantage-agency.co"
+    },
+    {
+      "id": "6c9zwbd",
+      "cost": 9,
+      "date": "01.01",
+      "method": "USDT",
+      "persona": "Marko Trustee",
+      "service": "gologin"
+    },
+    {
+      "id": "906mcux",
+      "service": "Cloude Dolphin",
+      "persona": "Marko Redot",
+      "method": "USDT",
+      "date": "06.01",
+      "cost": 30
+    },
+    {
+      "id": "azc5t9g",
+      "service": "GamblSpy",
+      "persona": "Trustee Adv",
+      "method": "USDT",
+      "date": "14.01",
+      "cost": 10
+    },
+    {
+      "id": "2vskce5",
+      "cost": 5,
+      "date": "14.01",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "Mars Proxi"
+    },
+    {
+      "id": "9h236yw",
+      "service": "NamecheaNamecheapp",
+      "persona": "Steve PL",
+      "method": "USDT",
+      "date": "15.01",
+      "cost": 48
+    },
+    {
+      "id": "ybyib4g",
+      "service": "Wise Business Scam!",
+      "persona": "Trustee Adv",
+      "method": "USDT",
+      "date": "19.01",
+      "cost": 276
+    },
+    {
+      "id": "br53k1l",
+      "service": "Miro",
+      "persona": "Trustee Adv",
+      "method": "USDT",
+      "date": "29.01",
+      "cost": 41.23
+    }
+  ],
+  "transfers": [],
+  "exportedAt": "2026-03-26T09:11:40.464Z"
+}

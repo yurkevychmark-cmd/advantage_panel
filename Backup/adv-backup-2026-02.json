@@ -1,0 +1,867 @@
+{
+  "month": "2026-1",
+  "transactions": [
+    {
+      "id": "yax1hwu",
+      "date": "25.02",
+      "client": "Etalon Lutsk Part 5",
+      "comment": "",
+      "costTax": 0,
+      "invoice": null,
+      "payment": 177,
+      "service": "SIte",
+      "agencyRev": 0,
+      "platforma": "",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": false,
+          "amount": 0
+        },
+        "6m61vfs": {
+          "paid": true,
+          "amount": 177
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": false,
+          "amount": 0
+        },
+        "fk3coif": {
+          "paid": false,
+          "amount": 0
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        },
+        "6c9zfvo": {
+          "amount": 177,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "mrizis1",
+      "date": "06.02",
+      "client": "Vincent Part 2",
+      "comment": "",
+      "costTax": 2,
+      "invoice": null,
+      "payment": 2337,
+      "service": "Mentorship BH",
+      "agencyRev": 305,
+      "platforma": "Stepan Kust",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": false,
+          "amount": 0
+        },
+        "6m61vfs": {
+          "paid": true,
+          "amount": 300
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": true,
+          "amount": 865
+        },
+        "fk3coif": {
+          "paid": true,
+          "amount": 865
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        },
+        "46gbotb": {
+          "amount": 865,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 865,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 300,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "wczpyii",
+      "date": "16.2",
+      "client": "Irregular Part 2",
+      "comment": "",
+      "costTax": 2,
+      "invoice": null,
+      "payment": 1742,
+      "service": "Mentorship BH",
+      "agencyRev": 140,
+      "platforma": "Marko Trustee",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": false,
+          "amount": 0
+        },
+        "6m61vfs": {
+          "paid": true,
+          "amount": 200
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": true,
+          "amount": 700
+        },
+        "fk3coif": {
+          "paid": true,
+          "amount": 700
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        },
+        "46gbotb": {
+          "amount": 700,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 700,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 200,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "n1896lw",
+      "date": "22.02",
+      "client": "Antonio Filipe full",
+      "comment": "",
+      "costTax": 2,
+      "invoice": null,
+      "payment": 1532,
+      "service": "Mentorship BH",
+      "agencyRev": 225,
+      "platforma": "Marko Redot",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": false,
+          "amount": 0
+        },
+        "6m61vfs": {
+          "paid": true,
+          "amount": 105
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": true,
+          "amount": 600
+        },
+        "fk3coif": {
+          "paid": true,
+          "amount": 600
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        },
+        "46gbotb": {
+          "amount": 600,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 600,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 105,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "248cvgo",
+      "date": "17.02",
+      "client": "Eduardo Part 1",
+      "comment": "",
+      "costTax": 2,
+      "invoice": null,
+      "payment": 2040,
+      "service": "Mentorship BH",
+      "agencyRev": 132,
+      "platforma": "ADV Redot",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": false,
+          "amount": 0
+        },
+        "6m61vfs": {
+          "paid": true,
+          "amount": 306
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": true,
+          "amount": 800
+        },
+        "fk3coif": {
+          "paid": true,
+          "amount": 800
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        },
+        "46gbotb": {
+          "amount": 800,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 800,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 306,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "fwnuo7v",
+      "date": "16.02",
+      "client": "Joe FULL",
+      "comment": "",
+      "costTax": 2,
+      "invoice": null,
+      "payment": 1802,
+      "service": "Knowlage base",
+      "agencyRev": 130,
+      "platforma": "ADV Redot",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": false,
+          "amount": 0
+        },
+        "6m61vfs": {
+          "paid": true,
+          "amount": 270
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": true,
+          "amount": 700
+        },
+        "fk3coif": {
+          "paid": true,
+          "amount": 700
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        },
+        "46gbotb": {
+          "amount": 700,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 700,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 270,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "64usrwi",
+      "date": "05.02",
+      "client": "Victor full ( VenturesLab)",
+      "comment": "",
+      "costTax": 2,
+      "invoice": null,
+      "payment": 3341,
+      "service": "Mentorship BH",
+      "agencyRev": 298,
+      "platforma": "ADV Redot",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": true,
+          "amount": 141
+        },
+        "6m61vfs": {
+          "paid": true,
+          "amount": 500
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": true,
+          "amount": 1200
+        },
+        "fk3coif": {
+          "paid": true,
+          "amount": 1200
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        },
+        "46gbotb": {
+          "amount": 1200,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 1200,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 500,
+          "paid": true
+        },
+        "i415rni": {
+          "amount": 141,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "xxc1egg",
+      "date": "19.02",
+      "client": "Multiple ",
+      "comment": "20 докинули через trx,  вийшло менше",
+      "costTax": 0,
+      "invoice": null,
+      "payment": 120,
+      "service": "\"Access to the platform  (6 months)\"",
+      "agencyRev": 120,
+      "platforma": "ADV Redot",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": false,
+          "amount": 0
+        },
+        "6m61vfs": {
+          "paid": false,
+          "amount": 0
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": false,
+          "amount": 0
+        },
+        "fk3coif": {
+          "paid": false,
+          "amount": 0
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        }
+      }
+    },
+    {
+      "id": "rnaruty",
+      "date": "26.02",
+      "client": "Cristian Part 1",
+      "comment": "відкат 477 - Партнеру, бабечка",
+      "costTax": 526,
+      "invoice": null,
+      "payment": 2300,
+      "service": "Mentorship BH",
+      "agencyRev": 343,
+      "platforma": "Stepan Kust",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": false,
+          "amount": 0
+        },
+        "6m61vfs": {
+          "paid": true,
+          "amount": 231
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": true,
+          "amount": 600
+        },
+        "fk3coif": {
+          "paid": true,
+          "amount": 600
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        },
+        "46gbotb": {
+          "amount": 600,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 600,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 231,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "kev70up",
+      "date": "19.02",
+      "client": "MKTG-services - Ed F FULL",
+      "comment": "",
+      "costTax": 2,
+      "invoice": null,
+      "payment": 1831,
+      "service": "Knowlage base",
+      "agencyRev": 155,
+      "platforma": "ADV Redot",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": false,
+          "amount": 0
+        },
+        "6m61vfs": {
+          "paid": true,
+          "amount": 274
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": true,
+          "amount": 700
+        },
+        "fk3coif": {
+          "paid": true,
+          "amount": 700
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        },
+        "46gbotb": {
+          "amount": 700,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 700,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 274,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "0qlsjpp",
+      "date": "23.02",
+      "client": "SNO Marketing FULL",
+      "comment": "",
+      "costTax": 2,
+      "invoice": null,
+      "payment": 1651,
+      "service": "Knowlage base + Support",
+      "agencyRev": 102,
+      "platforma": "ADV Redot",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": false,
+          "amount": 0
+        },
+        "6m61vfs": {
+          "paid": true,
+          "amount": 247
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": true,
+          "amount": 650
+        },
+        "fk3coif": {
+          "paid": true,
+          "amount": 650
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        },
+        "46gbotb": {
+          "amount": 650,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 650,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 247,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "zl7eo3i",
+      "date": "27.02",
+      "client": "Grows Leads Part 1",
+      "comment": "",
+      "costTax": 2,
+      "invoice": null,
+      "payment": 2350,
+      "service": "Mentorship BH",
+      "agencyRev": 402,
+      "platforma": "ADV Redot",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": false,
+          "amount": 0
+        },
+        "6m61vfs": {
+          "paid": true,
+          "amount": 246
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": true,
+          "amount": 850
+        },
+        "fk3coif": {
+          "paid": true,
+          "amount": 850
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        },
+        "46gbotb": {
+          "amount": 850,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 850,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 246,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "p0gm3lz",
+      "date": "27.02",
+      "client": "Filipe Albano full",
+      "comment": "",
+      "costTax": 19,
+      "invoice": null,
+      "payment": 1944,
+      "service": "Mentorship BH",
+      "agencyRev": 264,
+      "platforma": "ADV Redot",
+      "workerPay": {
+        "4dqdnir": {
+          "paid": false,
+          "amount": 0
+        },
+        "6m61vfs": {
+          "paid": true,
+          "amount": 261
+        },
+        "b7e4ibm": {
+          "paid": false,
+          "amount": 0
+        },
+        "f6tobh6": {
+          "paid": true,
+          "amount": 700
+        },
+        "fk3coif": {
+          "paid": true,
+          "amount": 700
+        },
+        "pr1el1f": {
+          "paid": false,
+          "amount": 0
+        },
+        "ufiaq6k": {
+          "paid": false,
+          "amount": 0
+        },
+        "ugmcgrv": {
+          "paid": false,
+          "amount": 0
+        },
+        "46gbotb": {
+          "amount": 700,
+          "paid": true
+        },
+        "cm0t5nm": {
+          "amount": 700,
+          "paid": true
+        },
+        "6c9zfvo": {
+          "amount": 261,
+          "paid": true
+        }
+      }
+    }
+  ],
+  "expenses": [
+    {
+      "id": "tnzwq21",
+      "cost": 26,
+      "date": "01.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "stepan@advantage-agency.co"
+    },
+    {
+      "id": "fw1sr9s",
+      "cost": 15,
+      "date": "01.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "Slack"
+    },
+    {
+      "id": "rlk7xqx",
+      "cost": 9,
+      "date": "01.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "gologin"
+    },
+    {
+      "id": "zpqpve9",
+      "cost": 9,
+      "date": "03.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "Netlify"
+    },
+    {
+      "id": "ud3xi2r",
+      "cost": 22,
+      "date": "06.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "Contabo"
+    },
+    {
+      "id": "7pkjsq3",
+      "cost": 50,
+      "date": "09.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "Консультація"
+    },
+    {
+      "id": "fcaaw6r",
+      "cost": 10,
+      "date": "11.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "Google Cloude"
+    },
+    {
+      "id": "n78y0o3",
+      "cost": 67,
+      "date": "12.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "Kust Payment"
+    },
+    {
+      "id": "xvahtvv",
+      "cost": 5,
+      "date": "13.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "API Antropic"
+    },
+    {
+      "id": "ll94oal",
+      "cost": 10,
+      "date": "19.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "hero-sms.com"
+    },
+    {
+      "id": "30r5ncb",
+      "cost": 29,
+      "date": "20.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "Apify "
+    },
+    {
+      "id": "t709n2h",
+      "cost": 263,
+      "date": "20.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "Wise Business"
+    },
+    {
+      "id": "3iui3bd",
+      "cost": 30,
+      "date": "23.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "Miro"
+    },
+    {
+      "id": "lr16dd0",
+      "cost": 9.48,
+      "date": "24.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "Mars Proxi"
+    },
+    {
+      "id": "t8rxnuz",
+      "cost": 3.48,
+      "date": "25.02",
+      "method": "USDT",
+      "persona": "ADV Redot",
+      "service": "trinity-ltd.co spaceship"
+    }
+  ],
+  "transfers": [],
+  "exportedAt": "2026-03-26T08:46:00.809Z"
+}

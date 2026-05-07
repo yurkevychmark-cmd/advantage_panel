@@ -1,0 +1,424 @@
+{
+  "month": "2026-2",
+  "transactions": [
+    {
+      "id": "xfjb32t",
+      "client": "Spiros Part 1",
+      "service": "Mentorship BH",
+      "platforma": "Stepan Kust",
+      "payment": 2535,
+      "date": "25.02",
+      "costTax": 15,
+      "agencyRev": 316,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "fk3coif": {
+          "amount": 800,
+          "paid": true
+        },
+        "f6tobh6": {
+          "amount": 800,
+          "paid": true
+        },
+        "6m61vfs": {
+          "amount": 354,
+          "paid": true
+        },
+        "b7e4ibm": {
+          "amount": 0,
+          "paid": false
+        },
+        "pr1el1f": {
+          "amount": 0,
+          "paid": false
+        },
+        "4dqdnir": {
+          "amount": 250,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "opcfy7s",
+      "client": "Irregular Part 2",
+      "service": "Mentorship BH",
+      "platforma": "Marko Redot",
+      "payment": 1153,
+      "date": "12.03",
+      "costTax": 2,
+      "agencyRev": 116,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "fk3coif": {
+          "amount": 440,
+          "paid": true
+        },
+        "f6tobh6": {
+          "amount": 440,
+          "paid": true
+        },
+        "6m61vfs": {
+          "amount": 155,
+          "paid": true
+        },
+        "b7e4ibm": {
+          "amount": 0,
+          "paid": false
+        },
+        "pr1el1f": {
+          "amount": 0,
+          "paid": false
+        },
+        "4dqdnir": {
+          "amount": 0,
+          "paid": false
+        }
+      }
+    },
+    {
+      "id": "2nsejah",
+      "client": "Robert Part 1",
+      "service": "Mentorship BH",
+      "platforma": "Marko Redot",
+      "payment": 2324,
+      "date": "06.03",
+      "costTax": 2,
+      "agencyRev": 259,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "fk3coif": {
+          "amount": 780,
+          "paid": true
+        },
+        "f6tobh6": {
+          "amount": 780,
+          "paid": true
+        },
+        "6m61vfs": {
+          "amount": 273,
+          "paid": true
+        },
+        "b7e4ibm": {
+          "amount": 0,
+          "paid": false
+        },
+        "pr1el1f": {
+          "amount": 0,
+          "paid": false
+        },
+        "4dqdnir": {
+          "amount": 230,
+          "paid": true
+        }
+      }
+    },
+    {
+      "id": "ew0d1mh",
+      "client": "Cristian Part 2",
+      "service": "Mentorship BH",
+      "platforma": "Stepan Kust",
+      "payment": 2300,
+      "date": "11.03",
+      "costTax": 2,
+      "agencyRev": 0,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "fk3coif": {
+          "amount": 0,
+          "paid": false
+        },
+        "f6tobh6": {
+          "amount": 0,
+          "paid": false
+        },
+        "6m61vfs": {
+          "amount": 0,
+          "paid": false
+        },
+        "b7e4ibm": {
+          "amount": 0,
+          "paid": false
+        },
+        "pr1el1f": {
+          "amount": 0,
+          "paid": false
+        },
+        "4dqdnir": {
+          "amount": 0,
+          "paid": false
+        }
+      }
+    },
+    {
+      "id": "40zt8hb",
+      "client": "Robert",
+      "service": "Crypto consalt - Bohdan",
+      "platforma": "Marko Redot",
+      "payment": 100,
+      "date": "16.03",
+      "costTax": 0,
+      "agencyRev": 100,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "fk3coif": {
+          "amount": 0,
+          "paid": false
+        },
+        "f6tobh6": {
+          "amount": 0,
+          "paid": false
+        },
+        "6m61vfs": {
+          "amount": 0,
+          "paid": false
+        },
+        "b7e4ibm": {
+          "amount": 0,
+          "paid": false
+        },
+        "pr1el1f": {
+          "amount": 0,
+          "paid": false
+        },
+        "4dqdnir": {
+          "amount": 0,
+          "paid": false
+        }
+      }
+    },
+    {
+      "id": "9jlswmx",
+      "client": "Eduardo Part 2",
+      "service": "Mentorship BH",
+      "platforma": "ADV Redot",
+      "payment": 1700,
+      "date": "17.03",
+      "costTax": 0,
+      "agencyRev": 0,
+      "comment": "",
+      "invoice": null,
+      "workerPay": {
+        "fk3coif": {
+          "amount": 0,
+          "paid": false
+        },
+        "f6tobh6": {
+          "amount": 0,
+          "paid": false
+        },
+        "6m61vfs": {
+          "amount": 0,
+          "paid": false
+        },
+        "b7e4ibm": {
+          "amount": 0,
+          "paid": false
+        },
+        "pr1el1f": {
+          "amount": 0,
+          "paid": false
+        },
+        "4dqdnir": {
+          "amount": 0,
+          "paid": false
+        }
+      }
+    },
+    {
+      "id": "t3vox36",
+      "client": "Chase USA Part 1",
+      "service": "Mentorship BH",
+      "platforma": "Simple ADV",
+      "payment": 2320,
+      "date": "23.03",
+      "costTax": 252,
+      "agencyRev": 208,
+      "comment": "...Марко/Степан - фактично отримали по 763",
+      "invoice": null,
+      "workerPay": {
+        "fk3coif": {
+          "amount": 790,
+          "paid": true
+        },
+        "f6tobh6": {
+          "amount": 790,
+          "paid": true
+        },
+        "6m61vfs": {
+          "amount": 280,
+          "paid": true
+        },
+        "b7e4ibm": {
+          "amount": 0,
+          "paid": false
+        },
+        "pr1el1f": {
+          "amount": 0,
+          "paid": false
+        },
+        "4dqdnir": {
+          "amount": 0,
+          "paid": false
+        }
+      }
+    },
+    {
+      "id": "arowbt1",
+      "client": "Grows Leads Part 2",
+      "service": "Mentorship BH",
+      "platforma": "ADV Redot",
+      "payment": 2350,
+      "date": "27.03",
+      "costTax": 2,
+      "agencyRev": 0,
+      "comment": "...",
+      "invoice": null,
+      "workerPay": {
+        "fk3coif": {
+          "amount": 0,
+          "paid": false
+        },
+        "f6tobh6": {
+          "amount": 0,
+          "paid": false
+        },
+        "6m61vfs": {
+          "amount": 0,
+          "paid": false
+        },
+        "b7e4ibm": {
+          "amount": 0,
+          "paid": false
+        },
+        "pr1el1f": {
+          "amount": 0,
+          "paid": false
+        },
+        "4dqdnir": {
+          "amount": 0,
+          "paid": false
+        }
+      }
+    }
+  ],
+  "expenses": [
+    {
+      "id": "ijxwhfi",
+      "service": "stepan@advantage-agency.co",
+      "persona": "ADV Redot",
+      "method": "USDT",
+      "date": "01.01",
+      "cost": 26
+    },
+    {
+      "id": "ypeojsy",
+      "service": "Slack",
+      "persona": "ADV Redot",
+      "method": "USDT",
+      "date": "01.01",
+      "cost": 15
+    },
+    {
+      "id": "7ezuboy",
+      "service": "gologin",
+      "persona": "ADV Redot",
+      "method": "USDT",
+      "date": "01.01",
+      "cost": 9
+    },
+    {
+      "id": "afnz4q2",
+      "service": "Miro",
+      "persona": "ADV Redot",
+      "method": "USDT",
+      "date": "23.03",
+      "cost": 30
+    },
+    {
+      "id": "33m63yl",
+      "service": "Work Ua",
+      "persona": "ADV Redot",
+      "method": "USDT",
+      "date": "03.03",
+      "cost": 30
+    },
+    {
+      "id": "kbv4asy",
+      "service": "Contabo",
+      "persona": "ADV Redot",
+      "method": "USDT",
+      "date": "06.03",
+      "cost": 22
+    },
+    {
+      "id": "zuwyv5r",
+      "service": "4 ФБ аккаунти",
+      "persona": "Marko Redot",
+      "method": "USDT",
+      "date": "10.03\t",
+      "cost": 10.03
+    },
+    {
+      "id": "pqms8am",
+      "service": "\tMars Proxi",
+      "persona": "ADV Redot",
+      "method": "USDT",
+      "date": "10.03",
+      "cost": 5.58
+    },
+    {
+      "id": "yaht5d9",
+      "service": "\tВиплата Паші - за кол з Vincent",
+      "persona": "Marko Redot",
+      "method": "USDT",
+      "date": "13.03",
+      "cost": 40
+    },
+    {
+      "id": "bv1mlcr",
+      "service": "Покупка Simple на дропа",
+      "persona": "Marko Redot",
+      "method": "USDT",
+      "date": "16.03",
+      "cost": 72
+    },
+    {
+      "id": "ou0telk",
+      "service": "Покупка Gmail",
+      "persona": "Marko Redot",
+      "method": "USDT",
+      "date": "17.03",
+      "cost": 11
+    },
+    {
+      "id": "6djv3qy",
+      "service": "Claude Antropic",
+      "persona": "ADV Redot",
+      "method": "USDT",
+      "date": "18.03",
+      "cost": 26.13
+    },
+    {
+      "id": "e25f25k",
+      "service": "Номер Alina Kovaleva (Alisa Lapotetska)",
+      "persona": "ADV Redot",
+      "method": "USDT",
+      "date": "",
+      "cost": 8
+    },
+    {
+      "id": "vmvp91d",
+      "service": "Підписка Cloude - Friendly share",
+      "persona": "ADV Redot",
+      "method": "USDT",
+      "date": "20.03",
+      "cost": 7
+    }
+  ],
+  "exportedAt": "2026-03-23T21:54:01.542Z"
+}
