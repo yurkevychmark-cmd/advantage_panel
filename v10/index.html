@@ -132,6 +132,68 @@
       );
     };
 
+    const CurrencyConverter = () => {
+      const [rates, setRates] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [lastUpdate, setLastUpdate] = useState(null);
+
+      const fetchRates = async () => {
+        try {
+          setLoading(true);
+          const [eurRes, cryptoRes] = await Promise.all([
+            fetch('https://api.exchangerate-api.com/v4/latest/EUR'),
+            fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin&vs_currencies=usd')
+          ]);
+          const eurData = await eurRes.json();
+          const cryptoData = await cryptoRes.json();
+          const usdtUsd = cryptoData?.tether?.usd || 1;
+          const usdcUsd = cryptoData?.['usd-coin']?.usd || 1;
+          setRates({
+            eurUsd: eurData.rates?.USD,
+            eurPln: eurData.rates?.PLN,
+            usdtUsdc: usdcUsd > 0 ? (usdtUsd / usdcUsd) : 1,
+          });
+          setLastUpdate(new Date());
+        } catch(e) {
+          console.error('Rate fetch failed', e);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        fetchRates();
+        const interval = setInterval(fetchRates, 5 * 60 * 1000);
+        return () => clearInterval(interval);
+      }, []);
+
+      const rateItem = (label, value, color = '#fff', decimals = 4) => (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 70 }}>
+          <span style={{ color: 'rgba(255,255,255,.4)', fontSize: 9, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 1 }}>{label}</span>
+          <span style={{ color, fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, fontSize: 12 }}>
+            {value != null ? value.toFixed(decimals) : '—'}
+          </span>
+        </div>
+      );
+
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,.05)', borderRadius: 8, padding: '5px 12px', border: '1px solid rgba(255,255,255,.08)' }}>
+          <span style={{ color: 'rgba(255,255,255,.3)', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginRight: 4 }}>Курс</span>
+          {loading && !rates ? (
+            <span style={{ color: 'rgba(255,255,255,.3)', fontSize: 11 }}>…</span>
+          ) : rates ? (<>
+            {rateItem('EUR/USD', rates.eurUsd, '#FBBF24')}
+            <span style={{ color: 'rgba(255,255,255,.15)', fontSize: 10 }}>|</span>
+            {rateItem('EUR/PLN', rates.eurPln, '#60A5FA')}
+            <span style={{ color: 'rgba(255,255,255,.15)', fontSize: 10 }}>|</span>
+            {rateItem('USDT/USDC', rates.usdtUsdc, '#4ADE80')}
+          </>) : null}
+          <button onClick={fetchRates} title="Оновити курси" style={{ background: 'none', border: 'none', color: loading ? '#4A90D9' : 'rgba(255,255,255,.3)', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1, marginLeft: 2, transition: 'color .2s' }}>↻</button>
+          {lastUpdate && <span style={{ color: 'rgba(255,255,255,.2)', fontSize: 9 }}>{lastUpdate.toLocaleTimeString('uk-UA', {hour:'2-digit',minute:'2-digit'})}</span>}
+        </div>
+      );
+    };
+
     const LoginScreen = () => {
       const [email, setEmail] = useState("");
       const [pass, setPass] = useState("");
@@ -342,7 +404,7 @@
 
       const updateTx = (txId, field, val) => setTransactions(p => p.map(t => t.id === txId ? { ...t, [field]: field === 'date' ? autoDate(val) : val } : t));
       const updateWorkerPay = (txId, wId, field, val) => setTransactions(p => p.map(t => { if (t.id !== txId) return t; return { ...t, workerPay: { ...t.workerPay, [wId]: { ...t.workerPay[wId], [field]: val } } }; }));
-      const addTransaction = () => setTransactions(p => [...p, { id: uid(), client: "", service: "", platforma: "", payment: 0, date: "", costTax: 0, agencyRev: 0, comment: "", invoice: null, workerPay: makeWorkerPay(workers) }]);
+      const addTransaction = () => setTransactions(p => [...p, { id: uid(), client: "", service: "", platforma: "", payment: 0, date: "", costTax: 0, agencyRev: 0, comment: "", invoice: null, status: 'pending', workerPay: makeWorkerPay(workers) }]);
       const removeTx = (id) => setTransactions(p => p.filter(t => t.id !== id));
 
       const handleBulkAction = (actionType) => {
@@ -519,7 +581,8 @@
             *{box-sizing:border-box;margin:0;padding:0}
             .editable-cell:hover{background:rgba(0,0,0,.06)!important}
             .tx-row:hover .row-delete{opacity:1!important}
-            .tx-row{transition:background .2s}.tx-row.invalid{background:#FEE2E2!important}
+            .tx-row{transition:background .2s}.tx-row.invalid{background:#FEE2E2!important}.tx-row.received{background:#F0FDF4}
+            .status-btn{border:none;background:none;cursor:pointer;font-size:16px;padding:2px;border-radius:50%;transition:transform .15s;line-height:1}.status-btn:hover{transform:scale(1.2)}
             table{border-collapse:collapse}
             ::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-track{background:#d5d1cb;border-radius:4px}::-webkit-scrollbar-thumb{background:#999;border-radius:4px}
             .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
@@ -565,6 +628,7 @@
               <button onClick={undo} className="btn" title="Відмінити дію" style={{ background: historyRef.current.length > 0 ? "rgba(255,200,50,.2)" : "rgba(255,255,255,.05)", border: historyRef.current.length > 0 ? "1px solid rgba(255,200,50,.3)" : "1px solid transparent", color: historyRef.current.length > 0 ? "#FBBF24" : "#555", padding: "6px 10px", fontSize: 14, marginLeft: 6 }}>↩ Відмінити</button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <CurrencyConverter />
               <span style={{ color: "rgba(255,255,255,.5)", fontSize: 12 }}>{userEmail}</span>
               <button onClick={onLogout} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "6px 14px", fontSize: 12 }}>Вийти</button>
             </div>
@@ -684,8 +748,9 @@
                   <tbody>
                     {transactions.map((t, i) => {
                       const diff = rowDiff(t); const isInvalid = Math.abs(diff) > 0.01;
+                      const isReceived = t.status === 'received';
                       return (
-                        <tr key={t.id} className={`tx-row ${isInvalid ? "invalid" : ""}`} draggable onDragStart={() => onTxDragStart(i)} onDragOver={(e) => onTxDragOver(e, i)} onDrop={() => onTxDrop(i)} style={{ borderBottom: "1px solid #eee", opacity: dragTxIdx === i ? 0.4 : 1 }}>
+                        <tr key={t.id} className={`tx-row ${isInvalid ? "invalid" : isReceived ? "received" : ""}`} draggable onDragStart={() => onTxDragStart(i)} onDragOver={(e) => onTxDragOver(e, i)} onDrop={() => onTxDrop(i)} style={{ borderBottom: `1px solid ${isReceived && !isInvalid ? "#bbf7d0" : "#eee"}`, opacity: dragTxIdx === i ? 0.4 : 1 }}>
                           <td style={{ padding: "2px 2px", textAlign: "center" }}>
                             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
                               <DragHandle />
@@ -719,6 +784,11 @@
                           ); })}
                           <td style={{ padding: "2px 4px", textAlign: "center" }}>
                             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                              <button
+                                className="status-btn"
+                                onClick={() => updateTx(t.id, 'status', isReceived ? 'pending' : 'received')}
+                                title={isReceived ? "Оплата отримана — натисни щоб скасувати" : "Позначити як отримано"}
+                              >{isReceived ? '🟢' : '⚪'}</button>
                               <button className="row-delete" onClick={() => duplicateTxToNext(t)} title="Копіювати в наступний місяць" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#4A90D9", fontSize: 13, transition: "opacity .15s" }}>⧉</button>
                               <button className="row-delete" onClick={() => removeTx(t.id)} title="Видалити" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#DC2626", fontSize: 14, transition: "opacity .15s" }}>🗑️</button>
                             </div>
