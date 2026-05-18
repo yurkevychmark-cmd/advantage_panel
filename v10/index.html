@@ -141,26 +141,36 @@
       const [toCur, setToCur] = useState('USD');
 
       const fetchRates = async () => {
+        setLoading(true);
+        let eurToUsd = 1, eurToPln = 1;
+        let usdtRate = 1, usdcRate = 1;
+        // Fiat rates from frankfurter.app (ECB)
         try {
-          setLoading(true);
-          const [fxRes, cryptoRes] = await Promise.all([
-            fetch('https://api.frankfurter.app/latest?from=EUR'),
-            fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin&vs_currencies=usd')
-          ]);
-          const fxData = await fxRes.json();
-          const cryptoData = await cryptoRes.json();
-          const eurToUsd = fxData.rates?.USD || 1;
-          const eurToPln = fxData.rates?.PLN || 1;
-          setRates({
-            USD: 1,
-            EUR: eurToUsd,
-            PLN: eurToUsd / eurToPln,
-            USDT: cryptoData?.tether?.usd || 1,
-            USDC: cryptoData?.['usd-coin']?.usd || 1,
-          });
-          setLastUpdate(new Date());
-        } catch(e) { console.error('Rates error', e); }
-        finally { setLoading(false); }
+          const fxRes = await fetch('https://api.frankfurter.app/latest?from=EUR');
+          if (fxRes.ok) {
+            const fxData = await fxRes.json();
+            eurToUsd = fxData.rates?.USD || 1;
+            eurToPln = fxData.rates?.PLN || 1;
+          }
+        } catch(e) { console.error('FX rates error', e); }
+        // Crypto rates from CoinGecko (optional, fallback to 1)
+        try {
+          const cryptoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin&vs_currencies=usd');
+          if (cryptoRes.ok) {
+            const cryptoData = await cryptoRes.json();
+            usdtRate = cryptoData?.tether?.usd || 1;
+            usdcRate = cryptoData?.['usd-coin']?.usd || 1;
+          }
+        } catch(e) { console.error('Crypto rates error', e); }
+        setRates({
+          USD: 1,
+          EUR: eurToUsd,
+          PLN: eurToUsd / eurToPln,
+          USDT: usdtRate,
+          USDC: usdcRate,
+        });
+        setLastUpdate(new Date());
+        setLoading(false);
       };
 
       useEffect(() => {
@@ -685,7 +695,7 @@
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,.7)", fontSize: 11, letterSpacing: .5 }}>Total Revenue Per Person:<button onClick={() => setShowAddWorker(true)} style={{ background: "rgba(255,255,255,.15)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600, marginLeft: 2 }}>➕</button></span>
                       </th>
                       {workers.map((w, wIdx) => { const c = wc(w); const t = workerTotals[w.id] || { paid: 0, pending: 0 }; return (
-                        <th key={w.id} className="worker-th" draggable onDragStart={e => onWorkerDragStart(e, wIdx)} onDragOver={onWorkerDragOver} onDrop={e => onWorkerDrop(e, wIdx)} onDragEnd={() => setDragWorkerIdx(null)} style={{ padding: "8px 6px 6px", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, textAlign: "center", position: "relative", verticalAlign: "top", opacity: dragWorkerIdx === wIdx ? 0.4 : 1, outline: dragWorkerIdx !== null && dragWorkerIdx !== wIdx ? `2px dashed ${c.border}` : 'none', transition: 'opacity .2s' }}>
+                        <th key={w.id} className="worker-th" draggable onDragStart={e => onWorkerDragStart(e, wIdx)} onDragOver={onWorkerDragOver} onDrop={e => onWorkerDrop(e, wIdx)} onDragEnd={() => setDragWorkerIdx(null)} style={{ padding: "8px 6px 6px", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, textAlign: "center", position: "relative", verticalAlign: "bottom", opacity: dragWorkerIdx === wIdx ? 0.4 : 1, outline: dragWorkerIdx !== null && dragWorkerIdx !== wIdx ? `2px dashed ${c.border}` : 'none', transition: 'opacity .2s' }}>
                           <button onClick={() => removeWorker(w.id)} style={{ position: "absolute", top: 3, right: 4, background: "none", border: "none", cursor: "pointer", fontSize: 11, color: c.text, opacity: .3 }}>🗑️</button>
                           <div style={{ fontSize: 9, color: c.text, opacity: .4, marginBottom: 2, letterSpacing: .5 }}>⋮⋮ drag</div>
                           <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 16, color: c.text }}>{fmt(t.paid)}</div>
