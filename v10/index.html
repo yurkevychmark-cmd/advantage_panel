@@ -74,7 +74,7 @@
 
     const makeWorkerPay = (workers) => {
       const o = {};
-      workers.forEach((w) => { o[w.id] = { amount: 0, paid: false }; });
+      workers.forEach((w) => { o[w.id] = { amount: 0, paid: false, comment: "" }; });
       return o;
     };
 
@@ -136,103 +136,70 @@
       const [rates, setRates] = useState(null);
       const [loading, setLoading] = useState(true);
       const [lastUpdate, setLastUpdate] = useState(null);
-      const [showPanel, setShowPanel] = useState(false);
       const [amount, setAmount] = useState('1');
       const [fromCur, setFromCur] = useState('EUR');
       const [toCur, setToCur] = useState('USD');
-      const wrapRef = useRef(null);
 
       const fetchRates = async () => {
         try {
           setLoading(true);
-          const [usdRes, cryptoRes] = await Promise.all([
-            fetch('https://api.exchangerate-api.com/v4/latest/USD'),
+          const [fxRes, cryptoRes] = await Promise.all([
+            fetch('https://api.frankfurter.app/latest?from=EUR'),
             fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin&vs_currencies=usd')
           ]);
-          const usdData = await usdRes.json();
+          const fxData = await fxRes.json();
           const cryptoData = await cryptoRes.json();
+          const eurToUsd = fxData.rates?.USD || 1;
+          const eurToPln = fxData.rates?.PLN || 1;
           setRates({
             USD: 1,
-            EUR: 1 / (usdData.rates?.EUR || 1),
-            PLN: 1 / (usdData.rates?.PLN || 1),
+            EUR: eurToUsd,
+            PLN: eurToUsd / eurToPln,
             USDT: cryptoData?.tether?.usd || 1,
             USDC: cryptoData?.['usd-coin']?.usd || 1,
           });
           setLastUpdate(new Date());
-        } catch(e) { console.error('Rate fetch failed', e); }
+        } catch(e) { console.error('Rates error', e); }
         finally { setLoading(false); }
       };
 
       useEffect(() => {
         fetchRates();
-        const interval = setInterval(fetchRates, 5 * 60 * 1000);
-        return () => clearInterval(interval);
+        const iv = setInterval(fetchRates, 5 * 60 * 1000);
+        return () => clearInterval(iv);
       }, []);
 
-      useEffect(() => {
-        const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowPanel(false); };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-      }, []);
-
-      const convertResult = () => {
+      const result = useMemo(() => {
         if (!rates || !amount || isNaN(parseFloat(amount))) return null;
-        const usd = parseFloat(amount) * (rates[fromCur] || 1);
-        const res = usd / (rates[toCur] || 1);
-        return isNaN(res) ? null : res;
-      };
+        return parseFloat(amount) * (rates[fromCur] || 1) / (rates[toCur] || 1);
+      }, [rates, amount, fromCur, toCur]);
 
       const currencies = ['USD', 'EUR', 'PLN', 'USDT', 'USDC'];
-      const result = convertResult();
-      const eurUsd  = rates ? rates.EUR  : null;
-      const eurPln  = rates ? rates.EUR / rates.PLN : null;
-      const usdtUsdc = rates ? rates.USDT / rates.USDC : null;
-
-      const rateChip = (label, value, color) => (
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
-          <span style={{ color:'rgba(255,255,255,.4)', fontSize:9, textTransform:'uppercase', letterSpacing:.5 }}>{label}</span>
-          <span style={{ color, fontFamily:"'JetBrains Mono',monospace", fontWeight:600, fontSize:11 }}>{value!=null ? value.toFixed(4) : '—'}</span>
-        </div>
-      );
-
-      const selStyle = { padding:'8px 10px', background:'#333', border:'1px solid rgba(255,255,255,.15)', borderRadius:6, color:'#fff', fontSize:13, fontFamily:"'DM Sans',sans-serif", outline:'none', cursor:'pointer' };
+      const selSt = { padding: '6px 8px', background: '#333', border: '1px solid rgba(255,255,255,.15)', borderRadius: 6, color: '#fff', fontSize: 12, fontFamily: "'DM Sans',sans-serif", outline: 'none', cursor: 'pointer' };
 
       return (
-        <div ref={wrapRef} style={{ position:'relative' }}>
-          <div onClick={() => setShowPanel(p => !p)} style={{ display:'flex', alignItems:'center', gap:8, background: showPanel ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.05)', borderRadius:8, padding:'5px 12px', border:`1px solid ${showPanel ? 'rgba(255,255,255,.2)' : 'rgba(255,255,255,.08)'}`, cursor:'pointer', transition:'all .15s', userSelect:'none' }}>
-            <span style={{ color:'rgba(255,255,255,.3)', fontSize:9, textTransform:'uppercase', letterSpacing:1 }}>Курс</span>
-            {loading && !rates ? <span style={{ color:'rgba(255,255,255,.3)', fontSize:11 }}>…</span> : rates ? (<>
-              {rateChip('EUR/USD', eurUsd, '#FBBF24')}
-              <span style={{ color:'rgba(255,255,255,.1)' }}>|</span>
-              {rateChip('EUR/PLN', eurPln, '#60A5FA')}
-              <span style={{ color:'rgba(255,255,255,.1)' }}>|</span>
-              {rateChip('USDT/USDC', usdtUsdc, '#4ADE80')}
-            </>) : null}
-            <button onClick={e => { e.stopPropagation(); fetchRates(); }} title="Оновити" style={{ background:'none', border:'none', color: loading ? '#4A90D9' : 'rgba(255,255,255,.3)', cursor:'pointer', fontSize:12, padding:0, lineHeight:1 }}>↻</button>
-            {lastUpdate && <span style={{ color:'rgba(255,255,255,.2)', fontSize:9 }}>{lastUpdate.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})}</span>}
-            <span style={{ color:'rgba(255,255,255,.3)', fontSize:10 }}>{showPanel ? '▴' : '▾'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,.04)', borderRadius: 8, padding: '8px 16px', border: '1px solid rgba(255,255,255,.07)', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginRight: 8 }}>
+            {[['EUR/USD', rates?.EUR, '#FBBF24'], ['EUR/PLN', rates ? rates.EUR / rates.PLN : null, '#60A5FA'], ['USDT/USDC', rates ? rates.USDT / rates.USDC : null, '#4ADE80']].map(([lbl, val, clr]) => (
+              <div key={lbl} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span style={{ color: 'rgba(255,255,255,.35)', fontSize: 8, textTransform: 'uppercase', letterSpacing: .5 }}>{lbl}</span>
+                <span style={{ color: clr, fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, fontSize: 11 }}>{val != null ? val.toFixed(4) : '—'}</span>
+              </div>
+            ))}
+            <button onClick={fetchRates} title="Оновити" style={{ background: 'none', border: 'none', color: loading ? '#4A90D9' : 'rgba(255,255,255,.3)', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }}>↻</button>
+            {lastUpdate && <span style={{ color: 'rgba(255,255,255,.2)', fontSize: 9 }}>{lastUpdate.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})}</span>}
           </div>
-
-          {showPanel && (
-            <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, background:'#2A2A2A', borderRadius:10, padding:16, width:290, boxShadow:'0 8px 32px rgba(0,0,0,.6)', border:'1px solid rgba(255,255,255,.1)', zIndex:200 }}>
-              <div style={{ fontSize:11, fontWeight:600, color:'rgba(255,255,255,.5)', marginBottom:12, textTransform:'uppercase', letterSpacing:1 }}>Конвертер валют</div>
-              <div style={{ display:'flex', gap:8, marginBottom:8 }}>
-                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex:1, padding:'9px 10px', background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.2)', borderRadius:6, color:'#fff', fontSize:15, fontFamily:"'JetBrains Mono',monospace", outline:'none' }} placeholder="Сума" />
-                <select value={fromCur} onChange={e => setFromCur(e.target.value)} style={selStyle}>{currencies.map(c => <option key={c} value={c}>{c}</option>)}</select>
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-                <div style={{ flex:1, height:1, background:'rgba(255,255,255,.08)' }}/>
-                <button onClick={() => { const t = fromCur; setFromCur(toCur); setToCur(t); }} style={{ background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:6, color:'rgba(255,255,255,.6)', cursor:'pointer', fontSize:13, padding:'4px 10px', fontFamily:"'DM Sans',sans-serif" }}>⇄</button>
-                <div style={{ flex:1, height:1, background:'rgba(255,255,255,.08)' }}/>
-              </div>
-              <div style={{ display:'flex', gap:8 }}>
-                <div style={{ flex:1, padding:'10px', background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.08)', borderRadius:6, fontFamily:"'JetBrains Mono',monospace", fontSize:17, fontWeight:700, color: result!=null ? '#4ADE80' : 'rgba(255,255,255,.2)', textAlign:'center', minHeight:42, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  {result!=null ? result.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}) : '—'}
-                </div>
-                <select value={toCur} onChange={e => setToCur(e.target.value)} style={selStyle}>{currencies.map(c => <option key={c} value={c}>{c}</option>)}</select>
-              </div>
+          <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,.1)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: 'rgba(255,255,255,.4)', fontSize: 10, textTransform: 'uppercase', letterSpacing: .5 }}>Конвертер:</span>
+            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ width: 80, padding: '6px 8px', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 6, color: '#fff', fontSize: 13, fontFamily: "'JetBrains Mono',monospace", outline: 'none' }} placeholder="Сума" />
+            <select value={fromCur} onChange={e => setFromCur(e.target.value)} style={selSt}>{currencies.map(c => <option key={c} value={c}>{c}</option>)}</select>
+            <button onClick={() => { const t = fromCur; setFromCur(toCur); setToCur(t); }} style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 6, color: 'rgba(255,255,255,.6)', cursor: 'pointer', fontSize: 13, padding: '4px 8px' }}>⇄</button>
+            <div style={{ minWidth: 90, padding: '6px 10px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 6, fontFamily: "'JetBrains Mono',monospace", fontSize: 14, fontWeight: 700, color: result != null ? '#4ADE80' : 'rgba(255,255,255,.2)', textAlign: 'center' }}>
+              {result != null ? result.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4}) : '—'}
             </div>
-          )}
+            <select value={toCur} onChange={e => setToCur(e.target.value)} style={selSt}>{currencies.map(c => <option key={c} value={c}>{c}</option>)}</select>
+          </div>
         </div>
       );
     };
@@ -300,6 +267,8 @@
       const [showAddExpense, setShowAddExpense] = useState(false);
       const [showAddAccount, setShowAddAccount] = useState(false);
       const [showTransfer, setShowTransfer] = useState(false);
+      const [showAddInvestment, setShowAddInvestment] = useState(false);
+      const [newInvestment, setNewInvestment] = useState({ person: "", amount: 0, method: "USD", date: "", comment: "" });
       const [editExpense, setEditExpense] = useState(null);
       const [editAccount, setEditAccount] = useState(null);
       
@@ -367,15 +336,17 @@
       }, []);
 
       const monthKey = `${currentYear}-${currentMonth}`;
-      const data = monthData[monthKey] || { transactions: [], expenses: [], transfers: [], carryover: 0 };
+      const data = monthData[monthKey] || { transactions: [], expenses: [], transfers: [], investments: [], carryover: 0 };
       const transactions = data.transactions || [];
       const expenses = data.expenses || [];
       const transfers = data.transfers || [];
+      const investments = data.investments || [];
       const carryover = data.carryover || 0;
 
       const setTransactions = (txs) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, transactions: typeof txs === "function" ? txs(data.transactions || []) : txs } })); };
       const setExpenses = (exps) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, expenses: typeof exps === "function" ? exps(data.expenses || []) : exps } })); };
       const setTransfers = (trfs) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, transfers: typeof trfs === "function" ? trfs(data.transfers || []) : trfs } })); };
+      const setInvestments = (invs) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, investments: typeof invs === "function" ? invs(data.investments || []) : invs } })); };
 
       const totalPayment = useMemo(() => transactions.reduce((s, t) => s + parseNum(t.payment), 0), [transactions]);
       const totalRev = useMemo(() => transactions.reduce((s, t) => s + parseNum(t.agencyRev), 0), [transactions]);
@@ -579,6 +550,9 @@
       const addTransfer = () => { if (!newTransfer.fromAcc || !newTransfer.toAcc) return; setTransfers(p => [...p, { id: uid(), ...newTransfer, date: autoDate(newTransfer.date) }]); setNewTransfer({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" }); setShowTransfer(false); };
       const removeTransfer = (id) => setTransfers(p => p.filter(t => t.id !== id));
 
+      const addInvestment = () => { if (!newInvestment.person.trim() || !newInvestment.amount) return; setInvestments(p => [...p, { id: uid(), ...newInvestment, date: autoDate(newInvestment.date) }]); setNewInvestment({ person: "", amount: 0, method: "USD", date: "", comment: "" }); setShowAddInvestment(false); };
+      const removeInvestment = (id) => setInvestments(p => p.filter(i => i.id !== id));
+
       const submitAccountForm = () => { 
         if (!newAccountForm.name.trim()) return; 
         if (editAccount) {
@@ -679,19 +653,19 @@
               <button onClick={undo} className="btn" title="Відмінити дію" style={{ background: historyRef.current.length > 0 ? "rgba(255,200,50,.2)" : "rgba(255,255,255,.05)", border: historyRef.current.length > 0 ? "1px solid rgba(255,200,50,.3)" : "1px solid transparent", color: historyRef.current.length > 0 ? "#FBBF24" : "#555", padding: "6px 10px", fontSize: 14, marginLeft: 6 }}>↩ Відмінити</button>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <CurrencyConverter />
               <span style={{ color: "rgba(255,255,255,.5)", fontSize: 12 }}>{userEmail}</span>
               <button onClick={onLogout} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "6px 14px", fontSize: 12 }}>Вийти</button>
             </div>
           </div>
 
           {/* KPI */}
-          <div style={{ background: "#1A1A1A", padding: "20px 28px 24px" }}>
-            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+          <div style={{ background: "#1A1A1A", padding: "20px 28px 16px" }}>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
               {[{ label: "Agency Turnover", value: totalPayment }, { label: "Revenue (REV)", value: totalRev, color: "#4ADE80" }, { label: "Agency Budget", value: agencyBudget, color: agencyBudget >= 0 ? "#4ADE80" : "#F87171" }, { label: "Carryover (попередній)", value: carryover, color: "#FBBF24" }, { label: "REV Fees / Costs", value: totalCosts, color: "#FB923C" }, { label: "Total Expenses", value: totalExpenses, color: "#F87171" }].map((k, i) => (
                 <div key={i} className="kpi-card"><div className="kpi-label">{k.label}</div><div className="kpi-value" style={k.color ? { color: k.color } : {}}>{fmt(k.value)}</div></div>
               ))}
             </div>
+            <CurrencyConverter />
           </div>
 
           <div style={{ padding: "24px 28px" }}>
@@ -775,9 +749,9 @@
                         </div>
                       </th>
                       {workers.map(w => { const c = wc(w); return (
-                        <th key={w.id} style={{ background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}` }}></th>
+                        <th key={w.id} style={{ background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, padding: 0, lineHeight: 0 }}></th>
                       ); })}
-                      <th style={{ background: "#3A3A3A" }}></th>
+                      <th style={{ background: "#3A3A3A", padding: 0 }}></th>
                     </tr>
                     
                     <tr style={{ background: "#1A1A1A", color: "#fff" }}>
@@ -825,12 +799,18 @@
                           <td style={{ padding: "2px 4px", textAlign: "center" }}>
                             {t.invoice ? (<div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "center" }}><button className="invoice-btn" onClick={() => downloadInvoice(t.invoice)} title={t.invoice.name} style={{ color: "#16A34A", fontSize: 14 }}>📄</button><button className="invoice-btn" onClick={() => updateTx(t.id, "invoice", null)} style={{ color: "#DC2626", fontSize: 10 }}>🗑️</button></div>) : (<button className="invoice-btn" onClick={() => triggerInvoiceUpload(t.id)} style={{ color: "#999", fontSize: 13 }}>📎</button>)}
                           </td>
-                          {workers.map(w => { const c = wc(w); const wp = t.workerPay?.[w.id] || { amount: 0, paid: false }; return (
+                          {workers.map(w => { const c = wc(w); const wp = t.workerPay?.[w.id] || { amount: 0, paid: false, comment: "" }; return (
                             <td key={w.id} style={{ padding: "2px 4px", background: c.bgLight, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}` }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                                 <div style={{ flex: 1 }}><EditableCell value={wp.amount} onChange={v => updateWorkerPay(t.id, w.id, "amount", v)} type="number" mono style={{ textAlign: "right", fontSize: 12, color: wp.paid ? c.text : "#999" }} /></div>
                                 <input type="checkbox" className="checkbox-paid" checked={wp.paid} onChange={e => updateWorkerPay(t.id, w.id, "paid", e.target.checked)} />
                               </div>
+                              {(wp.comment || wp.amount > 0) && (
+                                <EditableCell value={wp.comment || ""} onChange={v => updateWorkerPay(t.id, w.id, "comment", v)} style={{ fontSize: 10, color: c.text, opacity: .6, padding: "1px 4px" }} />
+                              )}
+                              {!wp.comment && wp.amount === 0 && (
+                                <div onClick={() => updateWorkerPay(t.id, w.id, "comment", "...")} style={{ fontSize: 9, color: c.text, opacity: .3, cursor: "text", padding: "1px 4px", textAlign: "center" }}>+ коментар</div>
+                              )}
                             </td>
                           ); })}
                           <td style={{ padding: "2px 4px", textAlign: "center" }}>
@@ -961,7 +941,61 @@
                </div>
 
             </div>
-            
+
+            {/* PERSONAL INVESTMENTS */}
+            {(() => {
+              const totalInvested = investments.reduce((s, i) => s + parseNum(i.amount), 0);
+              const byPerson = {};
+              investments.forEach(i => { byPerson[i.person] = (byPerson[i.person] || 0) + parseNum(i.amount); });
+              return (
+                <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
+                  <div style={{ padding: "14px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                    <div>
+                      <h2 style={{ fontSize: 15, fontWeight: 700, color: "#333" }}>💼 Особисті вкладення фаундерів</h2>
+                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Вливання з особистих рахунків у бюджет</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                      {Object.entries(byPerson).map(([p, amt]) => (
+                        <div key={p} style={{ fontSize: 12, color: "#555" }}><span style={{ fontWeight: 600 }}>{p}:</span> <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, color: "#4A90D9" }}>{fmt(amt)}</span></div>
+                      ))}
+                      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 15, color: "#1A1A1A" }}>Всього: {fmt(totalInvested)}</span>
+                    </div>
+                  </div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", minWidth: 600 }}>
+                      <colgroup><col style={{ width: 160 }} /><col style={{ width: 110 }} /><col style={{ width: 100 }} /><col style={{ width: 90 }} /><col /><col style={{ width: 50 }} /></colgroup>
+                      <thead>
+                        <tr style={{ background: "#F5F3F0" }}>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "left" }}>Фаундер</th>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "right" }}>Сума</th>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "center" }}>Метод</th>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "center" }}>Дата</th>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "left" }}>Коментар</th>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "center" }}>🗑️</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {investments.map((inv, ii) => (
+                          <tr key={inv.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                            <td style={{ padding: "7px 10px" }}><EditableCell value={inv.person} onChange={v => { const x=[...investments]; x[ii].person=v; setInvestments(x); }} /></td>
+                            <td style={{ padding: "7px 10px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, color: "#4A90D9" }}><EditableCell value={inv.amount} onChange={v => { const x=[...investments]; x[ii].amount=v; setInvestments(x); }} type="number" mono style={{ textAlign:"right" }} /></td>
+                            <td style={{ padding: "7px 10px", textAlign: "center" }}><EditableCell value={inv.method} onChange={v => { const x=[...investments]; x[ii].method=v; setInvestments(x); }} style={{ textAlign:"center", fontSize:12 }} /></td>
+                            <td style={{ padding: "7px 10px", textAlign: "center" }}><EditableCell value={inv.date} onChange={v => { const x=[...investments]; x[ii].date=v; setInvestments(x); }} isDate={true} activeMonthIdx={currentMonth} style={{ textAlign:"center" }} /></td>
+                            <td style={{ padding: "7px 10px" }}><EditableCell value={inv.comment || ""} onChange={v => { const x=[...investments]; x[ii].comment=v; setInvestments(x); }} style={{ fontSize:12, color:"#666" }} /></td>
+                            <td style={{ padding: "7px 10px", textAlign: "center" }}><button onClick={() => removeInvestment(inv.id)} style={{ border:"none", background:"none", cursor:"pointer", fontSize:14 }}>🗑️</button></td>
+                          </tr>
+                        ))}
+                        {investments.length === 0 && <tr><td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#bbb", fontSize: 13 }}>Немає записів</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ padding: "10px 16px", borderTop: "1px solid #eee" }}>
+                    <button className="btn btn-primary" onClick={() => setShowAddInvestment(true)}>➕ Додати вкладення</button>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* BULK ACTIONS & EXPORT */}
             <div style={{ background: "#fff", borderRadius: 10, padding: "16px 20px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1019,6 +1053,17 @@
             <label>Власник<input value={newAccountForm.owner} onChange={e => setNewAccountForm({ ...newAccountForm, owner: e.target.value })} placeholder="Власник" /></label>
             <label>Ліміт обороту ($)<input type="number" value={newAccountForm.limit} onChange={e => setNewAccountForm({ ...newAccountForm, limit: parseFloat(e.target.value) || 0 })} /></label>
             <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowAddAccount(false)}>Скасувати</button><button className="btn btn-primary" onClick={submitAccountForm}>{editAccount ? "Зберегти" : "Додати"}</button></div>
+          </div></div>)}
+
+          {/* MODAL: Add Investment */}
+          {showAddInvestment && (<div className="modal-overlay" onClick={() => setShowAddInvestment(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Додати вкладення</h3>
+            <label>Фаундер<input value={newInvestment.person} onChange={e => setNewInvestment({ ...newInvestment, person: e.target.value })} placeholder="Ім'я фаундера" autoFocus /></label>
+            <label>Сума ($)<input type="number" value={newInvestment.amount} onChange={e => setNewInvestment({ ...newInvestment, amount: parseFloat(e.target.value) || 0 })} /></label>
+            <label>Метод<select value={newInvestment.method} onChange={e => setNewInvestment({ ...newInvestment, method: e.target.value })}><option>USD</option><option>USDT</option><option>EUR</option><option>PLN</option><option>Card</option></select></label>
+            <label>Дата<input value={newInvestment.date} onChange={e => setNewInvestment({ ...newInvestment, date: e.target.value })} placeholder="ДД.ММ" /></label>
+            <label>Коментар<textarea value={newInvestment.comment} onChange={e => setNewInvestment({ ...newInvestment, comment: e.target.value })} placeholder="Деталі вкладення..." style={{ resize: "vertical", minHeight: 60 }} /></label>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowAddInvestment(false)}>Скасувати</button><button className="btn btn-primary" onClick={addInvestment}>Додати</button></div>
           </div></div>)}
         </div>
       );
