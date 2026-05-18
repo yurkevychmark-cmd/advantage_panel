@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ADvantage Revenue Panel V8 (Secure Cloud)</title>
-  
+  <title>ADvantage Revenue Panel</title>
+  <link rel="icon" type="image/png" href="icon.png">
+
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -208,6 +209,7 @@
       const [selectedExp, setSelectedExp] = useState(new Set());
       const [dragTxIdx, setDragTxIdx] = useState(null);
       const [dragExpIdx, setDragExpIdx] = useState(null);
+      const [dragAccIdx, setDragAccIdx] = useState(null);
 
       const [bulkTargetMonth, setBulkTargetMonth] = useState(`${currentMonth === 11 ? currentYear + 1 : currentYear}-${currentMonth === 11 ? 0 : currentMonth + 1}`);
       
@@ -442,6 +444,10 @@
       const onExpDragOver = (e, i) => { e.preventDefault(); };
       const onExpDrop = (i) => { if (dragExpIdx !== null && dragExpIdx !== i) setExpenses(p => arrayMove(p, dragExpIdx, i)); setDragExpIdx(null); };
 
+      const onAccDragStart = (e, i) => { e.stopPropagation(); setDragAccIdx(i); };
+      const onAccDragOver = (e, i) => { e.preventDefault(); e.stopPropagation(); };
+      const onAccDrop = (e, i) => { e.stopPropagation(); if (dragAccIdx !== null && dragAccIdx !== i) setAccounts(p => arrayMove(p, dragAccIdx, i)); setDragAccIdx(null); };
+
       const toggleSelectTx = (id) => setSelectedTx(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
       const toggleSelectExp = (id) => setSelectedExp(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
       const toggleAllTx = () => { if (selectedTx.size === transactions.length) setSelectedTx(new Set()); else setSelectedTx(new Set(transactions.map(t => t.id))); };
@@ -608,12 +614,13 @@
                             <span style={{ color: "rgba(255,255,255,.6)", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, whiteSpace: "nowrap" }}>Платіжки</span>
                             <button onClick={() => { setEditAccount(null); setNewAccountForm({name:"", owner:"", limit:10000}); setShowAddAccount(true); }} style={{ background: "rgba(255,255,255,.12)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>➕</button>
                           </div>
-                          {accountUsage.map(a => {
+                          {accountUsage.map((a, accIdx) => {
                             const pct = Math.min(a.pct, 100);
                             const over = a.pct > 100;
                             const isExpanded = expandedAcct === a.id;
+                            const isDraggingOver = dragAccIdx !== null && dragAccIdx !== accIdx;
                             return (
-                              <div key={a.id} className={over ? "acct-over" : ""} onClick={() => setExpandedAcct(isExpanded ? null : a.id)} style={{ background: a.isActive ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.03)", border: `1px solid ${a.isActive ? "rgba(255,255,255,.15)" : "rgba(255,255,255,.06)"}`, borderRadius: 8, padding: "8px 12px", minWidth: 160, cursor: "pointer", opacity: a.isActive ? 1 : .5, position: "relative", transition: "all .2s" }}>
+                              <div key={a.id} draggable className={over ? "acct-over" : ""} onDragStart={(e) => onAccDragStart(e, accIdx)} onDragOver={(e) => onAccDragOver(e, accIdx)} onDrop={(e) => onAccDrop(e, accIdx)} onDragEnd={() => setDragAccIdx(null)} onClick={() => setExpandedAcct(isExpanded ? null : a.id)} style={{ background: a.isActive ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.03)", border: `1px solid ${dragAccIdx === accIdx ? "rgba(255,255,255,.5)" : a.isActive ? "rgba(255,255,255,.15)" : "rgba(255,255,255,.06)"}`, borderRadius: 8, padding: "8px 12px", minWidth: 160, cursor: "grab", opacity: dragAccIdx === accIdx ? 0.4 : a.isActive ? 1 : .5, position: "relative", transition: "all .2s", outline: isDraggingOver && dragAccIdx !== accIdx ? "2px dashed rgba(255,255,255,.4)" : "none" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                                   <span style={{ color: "#fff", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>{a.name}</span>
                                   <div style={{ display: "flex", gap: 4 }}>
