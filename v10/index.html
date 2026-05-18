@@ -144,15 +144,27 @@
         setLoading(true);
         let eurToUsd = 1, eurToPln = 1;
         let usdtRate = 1, usdcRate = 1;
-        // Fiat rates from frankfurter.app (ECB)
+        // Fiat rates — try open.er-api.com first, frankfurter.app as fallback
         try {
-          const fxRes = await fetch('https://api.frankfurter.app/latest?from=EUR');
+          const fxRes = await fetch('https://open.er-api.com/v6/latest/EUR');
           if (fxRes.ok) {
             const fxData = await fxRes.json();
-            eurToUsd = fxData.rates?.USD || 1;
-            eurToPln = fxData.rates?.PLN || 1;
+            if (fxData.result === 'success' && fxData.rates?.USD) {
+              eurToUsd = fxData.rates.USD;
+              eurToPln = fxData.rates.PLN || 1;
+            }
           }
-        } catch(e) { console.error('FX rates error', e); }
+        } catch(e) { console.error('open.er-api error', e); }
+        if (eurToUsd === 1) {
+          try {
+            const fxRes2 = await fetch('https://api.frankfurter.app/latest?from=EUR');
+            if (fxRes2.ok) {
+              const fxData2 = await fxRes2.json();
+              eurToUsd = fxData2.rates?.USD || 1;
+              eurToPln = fxData2.rates?.PLN || 1;
+            }
+          } catch(e) { console.error('frankfurter error', e); }
+        }
         // Crypto rates from CoinGecko (optional, fallback to 1)
         try {
           const cryptoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin&vs_currencies=usd');
@@ -363,6 +375,22 @@
       const totalCosts = useMemo(() => transactions.reduce((s, t) => s + parseNum(t.costTax), 0), [transactions]);
       const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + parseNum(e.cost), 0), [expenses]);
       const agencyBudget = totalRev - totalExpenses + carryover;
+
+      // Expenses paid from personal (non-agency) accounts → auto-show in investments
+      const personalExpInvestments = useMemo(() => {
+        const agencyNames = new Set(accounts.map(a => a.name.toLowerCase().trim()));
+        return expenses
+          .filter(ex => ex.persona && ex.persona.trim() && !agencyNames.has(ex.persona.toLowerCase().trim()))
+          .map(ex => ({
+            id: 'auto_' + ex.id,
+            person: ex.persona,
+            amount: ex.cost,
+            method: ex.method || 'USD',
+            date: ex.date,
+            comment: ex.service,
+            auto: true,
+          }));
+      }, [expenses, accounts]);
 
       const workerTotals = useMemo(() => {
         const m = {};
@@ -695,7 +723,7 @@
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,.7)", fontSize: 11, letterSpacing: .5 }}>Total Revenue Per Person:<button onClick={() => setShowAddWorker(true)} style={{ background: "rgba(255,255,255,.15)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600, marginLeft: 2 }}>➕</button></span>
                       </th>
                       {workers.map((w, wIdx) => { const c = wc(w); const t = workerTotals[w.id] || { paid: 0, pending: 0 }; return (
-                        <th key={w.id} className="worker-th" draggable onDragStart={e => onWorkerDragStart(e, wIdx)} onDragOver={onWorkerDragOver} onDrop={e => onWorkerDrop(e, wIdx)} onDragEnd={() => setDragWorkerIdx(null)} style={{ padding: "8px 6px 6px", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, textAlign: "center", position: "relative", verticalAlign: "bottom", opacity: dragWorkerIdx === wIdx ? 0.4 : 1, outline: dragWorkerIdx !== null && dragWorkerIdx !== wIdx ? `2px dashed ${c.border}` : 'none', transition: 'opacity .2s' }}>
+                        <th key={w.id} className="worker-th" rowSpan={2} draggable onDragStart={e => onWorkerDragStart(e, wIdx)} onDragOver={onWorkerDragOver} onDrop={e => onWorkerDrop(e, wIdx)} onDragEnd={() => setDragWorkerIdx(null)} style={{ padding: "8px 6px 6px", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, textAlign: "center", position: "relative", verticalAlign: "bottom", opacity: dragWorkerIdx === wIdx ? 0.4 : 1, outline: dragWorkerIdx !== null && dragWorkerIdx !== wIdx ? `2px dashed ${c.border}` : 'none', transition: 'opacity .2s' }}>
                           <button onClick={() => removeWorker(w.id)} style={{ position: "absolute", top: 3, right: 4, background: "none", border: "none", cursor: "pointer", fontSize: 11, color: c.text, opacity: .3 }}>🗑️</button>
                           <div style={{ fontSize: 9, color: c.text, opacity: .4, marginBottom: 2, letterSpacing: .5 }}>⋮⋮ drag</div>
                           <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 16, color: c.text }}>{fmt(t.paid)}</div>
@@ -704,9 +732,9 @@
                           <div style={{ fontSize: 10, color: c.text, opacity: .65, fontWeight: 400, lineHeight: 1.3 }}>{w.role}</div>
                         </th>
                       ); })}
-                      <th style={{ background: "#444" }}></th>
+                      <th rowSpan={2} style={{ background: "#444" }}></th>
                     </tr>
-                    
+
                     <tr style={{ background: "#3A3A3A" }}>
                       <th colSpan={10} style={{ padding: 0, verticalAlign: "top", maxWidth: 900, overflow: 'hidden' }}>
                         <div className="acct-scroll" style={{ padding: "12px 10px 6px", display: "flex", gap: 8, alignItems: "stretch", overflowX: "auto", paddingBottom: 10, width: "100%" }}>
@@ -758,10 +786,6 @@
                           })}
                         </div>
                       </th>
-                      {workers.map(w => { const c = wc(w); return (
-                        <th key={w.id} style={{ background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, padding: 0, lineHeight: 0 }}></th>
-                      ); })}
-                      <th style={{ background: "#3A3A3A", padding: 0 }}></th>
                     </tr>
                     
                     <tr style={{ background: "#1A1A1A", color: "#fff" }}>
@@ -815,11 +839,10 @@
                                 <div style={{ flex: 1 }}><EditableCell value={wp.amount} onChange={v => updateWorkerPay(t.id, w.id, "amount", v)} type="number" mono style={{ textAlign: "right", fontSize: 12, color: wp.paid ? c.text : "#999" }} /></div>
                                 <input type="checkbox" className="checkbox-paid" checked={wp.paid} onChange={e => updateWorkerPay(t.id, w.id, "paid", e.target.checked)} />
                               </div>
-                              {(wp.comment || wp.amount > 0) && (
-                                <EditableCell value={wp.comment || ""} onChange={v => updateWorkerPay(t.id, w.id, "comment", v)} style={{ fontSize: 10, color: c.text, opacity: .6, padding: "1px 4px" }} />
-                              )}
-                              {!wp.comment && wp.amount === 0 && (
-                                <div onClick={() => updateWorkerPay(t.id, w.id, "comment", "...")} style={{ fontSize: 9, color: c.text, opacity: .3, cursor: "text", padding: "1px 4px", textAlign: "center" }}>+ коментар</div>
+                              {wp.comment ? (
+                                <EditableCell value={wp.comment} onChange={v => updateWorkerPay(t.id, w.id, "comment", v)} style={{ fontSize: 10, color: c.text, opacity: .65, padding: "1px 4px" }} />
+                              ) : (
+                                <div onClick={() => updateWorkerPay(t.id, w.id, "comment", " ")} style={{ fontSize: 9, color: c.text, opacity: .22, cursor: "text", padding: "1px 4px", textAlign: "center", userSelect: "none" }}>+ коментар</div>
                               )}
                             </td>
                           ); })}
@@ -954,15 +977,16 @@
 
             {/* PERSONAL INVESTMENTS */}
             {(() => {
-              const totalInvested = investments.reduce((s, i) => s + parseNum(i.amount), 0);
+              const allEntries = [...investments, ...personalExpInvestments];
+              const totalInvested = allEntries.reduce((s, i) => s + parseNum(i.amount), 0);
               const byPerson = {};
-              investments.forEach(i => { byPerson[i.person] = (byPerson[i.person] || 0) + parseNum(i.amount); });
+              allEntries.forEach(i => { byPerson[i.person] = (byPerson[i.person] || 0) + parseNum(i.amount); });
               return (
                 <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
                   <div style={{ padding: "14px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                     <div>
                       <h2 style={{ fontSize: 15, fontWeight: 700, color: "#333" }}>💼 Особисті вкладення фаундерів</h2>
-                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Вливання з особистих рахунків у бюджет</div>
+                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Вливання з особистих рахунків у бюджет <span style={{ color: "#bbb" }}>· авто = витрати з не-агентських рахунків</span></div>
                     </div>
                     <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                       {Object.entries(byPerson).map(([p, amt]) => (
@@ -976,15 +1000,30 @@
                       <colgroup><col style={{ width: 160 }} /><col style={{ width: 110 }} /><col style={{ width: 100 }} /><col style={{ width: 90 }} /><col /><col style={{ width: 50 }} /></colgroup>
                       <thead>
                         <tr style={{ background: "#F5F3F0" }}>
-                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "left" }}>Фаундер</th>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "left" }}>Рахунок / Фаундер</th>
                           <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "right" }}>Сума</th>
                           <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "center" }}>Метод</th>
                           <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "center" }}>Дата</th>
-                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "left" }}>Коментар</th>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "left" }}>Коментар / Сервіс</th>
                           <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "center" }}>🗑️</th>
                         </tr>
                       </thead>
                       <tbody>
+                        {/* Auto-detected rows from personal expenses */}
+                        {personalExpInvestments.map(inv => (
+                          <tr key={inv.id} style={{ borderBottom: "1px solid #f0f0f0", background: "#FAFFF5" }}>
+                            <td style={{ padding: "7px 10px", fontSize: 13 }}>
+                              <span style={{ fontSize: 9, background: "#4ADE80", color: "#166534", borderRadius: 3, padding: "1px 5px", marginRight: 5, fontWeight: 700, letterSpacing: .3 }}>авто</span>
+                              {inv.person}
+                            </td>
+                            <td style={{ padding: "7px 10px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, color: "#4A90D9" }}>{fmt(inv.amount)}</td>
+                            <td style={{ padding: "7px 10px", textAlign: "center", fontSize: 12, color: "#888" }}>{inv.method}</td>
+                            <td style={{ padding: "7px 10px", textAlign: "center", fontSize: 12, color: "#888" }}>{inv.date}</td>
+                            <td style={{ padding: "7px 10px", fontSize: 12, color: "#888", fontStyle: "italic" }}>{inv.comment}</td>
+                            <td style={{ padding: "7px 10px", textAlign: "center", fontSize: 10, color: "#bbb" }}>←витрати</td>
+                          </tr>
+                        ))}
+                        {/* Manual entries */}
                         {investments.map((inv, ii) => (
                           <tr key={inv.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
                             <td style={{ padding: "7px 10px" }}><EditableCell value={inv.person} onChange={v => { const x=[...investments]; x[ii].person=v; setInvestments(x); }} /></td>
@@ -995,7 +1034,7 @@
                             <td style={{ padding: "7px 10px", textAlign: "center" }}><button onClick={() => removeInvestment(inv.id)} style={{ border:"none", background:"none", cursor:"pointer", fontSize:14 }}>🗑️</button></td>
                           </tr>
                         ))}
-                        {investments.length === 0 && <tr><td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#bbb", fontSize: 13 }}>Немає записів</td></tr>}
+                        {allEntries.length === 0 && <tr><td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#bbb", fontSize: 13 }}>Немає записів · авто-записи появляться якщо витрати зі не-агентських рахунків</td></tr>}
                       </tbody>
                     </table>
                   </div>
