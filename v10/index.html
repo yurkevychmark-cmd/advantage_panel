@@ -136,29 +136,31 @@
       const [rates, setRates] = useState(null);
       const [loading, setLoading] = useState(true);
       const [lastUpdate, setLastUpdate] = useState(null);
+      const [showPanel, setShowPanel] = useState(false);
+      const [amount, setAmount] = useState('1');
+      const [fromCur, setFromCur] = useState('EUR');
+      const [toCur, setToCur] = useState('USD');
+      const wrapRef = useRef(null);
 
       const fetchRates = async () => {
         try {
           setLoading(true);
-          const [eurRes, cryptoRes] = await Promise.all([
-            fetch('https://api.exchangerate-api.com/v4/latest/EUR'),
+          const [usdRes, cryptoRes] = await Promise.all([
+            fetch('https://api.exchangerate-api.com/v4/latest/USD'),
             fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether,usd-coin&vs_currencies=usd')
           ]);
-          const eurData = await eurRes.json();
+          const usdData = await usdRes.json();
           const cryptoData = await cryptoRes.json();
-          const usdtUsd = cryptoData?.tether?.usd || 1;
-          const usdcUsd = cryptoData?.['usd-coin']?.usd || 1;
           setRates({
-            eurUsd: eurData.rates?.USD,
-            eurPln: eurData.rates?.PLN,
-            usdtUsdc: usdcUsd > 0 ? (usdtUsd / usdcUsd) : 1,
+            USD: 1,
+            EUR: 1 / (usdData.rates?.EUR || 1),
+            PLN: 1 / (usdData.rates?.PLN || 1),
+            USDT: cryptoData?.tether?.usd || 1,
+            USDC: cryptoData?.['usd-coin']?.usd || 1,
           });
           setLastUpdate(new Date());
-        } catch(e) {
-          console.error('Rate fetch failed', e);
-        } finally {
-          setLoading(false);
-        }
+        } catch(e) { console.error('Rate fetch failed', e); }
+        finally { setLoading(false); }
       };
 
       useEffect(() => {
@@ -167,29 +169,70 @@
         return () => clearInterval(interval);
       }, []);
 
-      const rateItem = (label, value, color = '#fff', decimals = 4) => (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 70 }}>
-          <span style={{ color: 'rgba(255,255,255,.4)', fontSize: 9, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 1 }}>{label}</span>
-          <span style={{ color, fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, fontSize: 12 }}>
-            {value != null ? value.toFixed(decimals) : '—'}
-          </span>
+      useEffect(() => {
+        const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowPanel(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+      }, []);
+
+      const convertResult = () => {
+        if (!rates || !amount || isNaN(parseFloat(amount))) return null;
+        const usd = parseFloat(amount) * (rates[fromCur] || 1);
+        const res = usd / (rates[toCur] || 1);
+        return isNaN(res) ? null : res;
+      };
+
+      const currencies = ['USD', 'EUR', 'PLN', 'USDT', 'USDC'];
+      const result = convertResult();
+      const eurUsd  = rates ? rates.EUR  : null;
+      const eurPln  = rates ? rates.EUR / rates.PLN : null;
+      const usdtUsdc = rates ? rates.USDT / rates.USDC : null;
+
+      const rateChip = (label, value, color) => (
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+          <span style={{ color:'rgba(255,255,255,.4)', fontSize:9, textTransform:'uppercase', letterSpacing:.5 }}>{label}</span>
+          <span style={{ color, fontFamily:"'JetBrains Mono',monospace", fontWeight:600, fontSize:11 }}>{value!=null ? value.toFixed(4) : '—'}</span>
         </div>
       );
 
+      const selStyle = { padding:'8px 10px', background:'#333', border:'1px solid rgba(255,255,255,.15)', borderRadius:6, color:'#fff', fontSize:13, fontFamily:"'DM Sans',sans-serif", outline:'none', cursor:'pointer' };
+
       return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,.05)', borderRadius: 8, padding: '5px 12px', border: '1px solid rgba(255,255,255,.08)' }}>
-          <span style={{ color: 'rgba(255,255,255,.3)', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginRight: 4 }}>Курс</span>
-          {loading && !rates ? (
-            <span style={{ color: 'rgba(255,255,255,.3)', fontSize: 11 }}>…</span>
-          ) : rates ? (<>
-            {rateItem('EUR/USD', rates.eurUsd, '#FBBF24')}
-            <span style={{ color: 'rgba(255,255,255,.15)', fontSize: 10 }}>|</span>
-            {rateItem('EUR/PLN', rates.eurPln, '#60A5FA')}
-            <span style={{ color: 'rgba(255,255,255,.15)', fontSize: 10 }}>|</span>
-            {rateItem('USDT/USDC', rates.usdtUsdc, '#4ADE80')}
-          </>) : null}
-          <button onClick={fetchRates} title="Оновити курси" style={{ background: 'none', border: 'none', color: loading ? '#4A90D9' : 'rgba(255,255,255,.3)', cursor: 'pointer', fontSize: 13, padding: '0 2px', lineHeight: 1, marginLeft: 2, transition: 'color .2s' }}>↻</button>
-          {lastUpdate && <span style={{ color: 'rgba(255,255,255,.2)', fontSize: 9 }}>{lastUpdate.toLocaleTimeString('uk-UA', {hour:'2-digit',minute:'2-digit'})}</span>}
+        <div ref={wrapRef} style={{ position:'relative' }}>
+          <div onClick={() => setShowPanel(p => !p)} style={{ display:'flex', alignItems:'center', gap:8, background: showPanel ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.05)', borderRadius:8, padding:'5px 12px', border:`1px solid ${showPanel ? 'rgba(255,255,255,.2)' : 'rgba(255,255,255,.08)'}`, cursor:'pointer', transition:'all .15s', userSelect:'none' }}>
+            <span style={{ color:'rgba(255,255,255,.3)', fontSize:9, textTransform:'uppercase', letterSpacing:1 }}>Курс</span>
+            {loading && !rates ? <span style={{ color:'rgba(255,255,255,.3)', fontSize:11 }}>…</span> : rates ? (<>
+              {rateChip('EUR/USD', eurUsd, '#FBBF24')}
+              <span style={{ color:'rgba(255,255,255,.1)' }}>|</span>
+              {rateChip('EUR/PLN', eurPln, '#60A5FA')}
+              <span style={{ color:'rgba(255,255,255,.1)' }}>|</span>
+              {rateChip('USDT/USDC', usdtUsdc, '#4ADE80')}
+            </>) : null}
+            <button onClick={e => { e.stopPropagation(); fetchRates(); }} title="Оновити" style={{ background:'none', border:'none', color: loading ? '#4A90D9' : 'rgba(255,255,255,.3)', cursor:'pointer', fontSize:12, padding:0, lineHeight:1 }}>↻</button>
+            {lastUpdate && <span style={{ color:'rgba(255,255,255,.2)', fontSize:9 }}>{lastUpdate.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})}</span>}
+            <span style={{ color:'rgba(255,255,255,.3)', fontSize:10 }}>{showPanel ? '▴' : '▾'}</span>
+          </div>
+
+          {showPanel && (
+            <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, background:'#2A2A2A', borderRadius:10, padding:16, width:290, boxShadow:'0 8px 32px rgba(0,0,0,.6)', border:'1px solid rgba(255,255,255,.1)', zIndex:200 }}>
+              <div style={{ fontSize:11, fontWeight:600, color:'rgba(255,255,255,.5)', marginBottom:12, textTransform:'uppercase', letterSpacing:1 }}>Конвертер валют</div>
+              <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ flex:1, padding:'9px 10px', background:'rgba(255,255,255,.08)', border:'1px solid rgba(255,255,255,.2)', borderRadius:6, color:'#fff', fontSize:15, fontFamily:"'JetBrains Mono',monospace", outline:'none' }} placeholder="Сума" />
+                <select value={fromCur} onChange={e => setFromCur(e.target.value)} style={selStyle}>{currencies.map(c => <option key={c} value={c}>{c}</option>)}</select>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+                <div style={{ flex:1, height:1, background:'rgba(255,255,255,.08)' }}/>
+                <button onClick={() => { const t = fromCur; setFromCur(toCur); setToCur(t); }} style={{ background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.1)', borderRadius:6, color:'rgba(255,255,255,.6)', cursor:'pointer', fontSize:13, padding:'4px 10px', fontFamily:"'DM Sans',sans-serif" }}>⇄</button>
+                <div style={{ flex:1, height:1, background:'rgba(255,255,255,.08)' }}/>
+              </div>
+              <div style={{ display:'flex', gap:8 }}>
+                <div style={{ flex:1, padding:'10px', background:'rgba(255,255,255,.04)', border:'1px solid rgba(255,255,255,.08)', borderRadius:6, fontFamily:"'JetBrains Mono',monospace", fontSize:17, fontWeight:700, color: result!=null ? '#4ADE80' : 'rgba(255,255,255,.2)', textAlign:'center', minHeight:42, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  {result!=null ? result.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:4}) : '—'}
+                </div>
+                <select value={toCur} onChange={e => setToCur(e.target.value)} style={selStyle}>{currencies.map(c => <option key={c} value={c}>{c}</option>)}</select>
+              </div>
+            </div>
+          )}
         </div>
       );
     };
@@ -272,6 +315,7 @@
       const [dragTxIdx, setDragTxIdx] = useState(null);
       const [dragExpIdx, setDragExpIdx] = useState(null);
       const [dragAccIdx, setDragAccIdx] = useState(null);
+      const [dragWorkerIdx, setDragWorkerIdx] = useState(null);
 
       const [bulkTargetMonth, setBulkTargetMonth] = useState(`${currentMonth === 11 ? currentYear + 1 : currentYear}-${currentMonth === 11 ? 0 : currentMonth + 1}`);
       
@@ -510,6 +554,10 @@
       const onAccDragOver = (e, i) => { e.preventDefault(); e.stopPropagation(); };
       const onAccDrop = (e, i) => { e.stopPropagation(); if (dragAccIdx !== null && dragAccIdx !== i) setAccounts(p => arrayMove(p, dragAccIdx, i)); setDragAccIdx(null); };
 
+      const onWorkerDragStart = (e, i) => { e.stopPropagation(); setDragWorkerIdx(i); };
+      const onWorkerDragOver = (e) => { e.preventDefault(); e.stopPropagation(); };
+      const onWorkerDrop = (e, i) => { e.stopPropagation(); if (dragWorkerIdx !== null && dragWorkerIdx !== i) setWorkers(p => arrayMove(p, dragWorkerIdx, i)); setDragWorkerIdx(null); };
+
       const toggleSelectTx = (id) => setSelectedTx(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
       const toggleSelectExp = (id) => setSelectedExp(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
       const toggleAllTx = () => { if (selectedTx.size === transactions.length) setSelectedTx(new Set()); else setSelectedTx(new Set(transactions.map(t => t.id))); };
@@ -582,7 +630,10 @@
             .editable-cell:hover{background:rgba(0,0,0,.06)!important}
             .tx-row:hover .row-delete{opacity:1!important}
             .tx-row{transition:background .2s}.tx-row.invalid{background:#FEE2E2!important}.tx-row.received{background:#F0FDF4}
-            .status-btn{border:none;background:none;cursor:pointer;font-size:16px;padding:2px;border-radius:50%;transition:transform .15s;line-height:1}.status-btn:hover{transform:scale(1.2)}
+            .status-btn{border:none;background:none;cursor:pointer;font-size:14px;padding:1px;border-radius:50%;transition:transform .15s;line-height:1;display:block;margin:0 auto}.status-btn:hover{transform:scale(1.2)}
+            .sc{position:sticky;z-index:1;background:inherit}.sc0{left:0px}.sc1{left:36px}.sc2{left:66px;box-shadow:3px 0 6px rgba(0,0,0,.08)}
+            thead .sc{z-index:4}
+            .worker-th{cursor:grab}.worker-th:active{cursor:grabbing}
             table{border-collapse:collapse}
             ::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-track{background:#d5d1cb;border-radius:4px}::-webkit-scrollbar-thumb{background:#999;border-radius:4px}
             .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
@@ -659,13 +710,14 @@
                       <th style={{ padding: "6px 4px", fontSize: 11, fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", verticalAlign: "top" }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,.7)", fontSize: 11, letterSpacing: .5 }}>Total Revenue Per Person:<button onClick={() => setShowAddWorker(true)} style={{ background: "rgba(255,255,255,.15)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600, marginLeft: 2 }}>➕</button></span>
                       </th>
-                      {workers.map(w => { const c = wc(w); const t = workerTotals[w.id] || { paid: 0, pending: 0 }; return (
-                        <th key={w.id} style={{ padding: "10px 6px 0", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, textAlign: "center", position: "relative", verticalAlign: "top" }}>
+                      {workers.map((w, wIdx) => { const c = wc(w); const t = workerTotals[w.id] || { paid: 0, pending: 0 }; return (
+                        <th key={w.id} className="worker-th" draggable onDragStart={e => onWorkerDragStart(e, wIdx)} onDragOver={onWorkerDragOver} onDrop={e => onWorkerDrop(e, wIdx)} onDragEnd={() => setDragWorkerIdx(null)} style={{ padding: "8px 6px 6px", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, textAlign: "center", position: "relative", verticalAlign: "top", opacity: dragWorkerIdx === wIdx ? 0.4 : 1, outline: dragWorkerIdx !== null && dragWorkerIdx !== wIdx ? `2px dashed ${c.border}` : 'none', transition: 'opacity .2s' }}>
                           <button onClick={() => removeWorker(w.id)} style={{ position: "absolute", top: 3, right: 4, background: "none", border: "none", cursor: "pointer", fontSize: 11, color: c.text, opacity: .3 }}>🗑️</button>
-                          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 18, color: c.text, marginBottom: 2 }}>{fmt(t.paid)}</div>
-                          {t.pending > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: c.text, opacity: .55, marginBottom: 4 }}>pending: {fmt(t.pending)}</div>}
-                          <div style={{ fontWeight: 700, fontSize: 15, fontStyle: "italic", color: c.text, marginTop: 6, marginBottom: 2 }}>{w.name}</div>
-                          <div style={{ fontSize: 11, color: c.text, opacity: .7, fontWeight: 400, paddingBottom: 8, lineHeight: 1.3 }}>{w.role}</div>
+                          <div style={{ fontSize: 9, color: c.text, opacity: .4, marginBottom: 2, letterSpacing: .5 }}>⋮⋮ drag</div>
+                          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 16, color: c.text }}>{fmt(t.paid)}</div>
+                          {t.pending > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: c.text, opacity: .55 }}>+{fmt(t.pending)} pending</div>}
+                          <div style={{ fontWeight: 700, fontSize: 13, fontStyle: "italic", color: c.text, marginTop: 4, marginBottom: 1 }}>{w.name}</div>
+                          <div style={{ fontSize: 10, color: c.text, opacity: .65, fontWeight: 400, lineHeight: 1.3 }}>{w.role}</div>
                         </th>
                       ); })}
                       <th style={{ background: "#444" }}></th>
@@ -729,11 +781,11 @@
                     </tr>
                     
                     <tr style={{ background: "#1A1A1A", color: "#fff" }}>
-                      <th style={{ padding: "6px 4px", textAlign: "center", verticalAlign: "middle" }}>
+                      <th className="sc sc0" style={{ padding: "6px 4px", textAlign: "center", verticalAlign: "middle", background: "#1A1A1A" }}>
                         <input type="checkbox" checked={transactions.length > 0 && selectedTx.size === transactions.length} onChange={toggleAllTx} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9" }} title="Select all" />
                       </th>
-                      <th style={{ padding: "10px 6px", fontSize: 11 }}>#</th>
-                      <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Clients</th>
+                      <th className="sc sc1" style={{ padding: "10px 6px", fontSize: 11, background: "#1A1A1A" }}>#</th>
+                      <th className="sc sc2" style={{ padding: "10px 6px", fontSize: 12, textAlign: "left", background: "#1A1A1A" }}>Clients</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Our service</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Платіжка</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "right" }}>Payment</th>
@@ -751,15 +803,14 @@
                       const isReceived = t.status === 'received';
                       return (
                         <tr key={t.id} className={`tx-row ${isInvalid ? "invalid" : isReceived ? "received" : ""}`} draggable onDragStart={() => onTxDragStart(i)} onDragOver={(e) => onTxDragOver(e, i)} onDrop={() => onTxDrop(i)} style={{ borderBottom: `1px solid ${isReceived && !isInvalid ? "#bbf7d0" : "#eee"}`, opacity: dragTxIdx === i ? 0.4 : 1 }}>
-                          <td style={{ padding: "2px 2px", textAlign: "center" }}>
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                              <DragHandle />
-                              <input type="checkbox" checked={selectedTx.has(t.id)} onChange={() => toggleSelectTx(t.id)} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9" }} />
-                            </div>
+                          <td className="sc sc0" style={{ padding: "2px 2px", textAlign: "center", background: isInvalid ? "#FEE2E2" : isReceived ? "#F0FDF4" : "#fff" }}>
+                            <button className="status-btn" onClick={() => updateTx(t.id, 'status', isReceived ? 'pending' : 'received')} title={isReceived ? "Отримано — клік щоб скасувати" : "Позначити як отримано"}>{isReceived ? '🟢' : '⚪'}</button>
+                            <DragHandle />
+                            <input type="checkbox" checked={selectedTx.has(t.id)} onChange={() => toggleSelectTx(t.id)} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9" }} />
                             <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 600, color: diff > 0 ? "#16A34A" : diff < 0 ? "#DC2626" : "#999", marginTop: 1 }}>{isInvalid ? (diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)) : "✓"}</div>
                           </td>
-                          <td style={{ padding: "6px", fontSize: 12, color: "#999", textAlign: "center" }}>{i + 1}</td>
-                          <td style={{ padding: "2px" }}>
+                          <td className="sc sc1" style={{ padding: "6px", fontSize: 12, color: "#999", textAlign: "center", background: isInvalid ? "#FEE2E2" : isReceived ? "#F0FDF4" : "#fff" }}>{i + 1}</td>
+                          <td className="sc sc2" style={{ padding: "2px", background: isInvalid ? "#FEE2E2" : isReceived ? "#F0FDF4" : "#fff" }}>
                             <EditableCell value={t.client} onChange={v => updateTx(t.id, "client", v)} />
                             <CommentCell value={t.comment} onChange={v => updateTx(t.id, "comment", v)} />
                           </td>
@@ -784,11 +835,6 @@
                           ); })}
                           <td style={{ padding: "2px 4px", textAlign: "center" }}>
                             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                              <button
-                                className="status-btn"
-                                onClick={() => updateTx(t.id, 'status', isReceived ? 'pending' : 'received')}
-                                title={isReceived ? "Оплата отримана — натисни щоб скасувати" : "Позначити як отримано"}
-                              >{isReceived ? '🟢' : '⚪'}</button>
                               <button className="row-delete" onClick={() => duplicateTxToNext(t)} title="Копіювати в наступний місяць" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#4A90D9", fontSize: 13, transition: "opacity .15s" }}>⧉</button>
                               <button className="row-delete" onClick={() => removeTx(t.id)} title="Видалити" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#DC2626", fontSize: 14, transition: "opacity .15s" }}>🗑️</button>
                             </div>
