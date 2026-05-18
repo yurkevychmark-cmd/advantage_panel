@@ -74,7 +74,7 @@
 
     const makeWorkerPay = (workers) => {
       const o = {};
-      workers.forEach((w) => { o[w.id] = { amount: 0, paid: false, comment: "" }; });
+      workers.forEach((w) => { o[w.id] = { amount: 0, paid: false, comment: "", advance: 0 }; });
       return o;
     };
 
@@ -375,6 +375,27 @@
       const totalCosts = useMemo(() => transactions.reduce((s, t) => s + parseNum(t.costTax), 0), [transactions]);
       const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + parseNum(e.cost), 0), [expenses]);
       const agencyBudget = totalRev - totalExpenses + carryover;
+
+      // Balance of personal accounts: received (transactions) vs spent (expenses)
+      const personalAccountStats = useMemo(() => {
+        const agencyNames = new Set(accounts.map(a => a.name.toLowerCase().trim()));
+        const stats = {};
+        transactions.forEach(tx => {
+          const acc = resolveAccount(tx.platforma)?.trim();
+          if (acc && !agencyNames.has(acc.toLowerCase())) {
+            if (!stats[acc]) stats[acc] = { received: 0, spent: 0 };
+            stats[acc].received += parseNum(tx.payment);
+          }
+        });
+        expenses.forEach(ex => {
+          const acc = ex.persona?.trim();
+          if (acc && !agencyNames.has(acc.toLowerCase())) {
+            if (!stats[acc]) stats[acc] = { received: 0, spent: 0 };
+            stats[acc].spent += parseNum(ex.cost);
+          }
+        });
+        return stats;
+      }, [transactions, expenses, accounts]);
 
       // Expenses paid from personal (non-agency) accounts → auto-show in investments
       const personalExpInvestments = useMemo(() => {
@@ -833,12 +854,20 @@
                           <td style={{ padding: "2px 4px", textAlign: "center" }}>
                             {t.invoice ? (<div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "center" }}><button className="invoice-btn" onClick={() => downloadInvoice(t.invoice)} title={t.invoice.name} style={{ color: "#16A34A", fontSize: 14 }}>📄</button><button className="invoice-btn" onClick={() => updateTx(t.id, "invoice", null)} style={{ color: "#DC2626", fontSize: 10 }}>🗑️</button></div>) : (<button className="invoice-btn" onClick={() => triggerInvoiceUpload(t.id)} style={{ color: "#999", fontSize: 13 }}>📎</button>)}
                           </td>
-                          {workers.map(w => { const c = wc(w); const wp = t.workerPay?.[w.id] || { amount: 0, paid: false, comment: "" }; return (
+                          {workers.map(w => { const c = wc(w); const wp = t.workerPay?.[w.id] || { amount: 0, paid: false, comment: "", advance: 0 }; const adv = parseNum(wp.advance); const net = parseNum(wp.amount) - adv; return (
                             <td key={w.id} style={{ padding: "2px 4px", background: c.bgLight, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}` }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                                 <div style={{ flex: 1 }}><EditableCell value={wp.amount} onChange={v => updateWorkerPay(t.id, w.id, "amount", v)} type="number" mono style={{ textAlign: "right", fontSize: 12, color: wp.paid ? c.text : "#999" }} /></div>
                                 <input type="checkbox" className="checkbox-paid" checked={wp.paid} onChange={e => updateWorkerPay(t.id, w.id, "paid", e.target.checked)} />
                               </div>
+                              {/* Advance deduction row */}
+                              <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 1 }}>
+                                <span style={{ fontSize: 8, color: c.text, opacity: .4, whiteSpace: "nowrap" }}>↩ аванс:</span>
+                                <div style={{ flex: 1 }}><EditableCell value={wp.advance || 0} onChange={v => updateWorkerPay(t.id, w.id, "advance", v)} type="number" mono style={{ textAlign: "right", fontSize: 10, color: adv > 0 ? "#DC2626" : "#ccc" }} /></div>
+                              </div>
+                              {adv > 0 && (
+                                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: c.text, opacity: .75, textAlign: "right", paddingRight: 2 }}>= {fmt(net)}</div>
+                              )}
                               {wp.comment ? (
                                 <EditableCell value={wp.comment} onChange={v => updateWorkerPay(t.id, w.id, "comment", v)} style={{ fontSize: 10, color: c.text, opacity: .65, padding: "1px 4px" }} />
                               ) : (
@@ -986,7 +1015,7 @@
                   <div style={{ padding: "14px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                     <div>
                       <h2 style={{ fontSize: 15, fontWeight: 700, color: "#333" }}>💼 Особисті вкладення фаундерів</h2>
-                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Вливання з особистих рахунків у бюджет <span style={{ color: "#bbb" }}>· авто = витрати з не-агентських рахунків</span></div>
+                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Вливання з особистих рахунків · <span style={{ color: "#4ADE80", fontWeight: 600 }}>авто</span> = підтягнуті з витрат</div>
                     </div>
                     <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                       {Object.entries(byPerson).map(([p, amt]) => (
@@ -995,6 +1024,30 @@
                       <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 15, color: "#1A1A1A" }}>Всього: {fmt(totalInvested)}</span>
                     </div>
                   </div>
+                  {/* Personal account balance: received − expenses = remaining */}
+                  {Object.keys(personalAccountStats).length > 0 && (
+                    <div style={{ padding: "10px 20px", borderBottom: "1px solid #eee", background: "#FAFAFA" }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: .5, marginBottom: 8 }}>Баланс особистих рахунків (поточний місяць)</div>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        {Object.entries(personalAccountStats).map(([acc, s]) => {
+                          const bal = s.received - s.spent;
+                          return (
+                            <div key={acc} style={{ background: "#fff", border: `1px solid ${bal >= 0 ? "#bbf7d0" : "#fecaca"}`, borderRadius: 8, padding: "7px 14px", minWidth: 180 }}>
+                              <div style={{ fontWeight: 700, fontSize: 12, color: "#333", marginBottom: 4 }}>{acc}</div>
+                              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, display: "flex", gap: 6, alignItems: "center" }}>
+                                <span style={{ color: "#16A34A" }}>+{fmt(s.received)}</span>
+                                <span style={{ color: "#bbb" }}>−</span>
+                                <span style={{ color: "#DC2626" }}>{fmt(s.spent)}</span>
+                                <span style={{ color: "#bbb" }}>=</span>
+                                <span style={{ fontWeight: 700, color: bal >= 0 ? "#16A34A" : "#DC2626" }}>{fmt(bal)}</span>
+                              </div>
+                              <div style={{ fontSize: 9, color: "#aaa", marginTop: 2 }}>надходження − витрати = залишок у бюджеті</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", minWidth: 600 }}>
                       <colgroup><col style={{ width: 160 }} /><col style={{ width: 110 }} /><col style={{ width: 100 }} /><col style={{ width: 90 }} /><col /><col style={{ width: 50 }} /></colgroup>
@@ -1009,20 +1062,32 @@
                         </tr>
                       </thead>
                       <tbody>
-                        {/* Auto-detected rows from personal expenses */}
-                        {personalExpInvestments.map(inv => (
-                          <tr key={inv.id} style={{ borderBottom: "1px solid #f0f0f0", background: "#FAFFF5" }}>
-                            <td style={{ padding: "7px 10px", fontSize: 13 }}>
-                              <span style={{ fontSize: 9, background: "#4ADE80", color: "#166534", borderRadius: 3, padding: "1px 5px", marginRight: 5, fontWeight: 700, letterSpacing: .3 }}>авто</span>
-                              {inv.person}
-                            </td>
-                            <td style={{ padding: "7px 10px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, color: "#4A90D9" }}>{fmt(inv.amount)}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "center", fontSize: 12, color: "#888" }}>{inv.method}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "center", fontSize: 12, color: "#888" }}>{inv.date}</td>
-                            <td style={{ padding: "7px 10px", fontSize: 12, color: "#888", fontStyle: "italic" }}>{inv.comment}</td>
-                            <td style={{ padding: "7px 10px", textAlign: "center", fontSize: 10, color: "#bbb" }}>←витрати</td>
-                          </tr>
-                        ))}
+                        {/* Auto-detected rows from personal expenses — fully editable (edits underlying expense) */}
+                        {personalExpInvestments.map(inv => {
+                          const expIdx = expenses.findIndex(ex => ex.id === inv.id.replace('auto_', ''));
+                          const upd = (field, val) => { if (expIdx < 0) return; const x = [...expenses]; x[expIdx] = { ...x[expIdx], [field]: val }; setExpenses(x); };
+                          return (
+                            <tr key={inv.id} style={{ borderBottom: "1px solid #f0f0f0", background: "#FAFFF5" }}>
+                              <td style={{ padding: "7px 10px", fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
+                                <span style={{ fontSize: 9, background: "#4ADE80", color: "#166534", borderRadius: 3, padding: "1px 5px", fontWeight: 700, letterSpacing: .3, flexShrink: 0 }}>авто</span>
+                                <EditableCell value={inv.person} onChange={v => upd("persona", v)} style={{ fontSize: 13 }} />
+                              </td>
+                              <td style={{ padding: "7px 10px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, color: "#4A90D9" }}>
+                                <EditableCell value={inv.amount} onChange={v => upd("cost", parseNum(v))} type="number" mono style={{ textAlign: "right" }} />
+                              </td>
+                              <td style={{ padding: "7px 10px", textAlign: "center" }}>
+                                <EditableCell value={inv.method} onChange={v => upd("method", v)} style={{ textAlign: "center", fontSize: 12 }} />
+                              </td>
+                              <td style={{ padding: "7px 10px", textAlign: "center" }}>
+                                <EditableCell value={inv.date} onChange={v => upd("date", v)} isDate={true} activeMonthIdx={currentMonth} style={{ textAlign: "center" }} />
+                              </td>
+                              <td style={{ padding: "7px 10px" }}>
+                                <EditableCell value={inv.comment || ""} onChange={v => upd("service", v)} style={{ fontSize: 12, color: "#666" }} />
+                              </td>
+                              <td style={{ padding: "7px 10px", textAlign: "center", fontSize: 10, color: "#bbb" }}>←витрати</td>
+                            </tr>
+                          );
+                        })}
                         {/* Manual entries */}
                         {investments.map((inv, ii) => (
                           <tr key={inv.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
