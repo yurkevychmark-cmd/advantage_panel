@@ -283,6 +283,10 @@
       
       const [workers, setWorkers] = useState([]);
       const [accounts, setAccounts] = useState([]);
+      const [products, setProducts] = useState([]);
+      const [showAddProduct, setShowAddProduct] = useState(false);
+      const [newProduct, setNewProduct] = useState({ name: "", color: "#4A90D9", avgPrice: 0 });
+      const [editProduct, setEditProduct] = useState(null);
       const [monthData, setMonthData] = useState({});
       
       const [showAddWorker, setShowAddWorker] = useState(false);
@@ -319,6 +323,7 @@
           if (settings) {
             if (settings.workers && settings.workers.length > 0) setWorkers(settings.workers);
             if (settings.accounts && settings.accounts.length > 0) setAccounts(settings.accounts);
+            if (settings.products && settings.products.length > 0) setProducts(settings.products);
           }
 
           const { data: months } = await supabase.from('monthly_data').select('*');
@@ -337,7 +342,7 @@
       useEffect(() => {
         if (isInitialLoad) return;
         const timer = setTimeout(async () => {
-          await supabase.from('global_settings').upsert({ id: 1, workers, accounts });
+          await supabase.from('global_settings').upsert({ id: 1, workers, accounts, products });
           
           const updates = Object.keys(monthData).map(key => ({ month_key: key, data: monthData[key] }));
           if (updates.length > 0) {
@@ -345,7 +350,7 @@
           }
         }, 1500); 
         return () => clearTimeout(timer);
-      }, [workers, accounts, monthData, isInitialLoad]);
+      }, [workers, accounts, products, monthData, isInitialLoad]);
 
       const pushHistory = useCallback(() => {
         historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), JSON.parse(JSON.stringify(monthData))];
@@ -376,32 +381,39 @@
       const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + parseNum(e.cost), 0), [expenses]);
       const agencyBudget = totalRev - totalExpenses + carryover;
 
-      // Balance of personal accounts: received (transactions) vs spent (expenses)
+      // Balance of personal accounts (all months): received (transactions) − spent (expenses)
+      // Excludes agency accounts AND worker names (they are not personal founder accounts)
       const personalAccountStats = useMemo(() => {
         const agencyNames = new Set(accounts.map(a => a.name.toLowerCase().trim()));
+        const workerNames = new Set(workers.map(w => w.name.toLowerCase().trim()));
+        const excluded = new Set([...agencyNames, ...workerNames]);
         const stats = {};
-        transactions.forEach(tx => {
-          const acc = resolveAccount(tx.platforma)?.trim();
-          if (acc && !agencyNames.has(acc.toLowerCase())) {
-            if (!stats[acc]) stats[acc] = { received: 0, spent: 0 };
-            stats[acc].received += parseNum(tx.payment);
-          }
-        });
-        expenses.forEach(ex => {
-          const acc = ex.persona?.trim();
-          if (acc && !agencyNames.has(acc.toLowerCase())) {
-            if (!stats[acc]) stats[acc] = { received: 0, spent: 0 };
-            stats[acc].spent += parseNum(ex.cost);
-          }
+        Object.values(monthData).forEach(md => {
+          (md.transactions || []).forEach(tx => {
+            const acc = resolveAccount(tx.platforma)?.trim();
+            if (acc && !excluded.has(acc.toLowerCase())) {
+              if (!stats[acc]) stats[acc] = { received: 0, spent: 0 };
+              stats[acc].received += parseNum(tx.payment);
+            }
+          });
+          (md.expenses || []).forEach(ex => {
+            const acc = ex.persona?.trim();
+            if (acc && !excluded.has(acc.toLowerCase())) {
+              if (!stats[acc]) stats[acc] = { received: 0, spent: 0 };
+              stats[acc].spent += parseNum(ex.cost);
+            }
+          });
         });
         return stats;
-      }, [transactions, expenses, accounts]);
+      }, [accounts, workers, monthData]);
 
-      // Expenses paid from personal (non-agency) accounts → auto-show in investments
+      // Expenses paid from personal (non-agency, non-worker) accounts → auto-show in investments
       const personalExpInvestments = useMemo(() => {
         const agencyNames = new Set(accounts.map(a => a.name.toLowerCase().trim()));
+        const workerNames = new Set(workers.map(w => w.name.toLowerCase().trim()));
+        const excluded = new Set([...agencyNames, ...workerNames]);
         return expenses
-          .filter(ex => ex.persona && ex.persona.trim() && !agencyNames.has(ex.persona.toLowerCase().trim()))
+          .filter(ex => ex.persona && ex.persona.trim() && !excluded.has(ex.persona.toLowerCase().trim()))
           .map(ex => ({
             id: 'auto_' + ex.id,
             person: ex.persona,
@@ -411,7 +423,34 @@
             comment: ex.service,
             auto: true,
           }));
-      }, [expenses, accounts]);
+      }, [expenses, accounts, workers]);
+
+      // Product sales stats computed across all months
+      const productStats = useMemo(() => {
+        return products.map(p => {
+          let totalSales = 0, monthSales = 0;
+          Object.entries(monthData).forEach(([key, md]) => {
+            const cnt = (md.transactions || []).filter(t => t.service && t.service.toLowerCase() === p.name.toLowerCase()).length;
+            totalSales += cnt;
+            if (key === monthKey) monthSales = cnt;
+          });
+          return { ...p, totalSales, monthSales };
+        });
+      }, [products, monthData, monthKey]);
+
+      const addProduct = () => {
+        if (!newProduct.name.trim()) return;
+        if (editProduct) {
+          setProducts(p => p.map(pr => pr.id === editProduct.id ? { ...pr, ...newProduct } : pr));
+          setEditProduct(null);
+        } else {
+          setProducts(p => [...p, { id: uid(), ...newProduct }]);
+        }
+        setNewProduct({ name: "", color: "#4A90D9", avgPrice: 0 });
+        setShowAddProduct(false);
+      };
+      const removeProduct = (id) => setProducts(p => p.filter(pr => pr.id !== id));
+      const startEditProduct = (pr) => { setEditProduct(pr); setNewProduct({ name: pr.name, color: pr.color, avgPrice: pr.avgPrice }); setShowAddProduct(true); };
 
       const workerTotals = useMemo(() => {
         const m = {};
@@ -698,6 +737,9 @@
           <datalist id="accounts-list">
              {accounts.map(a => <option key={a.id} value={a.name} />)}
           </datalist>
+          <datalist id="products-list">
+             {products.map(p => <option key={p.id} value={p.name} />)}
+          </datalist>
 
           <input ref={invoiceInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" style={{ display: "none" }} onChange={handleInvoiceUpload} />
           <input ref={importInputRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleImport} />
@@ -725,6 +767,27 @@
               ))}
             </div>
             <CurrencyConverter />
+            {/* PRODUCTS */}
+            <div style={{ marginTop: 14, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,.35)", textTransform: "uppercase", letterSpacing: 1, whiteSpace: "nowrap" }}>Продукти:</span>
+              {productStats.map(p => (
+                <div key={p.id} style={{ background: "rgba(255,255,255,.06)", border: `1px solid ${p.color}44`, borderLeft: `3px solid ${p.color}`, borderRadius: 8, padding: "6px 12px", display: "flex", gap: 10, alignItems: "center", position: "relative", minWidth: 160 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 12, color: p.color, marginBottom: 2 }}>{p.name}</div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: "rgba(255,255,255,.5)" }}>цей міс: <span style={{ color: "#fff", fontWeight: 700 }}>{p.monthSales}</span></span>
+                      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: "rgba(255,255,255,.35)" }}>всього: {p.totalSales}</span>
+                    </div>
+                    {p.avgPrice > 0 && <div style={{ fontSize: 9, color: "rgba(255,255,255,.3)", marginTop: 1 }}>ср. чек {fmt(p.avgPrice)}</div>}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <button onClick={() => startEditProduct(p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "rgba(255,255,255,.3)", padding: 0, lineHeight: 1 }}>✏️</button>
+                    <button onClick={() => removeProduct(p.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "rgba(255,255,255,.2)", padding: 0, lineHeight: 1 }}>🗑️</button>
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => { setEditProduct(null); setNewProduct({ name: "", color: "#4A90D9", avgPrice: 0 }); setShowAddProduct(true); }} style={{ background: "rgba(255,255,255,.08)", border: "1px dashed rgba(255,255,255,.2)", borderRadius: 8, padding: "6px 14px", color: "rgba(255,255,255,.5)", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>+ Продукт</button>
+            </div>
           </div>
 
           <div style={{ padding: "24px 28px" }}>
@@ -843,7 +906,9 @@
                             <EditableCell value={t.client} onChange={v => updateTx(t.id, "client", v)} />
                             <CommentCell value={t.comment} onChange={v => updateTx(t.id, "comment", v)} />
                           </td>
-                          <td style={{ padding: "2px" }}><EditableCell value={t.service} onChange={v => updateTx(t.id, "service", v)} /></td>
+                          <td style={{ padding: "2px" }}>
+                            <input list="products-list" value={t.service || ""} onChange={e => updateTx(t.id, "service", e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", transition: "border .2s", background: "transparent" }} onFocus={e => e.target.style.border="1px solid #4A90D9"} onBlur={e => e.target.style.border="1px solid transparent"} placeholder="Послуга" />
+                          </td>
                           <td style={{ padding: "2px" }}>
                              <input list="accounts-list" value={t.platforma || ""} onChange={e => updateTx(t.id, "platforma", e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", transition: "border .2s", background: "transparent" }} onFocus={e => e.target.style.border="1px solid #4A90D9"} onBlur={e => e.target.style.border="1px solid transparent"} placeholder="Акаунт" />
                           </td>
@@ -1027,7 +1092,7 @@
                   {/* Personal account balance: received − expenses = remaining */}
                   {Object.keys(personalAccountStats).length > 0 && (
                     <div style={{ padding: "10px 20px", borderBottom: "1px solid #eee", background: "#FAFAFA" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: .5, marginBottom: 8 }}>Баланс особистих рахунків (поточний місяць)</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: .5, marginBottom: 8 }}>Баланс особистих рахунків (загальний · всі місяці)</div>
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                         {Object.entries(personalAccountStats).map(([acc, s]) => {
                           const bal = s.received - s.spent;
@@ -1170,6 +1235,14 @@
           </div></div>)}
 
           {/* MODAL: Add Investment */}
+          {showAddProduct && (<div className="modal-overlay" onClick={() => { setShowAddProduct(false); setEditProduct(null); }}><div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>{editProduct ? "Редагувати продукт" : "Новий продукт"}</h3>
+            <label>Назва<input value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} placeholder="Mentorship, Media Buying..." autoFocus /></label>
+            <label>Середній чек ($)<input type="number" value={newProduct.avgPrice} onChange={e => setNewProduct({ ...newProduct, avgPrice: parseFloat(e.target.value) || 0 })} /></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 10 }}>Колір<input type="color" value={newProduct.color} onChange={e => setNewProduct({ ...newProduct, color: e.target.value })} style={{ width: 48, height: 34, padding: 2, border: "1.5px solid #ddd", borderRadius: 6, cursor: "pointer", marginTop: 4 }} /></label>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => { setShowAddProduct(false); setEditProduct(null); }}>Скасувати</button><button className="btn btn-primary" onClick={addProduct}>{editProduct ? "Зберегти" : "Додати"}</button></div>
+          </div></div>)}
+
           {showAddInvestment && (<div className="modal-overlay" onClick={() => setShowAddInvestment(false)}><div className="modal" onClick={e => e.stopPropagation()}>
             <h3>Додати вкладення</h3>
             <label>Фаундер<input value={newInvestment.person} onChange={e => setNewInvestment({ ...newInvestment, person: e.target.value })} placeholder="Ім'я фаундера" autoFocus /></label>
