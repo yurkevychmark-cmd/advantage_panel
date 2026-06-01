@@ -299,7 +299,8 @@
       const [editAccount, setEditAccount] = useState(null);
       
       const [newWorker, setNewWorker] = useState({ name: "", role: "", colorIdx: 5 });
-      const [newExpense, setNewExpense] = useState({ service: "", persona: "", method: "USDT", date: "", cost: 0 });
+      const [newExpense, setNewExpense] = useState({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "" });
+      const [salaryDismissed, setSalaryDismissed] = useState(() => localStorage.getItem('salary_dismissed') || "");
       const [newAccountForm, setNewAccountForm] = useState({ name: "", owner: "", limit: 10000 });
       const [newTransfer, setNewTransfer] = useState({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" });
       
@@ -456,8 +457,10 @@
         const m = {};
         workers.forEach((w) => { m[w.id] = { paid: 0, pending: 0 }; });
         transactions.forEach((t) => { workers.forEach((w) => { const wp = t.workerPay?.[w.id]; if (wp && wp.amount) { if (wp.paid) m[w.id].paid += parseNum(wp.amount); else m[w.id].pending += parseNum(wp.amount); } }); });
+        // Expenses linked to a worker (e.g. salary paid via agency expense)
+        expenses.forEach(ex => { if (ex.workerLink && m[ex.workerLink]) m[ex.workerLink].paid += parseNum(ex.cost); });
         return m;
-      }, [transactions, workers]);
+      }, [transactions, expenses, workers]);
 
       const accountUsage = useMemo(() => {
         const allTx = []; const allExp = []; const allTransfers = [];
@@ -641,9 +644,9 @@
       const addWorker = () => { if (!newWorker.name.trim()) return; const w = { id: uid(), name: newWorker.name.trim(), role: newWorker.role.trim(), colorIdx: newWorker.colorIdx % WORKER_COLORS.length }; setWorkers(p => [...p, w]); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => ({ ...t, workerPay: { ...t.workerPay, [w.id]: { amount: 0, paid: false } } })) }; }); return n; }); setNewWorker({ name: "", role: "", colorIdx: (newWorker.colorIdx + 1) % WORKER_COLORS.length }); setShowAddWorker(false); };
       const removeWorker = (wId) => { setWorkers(p => p.filter(w => w.id !== wId)); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => { const wp = { ...t.workerPay }; delete wp[wId]; return { ...t, workerPay: wp }; }) }; }); return n; }); };
 
-      const addExpense = () => { if (!newExpense.service.trim()) return; const expData = { ...newExpense, date: autoDate(newExpense.date) }; if (editExpense) setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); else setExpenses(p => [...p, { id: uid(), ...expData }]); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0 }); setShowAddExpense(false); setEditExpense(null); };
+      const addExpense = () => { if (!newExpense.service.trim()) return; const expData = { ...newExpense, date: autoDate(newExpense.date) }; if (editExpense) setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); else setExpenses(p => [...p, { id: uid(), ...expData }]); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "" }); setShowAddExpense(false); setEditExpense(null); };
       const removeExpense = (id) => setExpenses(p => p.filter(e => e.id !== id));
-      const startEditExpense = (e) => { setEditExpense(e); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost }); setShowAddExpense(true); };
+      const startEditExpense = (e) => { setEditExpense(e); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost, recurring: e.recurring || false, workerLink: e.workerLink || "" }); setShowAddExpense(true); };
 
       const addTransfer = () => { if (!newTransfer.fromAcc || !newTransfer.toAcc) return; setTransfers(p => [...p, { id: uid(), ...newTransfer, date: autoDate(newTransfer.date) }]); setNewTransfer({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" }); setShowTransfer(false); };
       const removeTransfer = (id) => setTransfers(p => p.filter(t => t.id !== id));
@@ -978,7 +981,7 @@
                  </div>
                  <div style={{ overflowX: "auto" }}>
                    <table style={{ width: "100%", minWidth: 600 }}>
-                     <colgroup><col style={{ width: 40 }} /><col style={{ width: "22%" }} /><col style={{ width: "18%" }} /><col style={{ width: "12%" }} /><col style={{ width: "12%" }} /><col style={{ width: "14%" }} /><col style={{ width: 80 }} /></colgroup>
+                     <colgroup><col style={{ width: 40 }} /><col style={{ width: "20%" }} /><col style={{ width: "15%" }} /><col style={{ width: "10%" }} /><col style={{ width: "10%" }} /><col style={{ width: "12%" }} /><col style={{ width: 36 }} /><col style={{ width: 120 }} /><col style={{ width: 70 }} /></colgroup>
                      <thead>
                        <tr style={{ background: "#F5F3F0" }}>
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>
@@ -989,6 +992,8 @@
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>Method</th>
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>Date</th>
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "right" }}>Cost</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }} title="Повторювана щомісяця">🔄</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>👤 Зарплата</th>
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>Дії</th>
                        </tr>
                      </thead>
@@ -1012,6 +1017,15 @@
                              }} isDate={true} activeMonthIdx={currentMonth} />
                            </td>
                            <td style={{ padding: "8px 6px", fontSize: 13, textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, color: "#DC2626" }}><EditableCell value={e.cost} onChange={v => { const x = [...expenses]; x[i].cost = v; setExpenses(x); }} type="number" mono style={{textAlign: "right"}} /></td>
+                           <td style={{ padding: "4px 6px", textAlign: "center" }}>
+                             <button onClick={() => { const x=[...expenses]; x[i].recurring=!e.recurring; setExpenses(x); }} title={e.recurring ? "Щомісяця (клік — зняти)" : "Одноразово (клік — зробити щомісячним)"} style={{ border: "none", background: e.recurring ? "rgba(74,144,217,.12)" : "none", borderRadius: 4, cursor: "pointer", fontSize: 13, padding: "2px 4px", color: e.recurring ? "#4A90D9" : "#ccc" }}>🔄</button>
+                           </td>
+                           <td style={{ padding: "4px 6px", textAlign: "center" }}>
+                             <select value={e.workerLink || ""} onChange={ev => { const x=[...expenses]; x[i].workerLink=ev.target.value; setExpenses(x); }} style={{ fontSize: 11, border: "1px solid #ddd", borderRadius: 4, padding: "2px 4px", background: e.workerLink ? "#F0FDF4" : "#fff", color: e.workerLink ? "#166534" : "#999", maxWidth: 110, cursor: "pointer" }}>
+                               <option value="">— не ЗП —</option>
+                               {workers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                             </select>
+                           </td>
                            <td style={{ padding: "8px 6px", textAlign: "center", display: "flex", gap: 8, justifyContent: "center" }}>
                              <button onClick={() => duplicateExpToNext(e)} title="Копіювати в наступний місяць" style={{ border: "none", background: "none", cursor: "pointer", fontSize: 13 }}>⧉</button>
                              <button onClick={() => removeExpense(e.id)} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 14 }}>🗑️</button>
@@ -1090,29 +1104,6 @@
                     </div>
                   </div>
                   {/* Personal account balance: received − expenses = remaining */}
-                  {Object.keys(personalAccountStats).length > 0 && (
-                    <div style={{ padding: "10px 20px", borderBottom: "1px solid #eee", background: "#FAFAFA" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: .5, marginBottom: 8 }}>Баланс особистих рахунків (загальний · всі місяці)</div>
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        {Object.entries(personalAccountStats).map(([acc, s]) => {
-                          const bal = s.received - s.spent;
-                          return (
-                            <div key={acc} style={{ background: "#fff", border: `1px solid ${bal >= 0 ? "#bbf7d0" : "#fecaca"}`, borderRadius: 8, padding: "7px 14px", minWidth: 180 }}>
-                              <div style={{ fontWeight: 700, fontSize: 12, color: "#333", marginBottom: 4 }}>{acc}</div>
-                              <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, display: "flex", gap: 6, alignItems: "center" }}>
-                                <span style={{ color: "#16A34A" }}>+{fmt(s.received)}</span>
-                                <span style={{ color: "#bbb" }}>−</span>
-                                <span style={{ color: "#DC2626" }}>{fmt(s.spent)}</span>
-                                <span style={{ color: "#bbb" }}>=</span>
-                                <span style={{ fontWeight: 700, color: bal >= 0 ? "#16A34A" : "#DC2626" }}>{fmt(bal)}</span>
-                              </div>
-                              <div style={{ fontSize: 9, color: "#aaa", marginTop: 2 }}>надходження − витрати = залишок у бюджеті</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", minWidth: 600 }}>
                       <colgroup><col style={{ width: 160 }} /><col style={{ width: 110 }} /><col style={{ width: 100 }} /><col style={{ width: 90 }} /><col /><col style={{ width: 50 }} /></colgroup>
@@ -1211,6 +1202,16 @@
             <label>Метод оплати<select value={newExpense.method} onChange={e => setNewExpense({ ...newExpense, method: e.target.value })}><option>USDT</option><option>USD</option><option>EUR</option><option>UAH</option><option>Card</option></select></label>
             <label>Дата<input value={newExpense.date} onChange={e => setNewExpense({ ...newExpense, date: e.target.value })} placeholder="ДД.ММ" /></label>
             <label>Сума ($)<input type="number" value={newExpense.cost} onChange={e => setNewExpense({ ...newExpense, cost: parseFloat(e.target.value) || 0 })} /></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+              <input type="checkbox" checked={newExpense.recurring} onChange={e => setNewExpense({ ...newExpense, recurring: e.target.checked })} style={{ width: 15, height: 15, marginTop: 0 }} />
+              🔄 Повторювана (щомісяця)
+            </label>
+            <label>👤 Зарплата для (синхр. з воркером)
+              <select value={newExpense.workerLink} onChange={e => setNewExpense({ ...newExpense, workerLink: e.target.value })} style={{ marginTop: 4 }}>
+                <option value="">— не ЗП —</option>
+                {workers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+              </select>
+            </label>
             <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => { setShowAddExpense(false); setEditExpense(null); }}>Скасувати</button><button className="btn btn-primary" onClick={addExpense}>{editExpense ? "Зберегти" : "Додати"}</button></div>
           </div></div>)}
 
@@ -1242,6 +1243,26 @@
             <label style={{ display: "flex", alignItems: "center", gap: 10 }}>Колір<input type="color" value={newProduct.color} onChange={e => setNewProduct({ ...newProduct, color: e.target.value })} style={{ width: 48, height: 34, padding: 2, border: "1.5px solid #ddd", borderRadius: 6, cursor: "pointer", marginTop: 4 }} /></label>
             <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => { setShowAddProduct(false); setEditProduct(null); }}>Скасувати</button><button className="btn btn-primary" onClick={addProduct}>{editProduct ? "Зберегти" : "Додати"}</button></div>
           </div></div>)}
+
+          {/* SALARY REMINDER — floating bottom-right */}
+          {(() => {
+            const unpaid = workers.filter(w => transactions.some(t => { const wp = t.workerPay?.[w.id]; return wp && parseNum(wp.amount) > 0 && !wp.paid; }));
+            const allPaid = unpaid.length === 0;
+            const dismissed = salaryDismissed === monthKey;
+            if (allPaid || dismissed) return null;
+            return (
+              <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 2000, background: "#1A1A1A", color: "#fff", borderRadius: 12, padding: "14px 18px", boxShadow: "0 8px 32px rgba(0,0,0,.4)", maxWidth: 280, border: "1px solid rgba(255,200,50,.3)" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#FBBF24", marginBottom: 6 }}>⏰ Нагадування про ЗП</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,.7)", marginBottom: 10 }}>
+                  Не виплачено: {unpaid.map(w => w.name).join(", ")}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => { setSalaryDismissed(monthKey); localStorage.setItem('salary_dismissed', monthKey); }} style={{ flex: 1, padding: "6px 10px", background: "rgba(255,255,255,.1)", border: "none", borderRadius: 6, color: "#fff", cursor: "pointer", fontSize: 11 }}>Закрити</button>
+                  <button onClick={() => { setSalaryDismissed('all_paid_' + monthKey); localStorage.setItem('salary_dismissed', 'all_paid_' + monthKey); }} style={{ flex: 1, padding: "6px 10px", background: "#4ADE80", border: "none", borderRadius: 6, color: "#166534", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>✓ ЗП виплачено</button>
+                </div>
+              </div>
+            );
+          })()}
 
           {showAddInvestment && (<div className="modal-overlay" onClick={() => setShowAddInvestment(false)}><div className="modal" onClick={e => e.stopPropagation()}>
             <h3>Додати вкладення</h3>
