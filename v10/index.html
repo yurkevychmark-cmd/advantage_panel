@@ -444,24 +444,32 @@
 
       // Balance of personal accounts (all months): received (transactions) − spent (expenses)
       // Excludes agency accounts AND worker names (they are not personal founder accounts)
+      // Personal (non-agency) account balance.
+      // When a deal is received on a personal account, the full client payment lands there,
+      // but salaries (paid out to workers) and cost/tax leave the account too — only the
+      // agency-budget portion (agencyRev) should remain on the balance, minus direct expenses.
       const personalAccountStats = useMemo(() => {
         const agencyNames = new Set(accounts.map(a => a.name.toLowerCase().trim()));
         const workerNames = new Set(workers.map(w => w.name.toLowerCase().trim()));
         const excluded = new Set([...agencyNames, ...workerNames]);
         const stats = {};
+        const ensure = (acc) => { if (!stats[acc]) stats[acc] = { received: 0, spent: 0 }; return stats[acc]; };
         Object.values(monthData).forEach(md => {
           (md.transactions || []).forEach(tx => {
+            if (tx.status !== 'received') return; // only confirmed deals actually moved money
             const acc = resolveAccount(tx.platforma)?.trim();
             if (acc && !excluded.has(acc.toLowerCase())) {
-              if (!stats[acc]) stats[acc] = { received: 0, spent: 0 };
-              stats[acc].received += parseNum(tx.payment);
+              const s = ensure(acc);
+              s.received += parseNum(tx.payment);
+              // money that leaves the account: salaries + cost/tax
+              const salaries = (workers || []).reduce((sum, w) => sum + parseNum(tx.workerPay?.[w.id]?.amount), 0);
+              s.spent += salaries + parseNum(tx.costTax);
             }
           });
           (md.expenses || []).forEach(ex => {
             const acc = ex.persona?.trim();
             if (acc && !excluded.has(acc.toLowerCase())) {
-              if (!stats[acc]) stats[acc] = { received: 0, spent: 0 };
-              stats[acc].spent += parseNum(ex.cost);
+              ensure(acc).spent += parseNum(ex.cost);
             }
           });
         });
@@ -491,7 +499,8 @@
         return products.map(p => {
           let totalSales = 0, monthSales = 0;
           Object.entries(monthData).forEach(([key, md]) => {
-            const cnt = (md.transactions || []).filter(t => t.service && t.service.toLowerCase() === p.name.toLowerCase()).length;
+            // Only approved (received) transactions count toward product sales
+            const cnt = (md.transactions || []).filter(t => t.status === 'received' && t.service && t.service.toLowerCase() === p.name.toLowerCase()).length;
             totalSales += cnt;
             if (key === monthKey) monthSales = cnt;
           });
@@ -1035,69 +1044,15 @@
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,.7)", fontSize: 11, letterSpacing: .5 }}>Total Revenue Per Person:<button onClick={() => setShowAddWorker(true)} style={{ background: "rgba(255,255,255,.15)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600, marginLeft: 2 }}><Icon name="plus" size={15} /></button></span>
                       </th>
                       {workers.map((w, wIdx) => { const c = wc(w); const t = workerTotals[w.id] || { paid: 0, pending: 0 }; return (
-                        <th key={w.id} className="worker-th" rowSpan={2} draggable onDragStart={e => onWorkerDragStart(e, wIdx)} onDragOver={onWorkerDragOver} onDrop={e => onWorkerDrop(e, wIdx)} onDragEnd={() => setDragWorkerIdx(null)} style={{ padding: "8px 6px 6px", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, textAlign: "center", position: "relative", verticalAlign: "bottom", opacity: dragWorkerIdx === wIdx ? 0.4 : 1, outline: dragWorkerIdx !== null && dragWorkerIdx !== wIdx ? `2px dashed ${c.border}` : 'none', transition: 'opacity .2s' }}>
-                          <button onClick={() => removeWorker(w.id)} style={{ position: "absolute", top: 3, right: 4, background: "none", border: "none", cursor: "pointer", fontSize: 11, color: c.text, opacity: .3 }}><Icon name="trash" size={14} /></button>
-                          <div style={{ fontSize: 9, color: c.text, opacity: .4, marginBottom: 2, letterSpacing: .5 }}>⋮⋮ drag</div>
-                          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 16, color: c.text }}>{fmt(t.paid)}</div>
-                          {t.pending > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: c.text, opacity: .55 }}>+{fmt(t.pending)} pending</div>}
-                          <div style={{ fontWeight: 700, fontSize: 13, fontStyle: "italic", color: c.text, marginTop: 4, marginBottom: 1 }}>{w.name}</div>
-                          <div style={{ fontSize: 10, color: c.text, opacity: .65, fontWeight: 400, lineHeight: 1.3 }}>{w.role}</div>
+                        <th key={w.id} className="worker-th" draggable onDragStart={e => onWorkerDragStart(e, wIdx)} onDragOver={onWorkerDragOver} onDrop={e => onWorkerDrop(e, wIdx)} onDragEnd={() => setDragWorkerIdx(null)} style={{ padding: "6px 6px 5px", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, textAlign: "center", position: "relative", verticalAlign: "middle", opacity: dragWorkerIdx === wIdx ? 0.4 : 1, outline: dragWorkerIdx !== null && dragWorkerIdx !== wIdx ? `2px dashed ${c.border}` : 'none', transition: 'opacity .2s' }}>
+                          <button onClick={() => removeWorker(w.id)} style={{ position: "absolute", top: 2, right: 3, background: "none", border: "none", cursor: "pointer", color: c.text, opacity: .3 }}><Icon name="trash" size={12} /></button>
+                          <div style={{ fontWeight: 700, fontSize: 13, fontStyle: "italic", color: c.text }}>{w.name}</div>
+                          <div style={{ fontSize: 9, color: c.text, opacity: .6, fontWeight: 400, lineHeight: 1.2, marginBottom: 3 }}>{w.role}</div>
+                          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 15, color: c.text }}>{fmt(t.paid)}</div>
+                          {t.pending > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: c.text, opacity: .55 }}>+{fmt(t.pending)} pending</div>}
                         </th>
                       ); })}
-                      <th rowSpan={2} style={{ background: "#444" }}></th>
-                    </tr>
-
-                    <tr style={{ background: "#3A3A3A" }}>
-                      <th colSpan={10} style={{ padding: 0, verticalAlign: "top", maxWidth: 900, overflow: 'hidden' }}>
-                        <div className="acct-scroll" style={{ padding: "12px 10px 6px", display: "flex", gap: 8, alignItems: "stretch", overflowX: "auto", paddingBottom: 10, width: "100%" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: "fit-content", paddingRight: 8, borderRight: "1px solid rgba(255,255,255,.15)" }}>
-                            <span style={{ color: "rgba(255,255,255,.6)", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, whiteSpace: "nowrap" }}>Платіжки</span>
-                            <button onClick={() => { setEditAccount(null); setNewAccountForm({name:"", owner:"", limit:10000}); setShowAddAccount(true); }} style={{ background: "rgba(255,255,255,.12)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}><Icon name="plus" size={15} /></button>
-                          </div>
-                          {accountUsage.map((a, accIdx) => {
-                            const pct = Math.min(a.pct, 100);
-                            const over = a.pct > 100;
-                            const isExpanded = expandedAcct === a.id;
-                            const isDraggingOver = dragAccIdx !== null && dragAccIdx !== accIdx;
-                            return (
-                              <div key={a.id} draggable className={over ? "acct-over" : ""} onDragStart={(e) => onAccDragStart(e, accIdx)} onDragOver={(e) => onAccDragOver(e, accIdx)} onDrop={(e) => onAccDrop(e, accIdx)} onDragEnd={() => setDragAccIdx(null)} onClick={() => setExpandedAcct(isExpanded ? null : a.id)} style={{ background: a.isActive ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.03)", border: `1px solid ${dragAccIdx === accIdx ? "rgba(255,255,255,.5)" : a.isActive ? "rgba(255,255,255,.15)" : "rgba(255,255,255,.06)"}`, borderRadius: 8, padding: "8px 12px", minWidth: 160, cursor: "grab", opacity: dragAccIdx === accIdx ? 0.4 : a.isActive ? 1 : .5, position: "relative", transition: "all .2s", outline: isDraggingOver && dragAccIdx !== accIdx ? "2px dashed rgba(255,255,255,.4)" : "none" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                                  <span style={{ color: "#fff", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>{a.name}</span>
-                                  <div style={{ display: "flex", gap: 4 }}>
-                                    <button onClick={(e) => { e.stopPropagation(); startEditAccount(a); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4A90D9", padding: 0 }}><Icon name="edit" size={13} /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); toggleAccount(a.id); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 9, color: a.isActive ? "#4ADE80" : "#F87171", padding: 0 }}>{a.isActive ? "●" : "○"}</button>
-                                    <button onClick={(e) => { e.stopPropagation(); confirmRemoveAccount(a.id); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "rgba(255,255,255,.3)", padding: 0 }}><Icon name="trash" size={14} /></button>
-                                  </div>
-                                </div>
-                                <div style={{ background: "rgba(255,255,255,.1)", borderRadius: 3, height: 6, marginBottom: 4, overflow: "hidden" }}>
-                                  <div style={{ width: `${pct}%`, height: "100%", background: barColor(a.pct), borderRadius: 3, transition: "width .3s" }} />
-                                </div>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                                  <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, fontWeight: 600, color: barColor(a.pct) }}>{fmt(a.used)}</span>
-                                  <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: "rgba(255,255,255,.4)" }}>{fmt(a.limit)}</span>
-                                </div>
-                                <div style={{ fontSize: 9, color: over ? "#F87171" : "rgba(255,255,255,.4)", marginTop: 2, textAlign: "center" }}>
-                                  {over ? `ПЕРЕВИЩЕНО на ${fmt(a.used - a.limit)}` : `Оборот: залишок ${fmt(a.remaining)}`}
-                                </div>
-                                
-                                {isExpanded && (
-                                  <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,.1)", paddingTop: 6, maxHeight: 150, overflowY: "auto" }}>
-                                    <div style={{ fontSize: 10, color: "#4ADE80", display: "flex", justifyContent: "space-between", padding: "4px 0", marginBottom: 6, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                                      <span>Бюджет агенції:</span>
-                                      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 600 }}>{fmt(a.accountBudget)}</span>
-                                    </div>
-                                    {a.txList.length > 0 && a.txList.map(tx => <div key={tx.id} style={{ fontSize: 10, color: "rgba(255,255,255,.6)", display: "flex", justifyContent: "space-between", padding: "1px 0" }}><span>{tx.client}</span><span style={{ fontFamily: "'JetBrains Mono',monospace" }}>{fmt(tx.payment)}</span></div>)}
-                                    {a.expList.length > 0 && a.expList.map(ex => <div key={ex.id} style={{ fontSize: 10, color: "#F87171", display: "flex", justifyContent: "space-between", padding: "1px 0" }}><span>{ex.service}</span><span style={{ fontFamily: "'JetBrains Mono',monospace" }}>-{fmt(ex.cost)}</span></div>)}
-                                    {a.trOutList && a.trOutList.map(tr => <div key={tr.id} style={{ fontSize: 10, color: "#FBBF24", display: "flex", justifyContent: "space-between", padding: "1px 0" }}><span>Переказ ({tr.toAcc})</span><span style={{ fontFamily: "'JetBrains Mono',monospace" }}>-{fmt(parseNum(tr.amount) + parseNum(tr.fee))}</span></div>)}
-                                    {a.trInList && a.trInList.map(tr => <div key={tr.id} style={{ fontSize: 10, color: "#4ADE80", display: "flex", justifyContent: "space-between", padding: "1px 0" }}><span>Отримано ({tr.fromAcc})</span><span style={{ fontFamily: "'JetBrains Mono',monospace" }}>+{fmt(tr.amount)}</span></div>)}
-                                    {a.txList.length === 0 && a.expList.length === 0 && (!a.trOutList || a.trOutList.length === 0) && (!a.trInList || a.trInList.length === 0) && <div style={{ fontSize: 10, color: "rgba(255,255,255,.3)", textAlign: "center" }}>Немає операцій</div>}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </th>
+                      <th style={{ background: "#444" }}></th>
                     </tr>
                     
                     <tr style={{ background: "#1A1A1A", color: "#fff" }}>
@@ -1490,29 +1445,29 @@
                   {accountUsage.map(a => {
                     const over = a.pct > 100;
                     return (
-                      <div key={a.id} style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "16px 18px", opacity: a.isActive ? 1 : .55 }}>
+                      <div key={a.id} className={over ? "acct-over" : ""} style={{ background: "#1A1A1A", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.15)", padding: "16px 18px", opacity: a.isActive ? 1 : .55, border: "1px solid #2a2a2a" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                           <div>
-                            <div style={{ fontSize: 15, fontWeight: 700, color: "#333" }}>{a.name}</div>
-                            {a.owner && <div style={{ fontSize: 11, color: "#999" }}>{a.owner}</div>}
+                            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{a.name}</div>
+                            {a.owner && <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)" }}>{a.owner}</div>}
                           </div>
                           <div style={{ display: "flex", gap: 6 }}>
-                            <button onClick={() => startEditAccount(a)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#4A90D9" }}><Icon name="edit" size={13} /></button>
-                            <button onClick={() => toggleAccount(a.id)} title={a.isActive ? "Активна" : "Неактивна"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: a.isActive ? "#16A34A" : "#DC2626" }}>{a.isActive ? "●" : "○"}</button>
-                            <button onClick={() => confirmRemoveAccount(a.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#bbb" }}><Icon name="trash" size={14} /></button>
+                            <button onClick={() => startEditAccount(a)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4A90D9" }}><Icon name="edit" size={13} /></button>
+                            <button onClick={() => toggleAccount(a.id)} title={a.isActive ? "Активна" : "Неактивна"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: a.isActive ? "#4ADE80" : "#F87171" }}>{a.isActive ? "●" : "○"}</button>
+                            <button onClick={() => confirmRemoveAccount(a.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,.35)" }}><Icon name="trash" size={14} /></button>
                           </div>
                         </div>
-                        <div style={{ background: "#f0f0f0", borderRadius: 4, height: 8, marginBottom: 6, overflow: "hidden" }}>
+                        <div style={{ background: "rgba(255,255,255,.1)", borderRadius: 4, height: 8, marginBottom: 6, overflow: "hidden" }}>
                           <div style={{ width: `${Math.min(a.pct, 100)}%`, height: "100%", background: barColor(a.pct), borderRadius: 4 }} />
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
                           <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 700, color: barColor(a.pct) }}>{fmt(a.used)}</span>
-                          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "#aaa" }}>ліміт {fmt(a.limit)}</span>
+                          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "rgba(255,255,255,.4)" }}>ліміт {fmt(a.limit)}</span>
                         </div>
-                        <div style={{ fontSize: 10, color: over ? "#DC2626" : "#999", marginBottom: 8 }}>{over ? `ПЕРЕВИЩЕНО на ${fmt(a.used - a.limit)}` : `Залишок обороту: ${fmt(a.remaining)}`}</div>
-                        <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 8, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                          <span style={{ color: "#888" }}>Бюджет агенції:</span>
-                          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, color: a.accountBudget >= 0 ? "#16A34A" : "#DC2626" }}>{fmt(a.accountBudget)}</span>
+                        <div style={{ fontSize: 10, color: over ? "#F87171" : "rgba(255,255,255,.4)", marginBottom: 8 }}>{over ? `ПЕРЕВИЩЕНО на ${fmt(a.used - a.limit)}` : `Залишок обороту: ${fmt(a.remaining)}`}</div>
+                        <div style={{ borderTop: "1px solid rgba(255,255,255,.1)", paddingTop: 8, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                          <span style={{ color: "rgba(255,255,255,.5)" }}>Бюджет агенції:</span>
+                          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, color: a.accountBudget >= 0 ? "#4ADE80" : "#F87171" }}>{fmt(a.accountBudget)}</span>
                         </div>
                       </div>
                     );
@@ -1558,8 +1513,8 @@
             {/* ============ JOURNAL SECTION ============ */}
             {activeSection === 'journal' && (
               <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 16, flexWrap: "wrap" }}>
-                  <div style={{ fontSize: 13, color: "#666" }}>Кожна дія на платформі · по днях і годинах</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 16, flexWrap: "wrap" }}>
+                  <div style={{ fontSize: 13, color: "#666" }}>Історія всіх дій на платформі</div>
                   <div style={{ display: "flex", gap: 10 }}>
                     <input placeholder="Фільтр..." value={actionLogFilter} onChange={e => setActionLogFilter(e.target.value)} style={{ padding: "7px 12px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13, outline: "none", width: 200 }} />
                     <button className="btn btn-secondary" style={{ fontSize: 12, color: "#DC2626" }} onClick={() => { if(window.confirm("Очистити весь журнал?")) { localStorage.removeItem('adv_action_log'); setActionLogFilter(''); setActiveSection('journal'); } }}>Очистити</button>
@@ -1569,21 +1524,22 @@
                   const log = (() => { try { return JSON.parse(localStorage.getItem('adv_action_log') || '[]'); } catch(e) { return []; } })();
                   const filtered = actionLogFilter ? log.filter(e => e.action.toLowerCase().includes(actionLogFilter.toLowerCase()) || new Date(e.ts).toLocaleDateString('uk-UA').includes(actionLogFilter) || (e.detail || '').toLowerCase().includes(actionLogFilter.toLowerCase())) : log;
                   if (filtered.length === 0) return <div style={{ textAlign: "center", color: "#aaa", padding: 40 }}>Немає записів</div>;
-                  const grouped = {};
-                  filtered.forEach(entry => { const day = new Date(entry.ts).toLocaleDateString('uk-UA', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }); if (!grouped[day]) grouped[day] = []; grouped[day].push(entry); });
-                  return Object.entries(grouped).map(([day, entries]) => (
-                    <div key={day} style={{ marginBottom: 18 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8, paddingBottom: 5, borderBottom: "1px solid #eee" }}>{day}</div>
-                      {entries.map(entry => (
-                        <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "7px 0", borderBottom: "1px solid #f8f8f8" }}>
-                          <span style={{ fontSize: 12, color: "#aaa", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap", width: 44 }}>{new Date(entry.ts).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</span>
-                          <span style={{ fontSize: 14, flex: 1 }}>{entry.action}</span>
-                          {entry.detail && <span style={{ fontSize: 12, color: "#888", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.detail}</span>}
-                          <span style={{ fontSize: 11, color: "#ccc", whiteSpace: "nowrap" }}>{entry.month}</span>
-                        </div>
-                      ))}
+                  return (
+                    <div>
+                      {filtered.map((entry, idx) => {
+                        const d = new Date(entry.ts);
+                        const dt = d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' · ' + d.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+                        return (
+                          <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "6px 8px", borderRadius: 6, background: idx % 2 ? "#fafafa" : "#fff" }}>
+                            <span style={{ fontSize: 11, color: "#aaa", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap", width: 110, flexShrink: 0 }}>{dt}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "#333", whiteSpace: "nowrap", flexShrink: 0 }}>{entry.action}</span>
+                            {entry.detail && <span style={{ fontSize: 12, color: "#777", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>· {entry.detail}</span>}
+                            <span style={{ fontSize: 11, color: "#ccc", whiteSpace: "nowrap", marginLeft: "auto", flexShrink: 0 }}>{entry.month}</span>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ));
+                  );
                 })()}
               </div>
             )}
