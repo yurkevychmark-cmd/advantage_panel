@@ -299,8 +299,14 @@
       const [editAccount, setEditAccount] = useState(null);
       
       const [newWorker, setNewWorker] = useState({ name: "", role: "", colorIdx: 5 });
-      const [newExpense, setNewExpense] = useState({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "" });
+      const [newExpense, setNewExpense] = useState({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "" });
       const [salaryDismissed, setSalaryDismissed] = useState(() => localStorage.getItem('salary_dismissed') || "");
+      const [showActionLog, setShowActionLog] = useState(false);
+      const [actionLogFilter, setActionLogFilter] = useState('');
+      const [salaryNotifyWorkerIds, setSalaryNotifyWorkerIds] = useState(() => {
+        try { const v = localStorage.getItem('salary_notify_workers'); return v ? JSON.parse(v) : null; } catch(e) { return null; }
+      });
+      const [showSalarySettings, setShowSalarySettings] = useState(false);
       const [newAccountForm, setNewAccountForm] = useState({ name: "", owner: "", limit: 10000 });
       const [newTransfer, setNewTransfer] = useState({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" });
       
@@ -364,6 +370,14 @@
       }, []);
 
       const monthKey = `${currentYear}-${currentMonth}`;
+
+      const logAction = (action, detail = '') => {
+        const entry = { id: uid(), ts: Date.now(), action, detail, month: `${MONTHS_UA[currentMonth]} ${currentYear}` };
+        try {
+          const prev = JSON.parse(localStorage.getItem('adv_action_log') || '[]');
+          localStorage.setItem('adv_action_log', JSON.stringify([entry, ...prev].slice(0, 500)));
+        } catch(e) {}
+      };
       const data = monthData[monthKey] || { transactions: [], expenses: [], transfers: [], investments: [], carryover: 0 };
       const transactions = data.transactions || [];
       const expenses = data.expenses || [];
@@ -519,9 +533,16 @@
       };
 
       const updateTx = (txId, field, val) => setTransactions(p => p.map(t => t.id === txId ? { ...t, [field]: field === 'date' ? autoDate(val) : val } : t));
-      const updateWorkerPay = (txId, wId, field, val) => setTransactions(p => p.map(t => { if (t.id !== txId) return t; return { ...t, workerPay: { ...t.workerPay, [wId]: { ...t.workerPay[wId], [field]: val } } }; }));
-      const addTransaction = () => setTransactions(p => [...p, { id: uid(), client: "", service: "", platforma: "", payment: 0, date: "", costTax: 0, agencyRev: 0, comment: "", invoice: null, status: 'pending', workerPay: makeWorkerPay(workers) }]);
-      const removeTx = (id) => setTransactions(p => p.filter(t => t.id !== id));
+      const updateWorkerPay = (txId, wId, field, val) => {
+        if (field === 'paid') {
+          const wName = workers.find(w => w.id === wId)?.name || '';
+          const tx = transactions.find(t => t.id === txId);
+          logAction(val ? `✅ ЗП виплачено — ${wName}` : `↩️ ЗП скасовано — ${wName}`, tx?.client || '');
+        }
+        setTransactions(p => p.map(t => { if (t.id !== txId) return t; return { ...t, workerPay: { ...t.workerPay, [wId]: { ...t.workerPay[wId], [field]: val } } }; }));
+      };
+      const addTransaction = () => { setTransactions(p => [...p, { id: uid(), client: "", service: "", platforma: "", payment: 0, date: "", costTax: 0, agencyRev: 0, comment: "", invoice: null, status: 'pending', workerPay: makeWorkerPay(workers) }]); logAction('➕ Нова транзакція'); };
+      const removeTx = (id) => { const tx = transactions.find(t => t.id === id); setTransactions(p => p.filter(t => t.id !== id)); logAction('🗑️ Транзакція видалена', tx?.client || ''); };
 
       const handleBulkAction = (actionType) => {
         if (!bulkTargetMonth) return;
@@ -644,9 +665,9 @@
       const addWorker = () => { if (!newWorker.name.trim()) return; const w = { id: uid(), name: newWorker.name.trim(), role: newWorker.role.trim(), colorIdx: newWorker.colorIdx % WORKER_COLORS.length }; setWorkers(p => [...p, w]); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => ({ ...t, workerPay: { ...t.workerPay, [w.id]: { amount: 0, paid: false } } })) }; }); return n; }); setNewWorker({ name: "", role: "", colorIdx: (newWorker.colorIdx + 1) % WORKER_COLORS.length }); setShowAddWorker(false); };
       const removeWorker = (wId) => { setWorkers(p => p.filter(w => w.id !== wId)); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => { const wp = { ...t.workerPay }; delete wp[wId]; return { ...t, workerPay: wp }; }) }; }); return n; }); };
 
-      const addExpense = () => { if (!newExpense.service.trim()) return; const expData = { ...newExpense, date: autoDate(newExpense.date) }; if (editExpense) setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); else setExpenses(p => [...p, { id: uid(), ...expData }]); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "" }); setShowAddExpense(false); setEditExpense(null); };
-      const removeExpense = (id) => setExpenses(p => p.filter(e => e.id !== id));
-      const startEditExpense = (e) => { setEditExpense(e); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost, recurring: e.recurring || false, workerLink: e.workerLink || "" }); setShowAddExpense(true); };
+      const addExpense = () => { if (!newExpense.service.trim()) return; const expData = { ...newExpense, date: autoDate(newExpense.date) }; if (editExpense) { setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); logAction('✏️ Витрата оновлена', newExpense.service); } else { setExpenses(p => [...p, { id: uid(), ...expData }]); logAction('➕ Витрата додана', newExpense.service); } setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "" }); setShowAddExpense(false); setEditExpense(null); };
+      const removeExpense = (id) => { const ex = expenses.find(e => e.id === id); setExpenses(p => p.filter(e => e.id !== id)); logAction('🗑️ Витрата видалена', ex?.service || ''); };
+      const startEditExpense = (e) => { setEditExpense(e); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost, recurring: e.recurring || false, workerLink: e.workerLink || "", costType: e.costType || "" }); setShowAddExpense(true); };
 
       const addTransfer = () => { if (!newTransfer.fromAcc || !newTransfer.toAcc) return; setTransfers(p => [...p, { id: uid(), ...newTransfer, date: autoDate(newTransfer.date) }]); setNewTransfer({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" }); setShowTransfer(false); };
       const removeTransfer = (id) => setTransfers(p => p.filter(t => t.id !== id));
@@ -993,6 +1014,7 @@
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>Date</th>
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "right" }}>Cost</th>
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }} title="Повторювана щомісяця">🔄</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }} title="Тип витрати: агенська / під клієнта">🏷️</th>
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>👤 Зарплата</th>
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>Дії</th>
                        </tr>
@@ -1021,6 +1043,11 @@
                              <button onClick={() => { const x=[...expenses]; x[i].recurring=!e.recurring; setExpenses(x); }} title={e.recurring ? "Щомісяця (клік — зняти)" : "Одноразово (клік — зробити щомісячним)"} style={{ border: "none", background: e.recurring ? "rgba(74,144,217,.12)" : "none", borderRadius: 4, cursor: "pointer", fontSize: 13, padding: "2px 4px", color: e.recurring ? "#4A90D9" : "#ccc" }}>🔄</button>
                            </td>
                            <td style={{ padding: "4px 6px", textAlign: "center" }}>
+                             <button onClick={() => { const x=[...expenses]; x[i].costType = x[i].costType === 'client' ? '' : 'client'; setExpenses(x); }} title={e.costType === 'client' ? 'Під клієнта — клік щоб змінити на агенську' : 'Агенська — клік щоб змінити на "під клієнта"'} style={{ border: "none", background: e.costType === 'client' ? "rgba(239,68,68,.12)" : "rgba(74,144,217,.1)", borderRadius: 4, cursor: "pointer", fontSize: 10, padding: "2px 6px", color: e.costType === 'client' ? "#DC2626" : "#4A90D9", whiteSpace: "nowrap" }}>
+                               {e.costType === 'client' ? '👥 клієнт' : '🏢 агенс.'}
+                             </button>
+                           </td>
+                           <td style={{ padding: "4px 6px", textAlign: "center" }}>
                              <select value={e.workerLink || ""} onChange={ev => { const x=[...expenses]; x[i].workerLink=ev.target.value; setExpenses(x); }} style={{ fontSize: 11, border: "1px solid #ddd", borderRadius: 4, padding: "2px 4px", background: e.workerLink ? "#F0FDF4" : "#fff", color: e.workerLink ? "#166534" : "#999", maxWidth: 110, cursor: "pointer" }}>
                                <option value="">— не ЗП —</option>
                                {workers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
@@ -1032,12 +1059,12 @@
                            </td>
                          </tr>
                        ))}
-                       {expenses.length === 0 && <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: "#999" }}>Немає витрат</td></tr>}
+                       {expenses.length === 0 && <tr><td colSpan={9} style={{ padding: 20, textAlign: "center", color: "#999" }}>Немає витрат</td></tr>}
                      </tbody>
                    </table>
                  </div>
                  <div style={{ padding: "12px 16px", borderTop: "1px solid #eee" }}>
-                   <button className="btn btn-primary" onClick={() => { setEditExpense(null); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0 }); setShowAddExpense(true); }}>➕ Додати витрати</button>
+                   <button className="btn btn-primary" onClick={() => { setEditExpense(null); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "" }); setShowAddExpense(true); }}>➕ Додати витрати</button>
                  </div>
                </div>
 
@@ -1178,6 +1205,7 @@
                </div>
                
                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <button className="btn btn-secondary" onClick={() => setShowActionLog(true)} style={{ fontSize: 13 }}>📋 Журнал дій</button>
                   <button className="btn btn-secondary" onClick={exportSelected} style={{ fontSize: 13 }}>📥 Експорт</button>
                   <button className="btn btn-secondary" onClick={() => importInputRef.current?.click()} style={{ fontSize: 13 }}>📤 Імпорт JSON</button>
                </div>
@@ -1205,6 +1233,10 @@
             <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
               <input type="checkbox" checked={newExpense.recurring} onChange={e => setNewExpense({ ...newExpense, recurring: e.target.checked })} style={{ width: 15, height: 15, marginTop: 0 }} />
               🔄 Повторювана (щомісяця)
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+              <input type="checkbox" checked={newExpense.costType === 'client'} onChange={e => setNewExpense({ ...newExpense, costType: e.target.checked ? 'client' : '' })} style={{ width: 15, height: 15, marginTop: 0 }} />
+              👥 Під клієнта (не агенська витрата)
             </label>
             <label>👤 Зарплата для (синхр. з воркером)
               <select value={newExpense.workerLink} onChange={e => setNewExpense({ ...newExpense, workerLink: e.target.value })} style={{ marginTop: 4 }}>
@@ -1246,13 +1278,17 @@
 
           {/* SALARY REMINDER — floating bottom-right */}
           {(() => {
-            const unpaid = workers.filter(w => transactions.some(t => { const wp = t.workerPay?.[w.id]; return wp && parseNum(wp.amount) > 0 && !wp.paid; }));
+            const watchedWorkers = salaryNotifyWorkerIds !== null ? workers.filter(w => salaryNotifyWorkerIds.includes(w.id)) : workers;
+            const unpaid = watchedWorkers.filter(w => transactions.some(t => { const wp = t.workerPay?.[w.id]; return wp && parseNum(wp.amount) > 0 && !wp.paid; }));
             const allPaid = unpaid.length === 0;
             const dismissed = salaryDismissed === monthKey;
             if (allPaid || dismissed) return null;
             return (
-              <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 2000, background: "#1A1A1A", color: "#fff", borderRadius: 12, padding: "14px 18px", boxShadow: "0 8px 32px rgba(0,0,0,.4)", maxWidth: 280, border: "1px solid rgba(255,200,50,.3)" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#FBBF24", marginBottom: 6 }}>⏰ Нагадування про ЗП</div>
+              <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 2000, background: "#1A1A1A", color: "#fff", borderRadius: 12, padding: "14px 18px", boxShadow: "0 8px 32px rgba(0,0,0,.4)", maxWidth: 290, border: "1px solid rgba(255,200,50,.3)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#FBBF24" }}>⏰ Нагадування про ЗП</div>
+                  <button onClick={() => setShowSalarySettings(true)} title="Налаштування сповіщень" style={{ border: "none", background: "rgba(255,255,255,.1)", borderRadius: 4, cursor: "pointer", color: "#ccc", fontSize: 13, padding: "2px 5px", lineHeight: 1 }}>⚙️</button>
+                </div>
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,.7)", marginBottom: 10 }}>
                   Не виплачено: {unpaid.map(w => w.name).join(", ")}
                 </div>
@@ -1263,6 +1299,74 @@
               </div>
             );
           })()}
+
+          {/* MODAL: Action Log */}
+          {showActionLog && (
+            <div className="modal-overlay" onClick={() => setShowActionLog(false)}>
+              <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 580, maxHeight: "80vh", overflowY: "auto" }}>
+                <h3>📋 Журнал дій</h3>
+                <input placeholder="Фільтр за датою або дією..." value={actionLogFilter} onChange={e => setActionLogFilter(e.target.value)} style={{ width: "100%", padding: "8px 10px", marginBottom: 14, border: "1px solid #ddd", borderRadius: 6, boxSizing: "border-box", fontSize: 13 }} />
+                {(() => {
+                  const log = (() => { try { return JSON.parse(localStorage.getItem('adv_action_log') || '[]'); } catch(e) { return []; } })();
+                  const filtered = actionLogFilter ? log.filter(e => e.action.toLowerCase().includes(actionLogFilter.toLowerCase()) || new Date(e.ts).toLocaleDateString('uk-UA').includes(actionLogFilter) || (e.detail || '').toLowerCase().includes(actionLogFilter.toLowerCase())) : log;
+                  if (filtered.length === 0) return <div style={{ textAlign: "center", color: "#aaa", padding: 24 }}>Немає записів</div>;
+                  const grouped = {};
+                  filtered.forEach(entry => {
+                    const day = new Date(entry.ts).toLocaleDateString('uk-UA', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+                    if (!grouped[day]) grouped[day] = [];
+                    grouped[day].push(entry);
+                  });
+                  return Object.entries(grouped).map(([day, entries]) => (
+                    <div key={day} style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 6, paddingBottom: 4, borderBottom: "1px solid #eee" }}>{day}</div>
+                      {entries.map(entry => (
+                        <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0", borderBottom: "1px solid #f8f8f8" }}>
+                          <span style={{ fontSize: 11, color: "#aaa", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap" }}>{new Date(entry.ts).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span style={{ fontSize: 13, flex: 1 }}>{entry.action}</span>
+                          {entry.detail && <span style={{ fontSize: 11, color: "#888", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.detail}</span>}
+                          <span style={{ fontSize: 10, color: "#ccc", whiteSpace: "nowrap" }}>{entry.month}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ));
+                })()}
+                <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "space-between" }}>
+                  <button className="btn btn-secondary" style={{ fontSize: 12, color: "#DC2626" }} onClick={() => { if(window.confirm("Очистити весь журнал?")) { localStorage.removeItem('adv_action_log'); setActionLogFilter(''); } }}>🗑️ Очистити лог</button>
+                  <button className="btn btn-primary" onClick={() => setShowActionLog(false)}>Закрити</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: Salary Notification Settings */}
+          {showSalarySettings && (
+            <div className="modal-overlay" onClick={() => setShowSalarySettings(false)}>
+              <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+                <h3>⚙️ Сповіщення про ЗП</h3>
+                <p style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>Вибери яких воркерів включати у нагадування. За замовчуванням — всі.</p>
+                {workers.map(w => {
+                  const c = wc(w);
+                  const included = salaryNotifyWorkerIds === null || salaryNotifyWorkerIds.includes(w.id);
+                  return (
+                    <label key={w.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 6, cursor: "pointer", background: included ? c.bgLight : "#f9f9f9", marginBottom: 4, border: `1px solid ${included ? c.border : "#eee"}` }}>
+                      <input type="checkbox" checked={included} onChange={ev => {
+                        const current = salaryNotifyWorkerIds || workers.map(ww => ww.id);
+                        const updated = ev.target.checked ? [...current, w.id] : current.filter(id => id !== w.id);
+                        setSalaryNotifyWorkerIds(updated);
+                        localStorage.setItem('salary_notify_workers', JSON.stringify(updated));
+                      }} style={{ accentColor: c.border }} />
+                      <span style={{ fontSize: 14, fontWeight: 600, color: c.text }}>{w.name}</span>
+                      {w.role && <span style={{ fontSize: 11, color: "#888" }}>{w.role}</span>}
+                    </label>
+                  );
+                })}
+                <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "space-between" }}>
+                  <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => { setSalaryNotifyWorkerIds(null); localStorage.removeItem('salary_notify_workers'); }}>↺ Скинути (всі)</button>
+                  <button className="btn btn-primary" onClick={() => setShowSalarySettings(false)}>Готово</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {showAddInvestment && (<div className="modal-overlay" onClick={() => setShowAddInvestment(false)}><div className="modal" onClick={e => e.stopPropagation()}>
             <h3>Додати вкладення</h3>
