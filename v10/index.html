@@ -32,7 +32,7 @@
       { bg: "#D9D5A5", bgLight: "#F2F0DF", text: "#6B672D", border: "#C9C57E" },
     ];
 
-    const MONTHS_UA = ["Січень","Лютий","Березень","Квітень","Травень","Червень","Липень","Серпень","Вересень","Жовтень","Листопад","Грудень"];
+    const MONTHS_UA = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
     const LOGO_SRC = "data:image/webp;base64,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PSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIj4KICAgICAgICAgPGV4aWY6UGl4ZWxZRGltZW5zaW9uPjEyMDwvZXhpZjpQaXhlbFlEaW1lbnNpb24+CiAgICAgICAgIDxleGlmOlBpeGVsWERpbWVuc2lvbj41NTA8L2V4aWY6UGl4ZWxYRGltZW5zaW9uPgogICAgICAgICA8dGlmZjpSZXNvbHV0aW9uVW5pdD4yPC90aWZmOlJlc29sdXRpb25Vbml0PgogICAgICAgICA8dGlmZjpYUmVzb2x1dGlvbj43MjAwMDAvMTAwMDA8L3RpZmY6WFJlc29sdXRpb24+CiAgICAgICAgIDx0aWZmOk9yaWVudGF0aW9uPjE8L3RpZmY6T3JpZW50YXRpb24+CiAgICAgICAgIDx0aWZmOllSZXNvbHV0aW9uPjcyMDAwMC8xMDAwMDwvdGlmZjpZUmVzb2x1dGlvbj4KICAgICAgICAgPHhtcDpNZXRhZGF0YURhdGU+MjAyNS0wNS0wNlQwODo1NjoyMyswMjowMDwveG1wOk1ldGFkYXRhRGF0ZT4KICAgICAgICAgPHhtcDpDcmVhdG9yVG9vbD5QaXhlbG1hdG9yIFBybyAzLjYuMTwveG1wOkNyZWF0b3JUb29sPgogICAgICAgICA8eG1wOkNyZWF0ZURhdGU+MjAyNS0wNS0wNVQxMzoxMDozMiswMjowMDwveG1wOkNyZWF0ZURhdGU+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgo=";
 
@@ -105,6 +105,7 @@
       note: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h4"/></>,
       role: <><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></>,
       receipt: <><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></>,
+      book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></>,
     };
 
     const Icon = ({ name, size = 16, color = "currentColor", strokeWidth = 2, style = {} }) => (
@@ -144,9 +145,9 @@
       
       if (editing) {
         if (multiline) {
-           return <textarea ref={inputRef} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") cancel(); }} onBlur={commit} style={{ width: "100%", boxSizing: "border-box", padding: "4px 6px", border: "2px solid #4A90D9", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 11, outline: "none", background: "#fff", resize: "vertical", minHeight: 50, ...style }} className={className} />
+           return <textarea ref={inputRef} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") cancel(); }} onBlur={commit} style={{ width: "100%", boxSizing: "border-box", padding: "4px 6px", border: "2px solid #4A90D9", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 11, outline: "none", background: "#1A1A1A", resize: "vertical", minHeight: 50, ...style }} className={className} />
         }
-        return (<input ref={inputRef} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") cancel(); }} onBlur={commit} style={{ width: "100%", boxSizing: "border-box", padding: "4px 6px", border: "2px solid #4A90D9", borderRadius: 3, fontFamily: mono ? "'JetBrains Mono',monospace" : "'DM Sans',sans-serif", fontSize: 13, outline: "none", background: "#fff", ...style }} className={className} />);
+        return (<input ref={inputRef} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") cancel(); }} onBlur={commit} style={{ width: "100%", boxSizing: "border-box", padding: "4px 6px", border: "2px solid #4A90D9", borderRadius: 3, fontFamily: mono ? "'JetBrains Mono',monospace" : "'DM Sans',sans-serif", fontSize: 13, outline: "none", background: "#1A1A1A", ...style }} className={className} />);
       }
       return (<div onClick={() => setEditing(true)} style={{ cursor: "text", padding: "4px 6px", minHeight: 22, borderRadius: 3, fontFamily: mono ? "'JetBrains Mono',monospace" : "'DM Sans',sans-serif", fontSize: 13, transition: "background .15s", ...style }} className={`editable-cell ${className}`} title={type !== "number" ? value : undefined}>{type === "number" ? fmt(value) : (value || "")}</div>);
     };
@@ -155,7 +156,7 @@
       const [expanded, setExpanded] = useState(false);
       const handleToggle = (e) => { e.stopPropagation(); setExpanded(!expanded); };
       
-      if (!value) return <span className="comment-icon" onClick={() => onChange("...")} style={{ padding: "0 6px", display: "inline-block" }}>💬</span>;
+      if (!value) return <span className="comment-icon" onClick={() => onChange("...")} style={{ padding: "0 6px", display: "inline-flex", color: "#888" }}><Icon name="note" size={12} /></span>;
       
       return (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
@@ -247,13 +248,13 @@
                 <span style={{ color: clr, fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, fontSize: 11 }}>{val != null ? val.toFixed(4) : '—'}</span>
               </div>
             ))}
-            <button onClick={fetchRates} title="Оновити" style={{ background: 'none', border: 'none', color: loading ? '#4A90D9' : 'rgba(255,255,255,.3)', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }}>↻</button>
+            <button onClick={fetchRates} title="Refresh" style={{ background: 'none', border: 'none', color: loading ? '#4A90D9' : 'rgba(255,255,255,.3)', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }}>↻</button>
             {lastUpdate && <span style={{ color: 'rgba(255,255,255,.2)', fontSize: 9 }}>{lastUpdate.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})}</span>}
           </div>
           <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,.1)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: 'rgba(255,255,255,.4)', fontSize: 10, textTransform: 'uppercase', letterSpacing: .5 }}>Конвертер:</span>
-            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ width: 80, padding: '6px 8px', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 6, color: '#fff', fontSize: 13, fontFamily: "'JetBrains Mono',monospace", outline: 'none' }} placeholder="Сума" />
+            <span style={{ color: 'rgba(255,255,255,.4)', fontSize: 10, textTransform: 'uppercase', letterSpacing: .5 }}>Converter:</span>
+            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ width: 80, padding: '6px 8px', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', borderRadius: 6, color: '#fff', fontSize: 13, fontFamily: "'JetBrains Mono',monospace", outline: 'none' }} placeholder="Amount" />
             <select value={fromCur} onChange={e => setFromCur(e.target.value)} style={selSt}>{currencies.map(c => <option key={c} value={c}>{c}</option>)}</select>
             <button onClick={() => { const t = fromCur; setFromCur(toCur); setToCur(t); }} style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 6, color: 'rgba(255,255,255,.6)', cursor: 'pointer', fontSize: 13, padding: '4px 8px' }}>⇄</button>
             <div style={{ minWidth: 90, padding: '6px 10px', background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 6, fontFamily: "'JetBrains Mono',monospace", fontSize: 14, fontWeight: 700, color: result != null ? '#4ADE80' : 'rgba(255,255,255,.2)', textAlign: 'center' }}>
@@ -282,7 +283,7 @@
         });
 
         if (error) {
-          setError("Невірний email або пароль");
+          setError("Invalid email or password");
           setShake(true);
           setTimeout(() => setShake(false), 500);
         }
@@ -290,25 +291,26 @@
       };
       
       return (
-        <div style={{ minHeight: "100vh", background: "#1A1A1A", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',sans-serif" }}>
+        <div style={{ minHeight: "100vh", background: "#0F0F0F", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans',sans-serif" }}>
           <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
-            @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}.login-shake{animation:shake .4s ease}`}</style>
-          <div className={shake ? "login-shake" : ""} style={{ background: "#fff", borderRadius: 16, padding: "48px 40px", width: 400, maxWidth: "90vw", boxShadow: "0 24px 80px rgba(0,0,0,.5)" }}>
+            @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}.login-shake{animation:shake .4s ease}
+            input{color:#E5E5E5;background:#1f1f1f}`}</style>
+          <div className={shake ? "login-shake" : ""} style={{ background: "#1A1A1A", border: "1px solid #2a2a2a", borderRadius: 16, padding: "48px 40px", width: 400, maxWidth: "90vw", boxShadow: "0 24px 80px rgba(0,0,0,.5)" }}>
             <div style={{ textAlign: "center", marginBottom: 32 }}>
               <img src={LOGO_SRC} alt="ADvantage" style={{ height: 36 }} />
               <div style={{ fontSize: 14, color: "#888", marginTop: 8 }}>Revenue Panel</div>
             </div>
             <label style={{ display: "block", marginBottom: 16 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "#555", display: "block", marginBottom: 4 }}>Email</span>
-              <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} placeholder="your@email.com" style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #ddd", borderRadius: 8, fontSize: 14, fontFamily: "'DM Sans',sans-serif", boxSizing: "border-box", outline: "none" }} autoFocus />
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#a5a5a5", display: "block", marginBottom: 4 }}>Email</span>
+              <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} placeholder="your@email.com" style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #333", borderRadius: 8, fontSize: 14, fontFamily: "'DM Sans',sans-serif", boxSizing: "border-box", outline: "none" }} autoFocus />
             </label>
             <label style={{ display: "block", marginBottom: 20 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: "#555", display: "block", marginBottom: 4 }}>Пароль</span>
-              <input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setError(""); }} placeholder="••••••••••" onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }} style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #ddd", borderRadius: 8, fontSize: 14, fontFamily: "'DM Sans',sans-serif", boxSizing: "border-box", outline: "none" }} />
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#a5a5a5", display: "block", marginBottom: 4 }}>Password</span>
+              <input type="password" value={pass} onChange={(e) => { setPass(e.target.value); setError(""); }} placeholder="••••••••••" onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }} style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #333", borderRadius: 8, fontSize: 14, fontFamily: "'DM Sans',sans-serif", boxSizing: "border-box", outline: "none" }} />
             </label>
             {error && <div style={{ color: "#DC2626", fontSize: 13, marginBottom: 12, textAlign: "center" }}>{error}</div>}
-            <button onClick={handleSubmit} disabled={isLoading} style={{ width: "100%", padding: "12px", background: "#1A1A1A", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: isLoading ? "wait" : "pointer", fontFamily: "'DM Sans',sans-serif", opacity: isLoading ? 0.7 : 1 }}>
-               {isLoading ? "Вхід..." : "Увійти"}
+            <button onClick={handleSubmit} disabled={isLoading} style={{ width: "100%", padding: "12px", background: "#4A90D9", color: "#fff", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: isLoading ? "wait" : "pointer", fontFamily: "'DM Sans',sans-serif", opacity: isLoading ? 0.7 : 1 }}>
+               {isLoading ? "Signing in..." : "Sign in"}
             </button>
           </div>
         </div>
@@ -631,12 +633,12 @@
         if (field === 'paid') {
           const wName = workers.find(w => w.id === wId)?.name || '';
           const tx = transactions.find(t => t.id === txId);
-          logAction(val ? `✅ ЗП виплачено — ${wName}` : `↩️ ЗП скасовано — ${wName}`, tx?.client || '');
+          logAction(val ? `Salary paid — ${wName}` : `Salary unpaid — ${wName}`, tx?.client || '');
         }
         setTransactions(p => p.map(t => { if (t.id !== txId) return t; return { ...t, workerPay: { ...t.workerPay, [wId]: { ...t.workerPay[wId], [field]: val } } }; }));
       };
-      const addTransaction = () => { setTransactions(p => [...p, { id: uid(), client: "", service: "", platforma: "", payment: 0, date: "", costTax: 0, agencyRev: 0, comment: "", invoice: null, status: 'pending', workerPay: makeWorkerPay(workers) }]); logAction('➕ Нова транзакція'); };
-      const removeTx = (id) => { const tx = transactions.find(t => t.id === id); setTransactions(p => p.filter(t => t.id !== id)); logAction('🗑️ Транзакція видалена', tx?.client || ''); };
+      const addTransaction = () => { setTransactions(p => [...p, { id: uid(), client: "", service: "", platforma: "", payment: 0, date: "", costTax: 0, agencyRev: 0, comment: "", invoice: null, status: 'pending', workerPay: makeWorkerPay(workers) }]); logAction('Added transaction'); };
+      const removeTx = (id) => { const tx = transactions.find(t => t.id === id); setTransactions(p => p.filter(t => t.id !== id)); logAction('Deleted transaction', tx?.client || ''); };
 
       const handleBulkAction = (actionType) => {
         if (!bulkTargetMonth) return;
@@ -760,8 +762,8 @@
       const removeWorker = (wId) => { setWorkers(p => p.filter(w => w.id !== wId)); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => { const wp = { ...t.workerPay }; delete wp[wId]; return { ...t, workerPay: wp }; }) }; }); return n; }); };
       const updateWorkerField = (wId, field, val) => setWorkers(p => p.map(w => w.id === wId ? { ...w, [field]: val } : w));
 
-      const addExpense = () => { if (!newExpense.service.trim()) return; const expData = { ...newExpense, date: autoDate(newExpense.date) }; if (editExpense) { setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); logAction('✏️ Витрата оновлена', newExpense.service); } else { setExpenses(p => [...p, { id: uid(), ...expData }]); logAction('➕ Витрата додана', newExpense.service); } setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "" }); setShowAddExpense(false); setEditExpense(null); };
-      const removeExpense = (id) => { const ex = expenses.find(e => e.id === id); setExpenses(p => p.filter(e => e.id !== id)); logAction('🗑️ Витрата видалена', ex?.service || ''); };
+      const addExpense = () => { if (!newExpense.service.trim()) return; const expData = { ...newExpense, date: autoDate(newExpense.date) }; if (editExpense) { setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); logAction('Updated expense', newExpense.service); } else { setExpenses(p => [...p, { id: uid(), ...expData }]); logAction('Added expense', newExpense.service); } setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "" }); setShowAddExpense(false); setEditExpense(null); };
+      const removeExpense = (id) => { const ex = expenses.find(e => e.id === id); setExpenses(p => p.filter(e => e.id !== id)); logAction('Deleted expense', ex?.service || ''); };
       const startEditExpense = (e) => { setEditExpense(e); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost, recurring: e.recurring || false, workerLink: e.workerLink || "", costType: e.costType || "", clientName: e.clientName || "" }); setShowAddExpense(true); };
 
       const addTransfer = () => { if (!newTransfer.fromAcc || !newTransfer.toAcc) return; setTransfers(p => [...p, { id: uid(), ...newTransfer, date: autoDate(newTransfer.date) }]); setNewTransfer({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" }); setShowTransfer(false); };
@@ -789,7 +791,7 @@
       };
       
       const confirmRemoveAccount = (id) => {
-         if(window.confirm("Дійсно видалити цю платіжку? Це вплине на відображення лімітів.")) {
+         if(window.confirm("Delete this payment account? This affects limit display.")) {
             setAccounts(p => p.filter(a => a.id !== id));
          }
       };
@@ -809,49 +811,55 @@
       if (isInitialLoad) {
         return (
           <div style={{ minHeight: "100vh", background: "#1A1A1A", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "'DM Sans', sans-serif" }}>
-            <h2>Завантаження даних з хмари...</h2>
+            <h2>Loading data from cloud...</h2>
           </div>
         );
       }
 
       const NAV_ITEMS = [
-        { id: 'dashboard', icon: 'dashboard', label: 'Дашборд' },
-        { id: 'operations', icon: 'transactions', label: 'Транзакції' },
-        { id: 'team', icon: 'team', label: 'Команда' },
-        { id: 'accounts', icon: 'accounts', label: 'Рахунки' },
-        { id: 'journal', icon: 'journal', label: 'Журнал' },
-        { id: 'settings', icon: 'settings', label: 'Налаштування' },
+        { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
+        { id: 'operations', icon: 'transactions', label: 'Transactions' },
+        { id: 'team', icon: 'team', label: 'Team' },
+        { id: 'accounts', icon: 'accounts', label: 'Accounts' },
+        { id: 'journal', icon: 'journal', label: 'Journal' },
+        { id: 'settings', icon: 'settings', label: 'Settings' },
+        { id: 'mechanics', icon: 'book', label: 'Mechanics' },
       ];
 
       return (
-        <div style={{ minHeight: "100vh", background: "#E8E4DE", fontFamily: "'DM Sans',sans-serif", display: "flex" }}>
+        <div style={{ minHeight: "100vh", background: "#0F0F0F", color: "#E5E5E5", fontFamily: "'DM Sans',sans-serif", display: "flex" }}>
           <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
             *{box-sizing:border-box;margin:0;padding:0}
-            .editable-cell:hover{background:rgba(0,0,0,.06)!important}
+            body{background:#0F0F0F}
+            input,select,textarea{color:#E5E5E5;background:#1f1f1f}
+            input::placeholder,textarea::placeholder{color:#666}
+            input[type=checkbox]{background:none}
+            option{background:#1E1E1E;color:#E5E5E5}
+            .editable-cell:hover{background:rgba(255,255,255,.07)!important}
             .tx-row:hover .row-delete{opacity:1!important}
-            .tx-row{transition:background .2s}.tx-row.invalid{background:#FEE2E2!important}.tx-row.received{background:#F0FDF4}
+            .tx-row{transition:background .2s}.tx-row.invalid{background:#3a1d1d!important}.tx-row.received{background:#15291b}
             .status-btn{border:none;background:none;cursor:pointer;font-size:14px;padding:1px;border-radius:50%;transition:transform .15s;line-height:1;display:block;margin:0 auto}.status-btn:hover{transform:scale(1.2)}
             .sc{position:sticky;z-index:1;background:inherit}.sc0{left:0px}.sc1{left:36px}.sc2{left:66px;box-shadow:3px 0 6px rgba(0,0,0,.08)}
             thead .sc{z-index:4}
             .worker-th{cursor:grab}.worker-th:active{cursor:grabbing}
             table{border-collapse:collapse}
-            ::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-track{background:#d5d1cb;border-radius:4px}::-webkit-scrollbar-thumb{background:#999;border-radius:4px}
-            .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
-            .modal{background:#fff;border-radius:12px;padding:28px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-            .modal h3{margin-bottom:18px;font-size:18px}
-            .modal label{display:block;margin-bottom:12px;font-size:13px;font-weight:500;color:#555}
-            .modal input,.modal select, .modal textarea{width:100%;padding:8px 12px;border:1.5px solid #ddd;border-radius:6px;font-size:14px;font-family:'DM Sans',sans-serif;margin-top:4px}
+            ::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-track{background:#1a1a1a;border-radius:4px}::-webkit-scrollbar-thumb{background:#444;border-radius:4px}
+            .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
+            .modal{background:#1A1A1A;border:1px solid #2a2a2a;border-radius:12px;padding:28px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.6);color:#E5E5E5}
+            .modal h3{margin-bottom:18px;font-size:18px;color:#fff}
+            .modal label{display:block;margin-bottom:12px;font-size:13px;font-weight:500;color:#9a9a9a}
+            .modal input,.modal select, .modal textarea{width:100%;padding:8px 12px;border:1.5px solid #333;border-radius:6px;font-size:14px;font-family:'DM Sans',sans-serif;margin-top:4px;background:#222;color:#E5E5E5}
             .modal input:focus,.modal select:focus, .modal textarea:focus{border-color:#4A90D9;outline:none}
             .btn{padding:8px 18px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s; display:inline-flex; align-items:center; gap:6px}
-            .btn-primary{background:#1A1A1A;color:#fff}.btn-primary:hover{background:#333}
-            .btn-secondary{background:#E8E4DE;color:#333}.btn-secondary:hover{background:#d5d1cb}
-            .btn-action{background:#fff; border:1px solid #ddd; color:#333}.btn-action:hover{background:#f5f5f5}
+            .btn-primary{background:#4A90D9;color:#fff}.btn-primary:hover{background:#3a7bc0}
+            .btn-secondary{background:#2a2a2a;color:#E5E5E5}.btn-secondary:hover{background:#363636}
+            .btn-action{background:#222; border:1px solid #333; color:#E5E5E5}.btn-action:hover{background:#2a2a2a}
             .kpi-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:16px 20px;min-width:170px}
             .kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.5);margin-bottom:4px}
             .kpi-value{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:#fff}
             .checkbox-paid{width:16px;height:16px;cursor:pointer;accent-color:#16A34A}
             .comment-icon{cursor:pointer;font-size:12px;opacity:.5;transition:opacity .15s}.comment-icon:hover{opacity:1}
-            .invoice-btn{border:none;background:none;cursor:pointer;font-size:12px;padding:2px 4px;border-radius:3px;transition:background .15s}.invoice-btn:hover{background:rgba(0,0,0,.08)}
+            .invoice-btn{border:none;background:none;cursor:pointer;font-size:12px;padding:2px 4px;border-radius:3px;transition:background .15s}.invoice-btn:hover{background:rgba(255,255,255,.1)}
             @keyframes pulse-red{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.4)}50%{box-shadow:0 0 8px 4px rgba(220,38,38,.2)}}
             .acct-over{animation:pulse-red 1.5s infinite}
             .acct-scroll::-webkit-scrollbar{height:6px}
@@ -859,7 +867,7 @@
             .acct-scroll::-webkit-scrollbar-thumb{background:#4ADE80;border-radius:3px}
             .acct-scroll::-webkit-scrollbar-thumb:hover{background:#22C55E}
             .acct-scroll{scrollbar-width:thin;scrollbar-color:#4ADE80 rgba(255,255,255,.08)}
-            select.bulk-select { padding: 6px 12px; border: 1px solid #ddd; border-radius: 6px; outline: none; font-family: 'DM Sans', sans-serif; font-size: 13px;}
+            select.bulk-select { padding: 6px 12px; border: 1px solid #333; border-radius: 6px; outline: none; font-family: 'DM Sans', sans-serif; font-size: 13px; background:#222; color:#E5E5E5;}
           `}</style>
 
           <datalist id="accounts-list">
@@ -894,13 +902,13 @@
               })}
             </nav>
             <div style={{ padding: sidebarCollapsed ? "12px 10px" : "14px 18px", borderTop: "1px solid #2a2a2a" }}>
-              <button onClick={() => { const v = !sidebarCollapsed; setSidebarCollapsed(v); localStorage.setItem('sidebar_collapsed', v ? '1' : '0'); }} title={sidebarCollapsed ? "Розгорнути" : "Згорнути"} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "8px", background: "rgba(255,255,255,.05)", color: "rgba(255,255,255,.6)", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", marginBottom: sidebarCollapsed ? 0 : 10 }}>
+              <button onClick={() => { const v = !sidebarCollapsed; setSidebarCollapsed(v); localStorage.setItem('sidebar_collapsed', v ? '1' : '0'); }} title={sidebarCollapsed ? "Expand" : "Collapse"} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "8px", background: "rgba(255,255,255,.05)", color: "rgba(255,255,255,.6)", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", marginBottom: sidebarCollapsed ? 0 : 10 }}>
                 <Icon name="panel" size={16} />
-                {!sidebarCollapsed && "Згорнути"}
+                {!sidebarCollapsed && "Collapse"}
               </button>
               {!sidebarCollapsed && <>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,.4)", marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>
-                <button onClick={onLogout} style={{ width: "100%", padding: "7px", background: "rgba(255,255,255,.08)", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>Вийти</button>
+                <button onClick={onLogout} style={{ width: "100%", padding: "7px", background: "rgba(255,255,255,.08)", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>Sign out</button>
               </>}
             </div>
           </div>
@@ -912,10 +920,12 @@
           <div style={{ background: "#1A1A1A", padding: "12px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, borderBottom: "1px solid #333" }}>
             <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>{NAV_ITEMS.find(n => n.id === activeSection)?.label}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <button onClick={prevMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "8px 12px" }}><Icon name="chevronLeft" size={16} /></button>
-              <span style={{ color: "#fff", fontSize: 16, fontWeight: 600, minWidth: 160, textAlign: "center" }}>{MONTHS_UA[currentMonth]} {currentYear}</span>
-              <button onClick={nextMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "8px 12px" }}><Icon name="chevronRight" size={16} /></button>
-              <button onClick={undo} className="btn" title="Відмінити дію" style={{ background: historyRef.current.length > 0 ? "rgba(255,200,50,.2)" : "rgba(255,255,255,.05)", border: historyRef.current.length > 0 ? "1px solid rgba(255,200,50,.3)" : "1px solid transparent", color: historyRef.current.length > 0 ? "#FBBF24" : "#555", padding: "8px 12px", marginLeft: 6 }}><Icon name="undo" size={15} /> Відмінити</button>
+              {(activeSection === 'dashboard' || activeSection === 'operations') && <>
+                <button onClick={prevMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "8px 12px" }}><Icon name="chevronLeft" size={16} /></button>
+                <span style={{ color: "#fff", fontSize: 16, fontWeight: 600, minWidth: 160, textAlign: "center" }}>{MONTHS_UA[currentMonth]} {currentYear}</span>
+                <button onClick={nextMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "8px 12px" }}><Icon name="chevronRight" size={16} /></button>
+              </>}
+              <button onClick={undo} className="btn" title="Undo action" style={{ background: historyRef.current.length > 0 ? "rgba(255,200,50,.2)" : "rgba(255,255,255,.05)", border: historyRef.current.length > 0 ? "1px solid rgba(255,200,50,.3)" : "1px solid transparent", color: historyRef.current.length > 0 ? "#FBBF24" : "#a5a5a5", padding: "8px 12px", marginLeft: 6 }}><Icon name="undo" size={15} /> Undo</button>
             </div>
           </div>
 
@@ -923,23 +933,23 @@
           {activeSection === 'operations' && (
           <div style={{ background: "#1A1A1A", padding: "20px 28px 16px" }}>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
-              {[{ label: "Agency Turnover", value: totalPayment }, { label: "Revenue (REV)", value: totalRev, color: "#4ADE80" }, { label: "Agency Budget", value: agencyBudget, color: agencyBudget >= 0 ? "#4ADE80" : "#F87171" }, { label: "Carryover (попередній)", value: carryover, color: "#FBBF24" }, { label: "REV Fees / Costs", value: totalCosts, color: "#FB923C" }, { label: "Total Expenses", value: totalExpenses, color: "#F87171" }].map((k, i) => (
+              {[{ label: "Agency Turnover", value: totalPayment }, { label: "Revenue (REV)", value: totalRev, color: "#4ADE80" }, { label: "Agency Budget", value: agencyBudget, color: agencyBudget >= 0 ? "#4ADE80" : "#F87171" }, { label: "Carryover (previous)", value: carryover, color: "#FBBF24" }, { label: "REV Fees / Costs", value: totalCosts, color: "#FB923C" }, { label: "Total Expenses", value: totalExpenses, color: "#F87171" }].map((k, i) => (
                 <div key={i} className="kpi-card"><div className="kpi-label">{k.label}</div><div className="kpi-value" style={k.color ? { color: k.color } : {}}>{fmt(k.value)}</div></div>
               ))}
             </div>
             <CurrencyConverter />
             {/* PRODUCTS */}
             <div style={{ marginTop: 14, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,.35)", textTransform: "uppercase", letterSpacing: 1, whiteSpace: "nowrap" }}>Продукти:</span>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,.35)", textTransform: "uppercase", letterSpacing: 1, whiteSpace: "nowrap" }}>Products:</span>
               {productStats.map(p => (
                 <div key={p.id} style={{ background: "rgba(255,255,255,.06)", border: `1px solid ${p.color}44`, borderLeft: `3px solid ${p.color}`, borderRadius: 8, padding: "6px 12px", display: "flex", gap: 10, alignItems: "center", position: "relative", minWidth: 160 }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 12, color: p.color, marginBottom: 2 }}>{p.name}</div>
                     <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
-                      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: "rgba(255,255,255,.5)" }}>цей міс: <span style={{ color: "#fff", fontWeight: 700 }}>{p.monthSales}</span></span>
-                      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: "rgba(255,255,255,.35)" }}>всього: {p.totalSales}</span>
+                      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: "rgba(255,255,255,.5)" }}>this mo: <span style={{ color: "#fff", fontWeight: 700 }}>{p.monthSales}</span></span>
+                      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, color: "rgba(255,255,255,.35)" }}>total: {p.totalSales}</span>
                     </div>
-                    {p.avgPrice > 0 && <div style={{ fontSize: 9, color: "rgba(255,255,255,.3)", marginTop: 1 }}>ср. чек {fmt(p.avgPrice)}</div>}
+                    {p.avgPrice > 0 && <div style={{ fontSize: 9, color: "rgba(255,255,255,.3)", marginTop: 1 }}>avg {fmt(p.avgPrice)}</div>}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                     <button onClick={() => startEditProduct(p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, color: "rgba(255,255,255,.3)", padding: 0, lineHeight: 1 }}><Icon name="edit" size={13} /></button>
@@ -947,7 +957,7 @@
                   </div>
                 </div>
               ))}
-              <button onClick={() => { setEditProduct(null); setNewProduct({ name: "", color: "#4A90D9", avgPrice: 0 }); setShowAddProduct(true); }} style={{ background: "rgba(255,255,255,.08)", border: "1px dashed rgba(255,255,255,.2)", borderRadius: 8, padding: "6px 14px", color: "rgba(255,255,255,.5)", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>+ Продукт</button>
+              <button onClick={() => { setEditProduct(null); setNewProduct({ name: "", color: "#4A90D9", avgPrice: 0 }); setShowAddProduct(true); }} style={{ background: "rgba(255,255,255,.08)", border: "1px dashed rgba(255,255,255,.2)", borderRadius: 8, padding: "6px 14px", color: "rgba(255,255,255,.5)", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>+ Product</button>
             </div>
           </div>
           )}
@@ -959,16 +969,16 @@
               {/* Annual stats */}
               <div style={{ background: "#1A1A1A", borderRadius: 12, padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 24 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 8 }}>
-                  <h2 style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Підсумок {currentYear}</h2>
-                  <span style={{ fontSize: 12, color: "rgba(255,255,255,.4)" }}>Тільки підтверджені угоди · {annualStats.deals} угод за рік</span>
+                  <h2 style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Summary {currentYear}</h2>
+                  <span style={{ fontSize: 12, color: "rgba(255,255,255,.4)" }}>Confirmed deals only · {annualStats.deals} deals this year</span>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
                   {[
-                    { label: "Оборот за рік", value: annualStats.turnover, color: "#fff" },
-                    { label: "Дохід (REV)", value: annualStats.revenue, color: "#4ADE80" },
-                    { label: "Витрати за рік", value: annualStats.expenses, color: "#F87171" },
-                    { label: "ЗП виплачено", value: annualStats.salaries, color: "#FB923C" },
-                    { label: "Маржа за рік", value: annualStats.margin, color: annualStats.margin >= 0 ? "#4ADE80" : "#F87171", big: true },
+                    { label: "Turnover (year)", value: annualStats.turnover, color: "#fff" },
+                    { label: "Revenue (REV)", value: annualStats.revenue, color: "#4ADE80" },
+                    { label: "Expenses (year)", value: annualStats.expenses, color: "#F87171" },
+                    { label: "Salaries paid", value: annualStats.salaries, color: "#FB923C" },
+                    { label: "Margin (year)", value: annualStats.margin, color: annualStats.margin >= 0 ? "#4ADE80" : "#F87171", big: true },
                   ].map((c, i) => (
                     <div key={i} className="kpi-card" style={c.big ? { borderColor: `${c.color}55`, background: `${c.color}14` } : {}}>
                       <div className="kpi-label">{c.label}</div>
@@ -993,33 +1003,33 @@
                   })()}
                 </div>
               </div>
-              <div style={{ background: "#fff", borderRadius: 10, padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: "#333", marginBottom: 4 }}>P&L — {MONTHS_UA[currentMonth]} {currentYear}</h2>
-                <div style={{ fontSize: 12, color: "#888", marginBottom: 20 }}>Чи заробляє агенція цього місяця</div>
+              <div style={{ background: "#1A1A1A", borderRadius: 10, padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: "#E5E5E5", marginBottom: 4 }}>P&L — {MONTHS_UA[currentMonth]} {currentYear}</h2>
+                <div style={{ fontSize: 12, color: "#888", marginBottom: 20 }}>Is the agency profitable this month</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 24 }}>
                   {[
-                    { label: "Дохід (REV)", value: monthPL.revenue, color: "#16A34A", hint: "Комісія агенції" },
-                    { label: "Витрати агенції", value: -monthPL.agencyExpenses, color: "#DC2626", hint: "Без витрат під клієнта" },
-                    { label: "ЗП виплачено", value: -monthPL.salariesPaid, color: "#DC2626", hint: monthPL.salariesPending > 0 ? `+ ${fmt(monthPL.salariesPending)} в очікуванні` : "Всі виплати" },
-                    { label: "Маржа місяця", value: monthPL.margin, color: monthPL.margin >= 0 ? "#16A34A" : "#DC2626", hint: "Дохід − всі витрати", big: true },
+                    { label: "Revenue (REV)", value: monthPL.revenue, color: "#16A34A", hint: "Agency commission" },
+                    { label: "Agency expenses", value: -monthPL.agencyExpenses, color: "#DC2626", hint: "Excludes client costs" },
+                    { label: "Salaries paid", value: -monthPL.salariesPaid, color: "#DC2626", hint: monthPL.salariesPending > 0 ? `+ ${fmt(monthPL.salariesPending)} pending` : "All paid" },
+                    { label: "Month margin", value: monthPL.margin, color: monthPL.margin >= 0 ? "#16A34A" : "#DC2626", hint: "Revenue − all costs", big: true },
                   ].map((c, i) => (
-                    <div key={i} style={{ border: `1px solid ${c.color}22`, borderLeft: `4px solid ${c.color}`, borderRadius: 10, padding: "16px 18px", background: c.big ? `${c.color}08` : "#fafafa" }}>
+                    <div key={i} style={{ border: `1px solid ${c.color}22`, borderLeft: `4px solid ${c.color}`, borderRadius: 10, padding: "16px 18px", background: c.big ? `${c.color}08` : "#222" }}>
                       <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: .5, color: "#888", marginBottom: 6 }}>{c.label}</div>
                       <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: c.big ? 28 : 22, fontWeight: 700, color: c.color }}>{fmt(c.value)}</div>
                       <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>{c.hint}</div>
                     </div>
                   ))}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, paddingTop: 20, borderTop: "1px solid #eee" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, paddingTop: 20, borderTop: "1px solid #2a2a2a" }}>
                   {[
-                    { label: "Оборот агенції", value: monthPL.turnover },
-                    { label: "Витрати під клієнта", value: monthPL.clientCosts, color: "#9333EA" },
-                    { label: "Перехідний залишок", value: monthPL.carryover, color: "#F59E0B" },
-                    { label: "Бюджет агенції (накопич.)", value: monthPL.budget, color: monthPL.budget >= 0 ? "#16A34A" : "#DC2626" },
+                    { label: "Agency turnover", value: monthPL.turnover },
+                    { label: "Client-billed costs", value: monthPL.clientCosts, color: "#9333EA" },
+                    { label: "Carryover", value: monthPL.carryover, color: "#F59E0B" },
+                    { label: "Agency budget (cumulative)", value: monthPL.budget, color: monthPL.budget >= 0 ? "#16A34A" : "#DC2626" },
                   ].map((c, i) => (
                     <div key={i}>
                       <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{c.label}</div>
-                      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 16, fontWeight: 600, color: c.color || "#333" }}>{fmt(c.value)}</div>
+                      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 16, fontWeight: 600, color: c.color || "#E5E5E5" }}>{fmt(c.value)}</div>
                     </div>
                   ))}
                 </div>
@@ -1029,7 +1039,7 @@
             {/* ============ OPERATIONS SECTION ============ */}
             {activeSection === 'operations' && (<>
             {/* TABLE */}
-            <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
+            <div style={{ background: "#1A1A1A", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", minWidth: 950 + workers.length * 160 }}>
                   <colgroup>
@@ -1062,7 +1072,7 @@
                       <th className="sc sc1" style={{ padding: "10px 6px", fontSize: 11, background: "#1A1A1A" }}>#</th>
                       <th className="sc sc2" style={{ padding: "10px 6px", fontSize: 12, textAlign: "left", background: "#1A1A1A" }}>Clients</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Our service</th>
-                      <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Платіжка</th>
+                      <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Account</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "right" }}>Payment</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "center" }}>Date</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "right" }}>Cost/tax</th>
@@ -1077,25 +1087,25 @@
                       const diff = rowDiff(t); const isInvalid = Math.abs(diff) > 0.01;
                       const isReceived = t.status === 'received';
                       return (
-                        <tr key={t.id} className={`tx-row ${isInvalid ? "invalid" : isReceived ? "received" : ""}`} draggable onDragStart={() => onTxDragStart(i)} onDragOver={(e) => onTxDragOver(e, i)} onDrop={() => onTxDrop(i)} style={{ borderBottom: `1px solid ${isReceived && !isInvalid ? "#bbf7d0" : "#eee"}`, opacity: dragTxIdx === i ? 0.4 : 1 }}>
-                          <td className="sc sc0" style={{ padding: "2px 2px", textAlign: "center", background: isInvalid ? "#FEE2E2" : isReceived ? "#F0FDF4" : "#fff" }}>
-                            <button className="status-btn" onClick={() => updateTx(t.id, 'status', isReceived ? 'pending' : 'received')} title={isReceived ? "Отримано — клік щоб скасувати" : "Не підтверджено — не йде в статистику"}>
+                        <tr key={t.id} className={`tx-row ${isInvalid ? "invalid" : isReceived ? "received" : ""}`} draggable onDragStart={() => onTxDragStart(i)} onDragOver={(e) => onTxDragOver(e, i)} onDrop={() => onTxDrop(i)} style={{ borderBottom: `1px solid ${isReceived && !isInvalid ? "#1f3d2a" : "#2a2a2a"}`, opacity: dragTxIdx === i ? 0.4 : 1 }}>
+                          <td className="sc sc0" style={{ padding: "2px 2px", textAlign: "center", background: isInvalid ? "#3a1d1d" : isReceived ? "#15291b" : "#1A1A1A" }}>
+                            <button className="status-btn" onClick={() => updateTx(t.id, 'status', isReceived ? 'pending' : 'received')} title={isReceived ? "Received — click to undo" : "Not confirmed — excluded from stats"}>
                               <svg width="15" height="15" viewBox="0 0 24 24" style={{ display: "block" }}><circle cx="12" cy="12" r="8" fill={isReceived ? "#16A34A" : "none"} stroke={isReceived ? "#16A34A" : "#bbb"} strokeWidth="2" />{isReceived && <path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}</svg>
                             </button>
                             <DragHandle />
                             <input type="checkbox" checked={selectedTx.has(t.id)} onChange={() => toggleSelectTx(t.id)} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9" }} />
                             <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 600, color: diff > 0 ? "#16A34A" : diff < 0 ? "#DC2626" : "#999", marginTop: 1 }}>{isInvalid ? (diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)) : "✓"}</div>
                           </td>
-                          <td className="sc sc1" style={{ padding: "6px", fontSize: 12, color: "#999", textAlign: "center", background: isInvalid ? "#FEE2E2" : isReceived ? "#F0FDF4" : "#fff" }}>{i + 1}</td>
-                          <td className="sc sc2" style={{ padding: "2px", background: isInvalid ? "#FEE2E2" : isReceived ? "#F0FDF4" : "#fff" }}>
+                          <td className="sc sc1" style={{ padding: "6px", fontSize: 12, color: "#999", textAlign: "center", background: isInvalid ? "#3a1d1d" : isReceived ? "#15291b" : "#1A1A1A" }}>{i + 1}</td>
+                          <td className="sc sc2" style={{ padding: "2px", background: isInvalid ? "#3a1d1d" : isReceived ? "#15291b" : "#1A1A1A" }}>
                             <EditableCell value={t.client} onChange={v => updateTx(t.id, "client", v)} />
                             <CommentCell value={t.comment} onChange={v => updateTx(t.id, "comment", v)} />
                           </td>
                           <td style={{ padding: "2px" }}>
-                            <input list="products-list" value={t.service || ""} onChange={e => updateTx(t.id, "service", e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", transition: "border .2s", background: "transparent" }} onFocus={e => e.target.style.border="1px solid #4A90D9"} onBlur={e => e.target.style.border="1px solid transparent"} placeholder="Послуга" />
+                            <input list="products-list" value={t.service || ""} onChange={e => updateTx(t.id, "service", e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", transition: "border .2s", background: "transparent" }} onFocus={e => e.target.style.border="1px solid #4A90D9"} onBlur={e => e.target.style.border="1px solid transparent"} placeholder="Service" />
                           </td>
                           <td style={{ padding: "2px" }}>
-                             <input list="accounts-list" value={t.platforma || ""} onChange={e => updateTx(t.id, "platforma", e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", transition: "border .2s", background: "transparent" }} onFocus={e => e.target.style.border="1px solid #4A90D9"} onBlur={e => e.target.style.border="1px solid transparent"} placeholder="Акаунт" />
+                             <input list="accounts-list" value={t.platforma || ""} onChange={e => updateTx(t.id, "platforma", e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", transition: "border .2s", background: "transparent" }} onFocus={e => e.target.style.border="1px solid #4A90D9"} onBlur={e => e.target.style.border="1px solid transparent"} placeholder="Account" />
                           </td>
                           <td style={{ padding: "2px" }}><EditableCell value={t.payment} onChange={v => updateTx(t.id, "payment", v)} type="number" mono style={{ textAlign: "right" }} /></td>
                           <td style={{ padding: "2px" }}><EditableCell value={t.date} onChange={v => updateTx(t.id, "date", v)} isDate={true} activeMonthIdx={currentMonth} style={{ textAlign: "center" }} /></td>
@@ -1105,30 +1115,30 @@
                             {t.invoice ? (<div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "center" }}><button className="invoice-btn" onClick={() => downloadInvoice(t.invoice)} title={t.invoice.name} style={{ color: "#16A34A", display: "inline-flex" }}><Icon name="download" size={14} /></button><button className="invoice-btn" onClick={() => updateTx(t.id, "invoice", null)} style={{ color: "#DC2626", display: "inline-flex" }}><Icon name="trash" size={13} /></button></div>) : (<button className="invoice-btn" onClick={() => triggerInvoiceUpload(t.id)} style={{ color: "#999", display: "inline-flex" }}><Icon name="attach" size={14} /></button>)}
                           </td>
                           {workers.map(w => { const c = wc(w); const wp = t.workerPay?.[w.id] || { amount: 0, paid: false, comment: "", advance: 0 }; const adv = parseNum(wp.advance); const net = parseNum(wp.amount) - adv; return (
-                            <td key={w.id} style={{ padding: "2px 4px", background: c.bgLight, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}` }}>
+                            <td key={w.id} style={{ padding: "2px 4px", background: `${c.bg}14`, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}` }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                <div style={{ flex: 1 }}><EditableCell value={wp.amount} onChange={v => updateWorkerPay(t.id, w.id, "amount", v)} type="number" mono style={{ textAlign: "right", fontSize: 12, color: wp.paid ? c.text : "#999" }} /></div>
+                                <div style={{ flex: 1 }}><EditableCell value={wp.amount} onChange={v => updateWorkerPay(t.id, w.id, "amount", v)} type="number" mono style={{ textAlign: "right", fontSize: 12, color: wp.paid ? c.bg : "#777" }} /></div>
                                 <input type="checkbox" className="checkbox-paid" checked={wp.paid} onChange={e => updateWorkerPay(t.id, w.id, "paid", e.target.checked)} />
                               </div>
                               {/* Advance deduction row */}
                               <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 1 }}>
-                                <span style={{ fontSize: 8, color: c.text, opacity: .4, whiteSpace: "nowrap" }}>↩ аванс:</span>
-                                <div style={{ flex: 1 }}><EditableCell value={wp.advance || 0} onChange={v => updateWorkerPay(t.id, w.id, "advance", v)} type="number" mono style={{ textAlign: "right", fontSize: 10, color: adv > 0 ? "#DC2626" : "#ccc" }} /></div>
+                                <span style={{ fontSize: 8, color: c.bg, opacity: .5, whiteSpace: "nowrap" }}>adv:</span>
+                                <div style={{ flex: 1 }}><EditableCell value={wp.advance || 0} onChange={v => updateWorkerPay(t.id, w.id, "advance", v)} type="number" mono style={{ textAlign: "right", fontSize: 10, color: adv > 0 ? "#F87171" : "#666" }} /></div>
                               </div>
                               {adv > 0 && (
-                                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: c.text, opacity: .75, textAlign: "right", paddingRight: 2 }}>= {fmt(net)}</div>
+                                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: c.bg, opacity: .85, textAlign: "right", paddingRight: 2 }}>= {fmt(net)}</div>
                               )}
                               {wp.comment ? (
-                                <EditableCell value={wp.comment} onChange={v => updateWorkerPay(t.id, w.id, "comment", v)} style={{ fontSize: 10, color: c.text, opacity: .65, padding: "1px 4px" }} />
+                                <EditableCell value={wp.comment} onChange={v => updateWorkerPay(t.id, w.id, "comment", v)} style={{ fontSize: 10, color: c.bg, opacity: .75, padding: "1px 4px" }} />
                               ) : (
-                                <div onClick={() => updateWorkerPay(t.id, w.id, "comment", " ")} style={{ fontSize: 9, color: c.text, opacity: .22, cursor: "text", padding: "1px 4px", textAlign: "center", userSelect: "none" }}>+ коментар</div>
+                                <div onClick={() => updateWorkerPay(t.id, w.id, "comment", " ")} style={{ fontSize: 9, color: c.bg, opacity: .3, cursor: "text", padding: "1px 4px", textAlign: "center", userSelect: "none" }}>+ note</div>
                               )}
                             </td>
                           ); })}
                           <td style={{ padding: "2px 4px", textAlign: "center" }}>
                             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                              <button className="row-delete" onClick={() => duplicateTxToNext(t)} title="Копіювати в наступний місяць" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#4A90D9", transition: "opacity .15s", display: "flex" }}><Icon name="copy" size={14} /></button>
-                              <button className="row-delete" onClick={() => removeTx(t.id)} title="Видалити" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#DC2626", transition: "opacity .15s", display: "flex" }}><Icon name="trash" size={15} /></button>
+                              <button className="row-delete" onClick={() => duplicateTxToNext(t)} title="Copy to next month" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#4A90D9", transition: "opacity .15s", display: "flex" }}><Icon name="copy" size={14} /></button>
+                              <button className="row-delete" onClick={() => removeTx(t.id)} title="Delete" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#DC2626", transition: "opacity .15s", display: "flex" }}><Icon name="trash" size={15} /></button>
                             </div>
                           </td>
                         </tr>
@@ -1136,16 +1146,16 @@
                     })}
                   </tbody>
                   <tfoot>
-                    <tr style={{ background: "#F5F3F0", fontWeight: 600 }}>
-                      <td></td><td></td><td colSpan={3} style={{ padding: "10px 6px", fontSize: 13 }}>TOTALS <span style={{ fontSize: 10, fontWeight: 400, color: "#999" }}>(тільки підтверджені)</span></td>
+                    <tr style={{ background: "#222", fontWeight: 600 }}>
+                      <td></td><td></td><td colSpan={3} style={{ padding: "10px 6px", fontSize: 13 }}>TOTALS <span style={{ fontSize: 10, fontWeight: 400, color: "#999" }}>(confirmed only)</span></td>
                       <td style={{ padding: "10px 6px", textAlign: "right" }}>
                         <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{fmt(totalPayment)}</div>
-                        {pendingPayment > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: "#A16207", fontWeight: 500 }}>+{fmt(pendingPayment)} очік.</div>}
+                        {pendingPayment > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: "#A16207", fontWeight: 500 }}>+{fmt(pendingPayment)} pend.</div>}
                       </td><td></td>
                       <td style={{ padding: "10px 6px", fontFamily: "'JetBrains Mono',monospace", fontSize: 13, textAlign: "right" }}>{fmt(totalCosts)}</td>
                       <td style={{ padding: "10px 6px", textAlign: "right" }}>
                         <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{fmt(totalRev)}</div>
-                        {pendingRev > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: "#A16207", fontWeight: 500 }}>+{fmt(pendingRev)} очік.</div>}
+                        {pendingRev > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: "#A16207", fontWeight: 500 }}>+{fmt(pendingRev)} pend.</div>}
                       </td><td></td>
                       {workers.map(w => { const c = wc(w); const t = workerTotals[w.id] || { paid: 0, pending: 0 }; return (<td key={w.id} style={{ padding: "10px 6px", background: c.bg, fontFamily: "'JetBrains Mono',monospace", fontSize: 13, textAlign: "center", color: c.text }}>{fmt(t.paid + t.pending)}</td>); })}
                       <td></td>
@@ -1153,8 +1163,8 @@
                   </tfoot>
                 </table>
               </div>
-              <div style={{ padding: "12px 16px", borderTop: "1px solid #eee", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                <button className="btn btn-primary" onClick={addTransaction}><Icon name="plus" size={14} /> Додати транзакцію</button>
+              <div style={{ padding: "12px 16px", borderTop: "1px solid #2a2a2a", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <button className="btn btn-primary" onClick={addTransaction}><Icon name="plus" size={14} /> Add transaction</button>
               </div>
             </div>
 
@@ -1162,33 +1172,33 @@
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, marginBottom: 40 }}>
                
                {/* EXPENSES */}
-               <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)" }}>
-                 <div style={{ padding: "16px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                   <h2 style={{ fontSize: 16, fontWeight: 700, color: "#333" }}>Expenses</h2>
+               <div style={{ background: "#1A1A1A", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)" }}>
+                 <div style={{ padding: "16px 20px", borderBottom: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                   <h2 style={{ fontSize: 16, fontWeight: 700, color: "#E5E5E5" }}>Expenses</h2>
                    <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, fontSize: 16, color: "#DC2626" }}>{fmt(totalExpenses)}</span>
                  </div>
                  <div style={{ overflowX: "auto" }}>
                    <table style={{ width: "100%", minWidth: 600 }}>
                      <colgroup><col style={{ width: 40 }} /><col style={{ width: "20%" }} /><col style={{ width: "15%" }} /><col style={{ width: "10%" }} /><col style={{ width: "10%" }} /><col style={{ width: "12%" }} /><col style={{ width: 36 }} /><col style={{ width: 120 }} /><col style={{ width: 70 }} /></colgroup>
                      <thead>
-                       <tr style={{ background: "#F5F3F0" }}>
-                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>
+                       <tr style={{ background: "#222" }}>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#9a9a9a", textAlign: "center" }}>
                             <input type="checkbox" checked={expenses.length > 0 && selectedExp.size === expenses.length} onChange={toggleAllExp} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9" }} title="Select all" />
                          </th>
-                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "left" }}>Service</th>
-                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "left" }}>Платіжка</th>
-                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>Method</th>
-                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>Date</th>
-                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "right" }}>Cost</th>
-                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#666", textAlign: "center" }} title="Повторювана щомісяця">Повтор</th>
-                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#666", textAlign: "center" }} title="Тип витрати: агенська / під клієнта">Тип</th>
-                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#666", textAlign: "center" }}>Зарплата</th>
-                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#666", textAlign: "center" }}>Дії</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#9a9a9a", textAlign: "left" }}>Service</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#9a9a9a", textAlign: "left" }}>Account</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#9a9a9a", textAlign: "center" }}>Method</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#9a9a9a", textAlign: "center" }}>Date</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#9a9a9a", textAlign: "right" }}>Cost</th>
+                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#9a9a9a", textAlign: "center" }} title="Recurring monthly">Recur</th>
+                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#9a9a9a", textAlign: "center" }} title="Cost type: agency / client">Type</th>
+                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#9a9a9a", textAlign: "center" }}>Salary</th>
+                         <th style={{ padding: "10px 6px", fontSize: 12, color: "#9a9a9a", textAlign: "center" }}>Actions</th>
                        </tr>
                      </thead>
                      <tbody>
                        {expenses.map((e, i) => (
-                         <tr key={e.id} draggable onDragStart={() => onExpDragStart(i)} onDragOver={(ev) => onExpDragOver(ev, i)} onDrop={() => onExpDrop(i)} style={{ borderBottom: "1px solid #f0f0f0", opacity: dragExpIdx === i ? 0.4 : 1 }}>
+                         <tr key={e.id} draggable onDragStart={() => onExpDragStart(i)} onDragOver={(ev) => onExpDragOver(ev, i)} onDrop={() => onExpDrop(i)} style={{ borderBottom: "1px solid #2a2a2a", opacity: dragExpIdx === i ? 0.4 : 1 }}>
                            <td style={{ padding: "4px 4px", fontSize: 12, color: "#999", textAlign: "center" }}>
                              <DragHandle />
                              <input type="checkbox" checked={selectedExp.has(e.id)} onChange={() => toggleSelectExp(e.id)} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9", display: "block", margin: "2px auto 0" }} />
@@ -1207,57 +1217,57 @@
                            </td>
                            <td style={{ padding: "8px 6px", fontSize: 13, textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, color: "#DC2626" }}><EditableCell value={e.cost} onChange={v => { const x = [...expenses]; x[i].cost = v; setExpenses(x); }} type="number" mono style={{textAlign: "right"}} /></td>
                            <td style={{ padding: "4px 6px", textAlign: "center" }}>
-                             <button onClick={() => { const x=[...expenses]; x[i].recurring=!e.recurring; setExpenses(x); }} title={e.recurring ? "Щомісяця (клік — зняти)" : "Одноразово (клік — зробити щомісячним)"} style={{ border: "none", background: e.recurring ? "rgba(74,144,217,.12)" : "none", borderRadius: 4, cursor: "pointer", padding: "4px 6px", color: e.recurring ? "#4A90D9" : "#ccc", display: "inline-flex" }}><Icon name="repeat" size={14} /></button>
+                             <button onClick={() => { const x=[...expenses]; x[i].recurring=!e.recurring; setExpenses(x); }} title={e.recurring ? "Monthly (click to remove)" : "One-time (click to make monthly)"} style={{ border: "none", background: e.recurring ? "rgba(74,144,217,.12)" : "none", borderRadius: 4, cursor: "pointer", padding: "4px 6px", color: e.recurring ? "#4A90D9" : "#ccc", display: "inline-flex" }}><Icon name="repeat" size={14} /></button>
                            </td>
                            <td style={{ padding: "4px 6px", textAlign: "center" }}>
-                             <button onClick={() => { const x=[...expenses]; x[i].costType = x[i].costType === 'client' ? '' : 'client'; setExpenses(x); }} title={e.costType === 'client' ? 'Під клієнта — клік щоб змінити на агенську' : 'Агенська — клік щоб змінити на "під клієнта"'} style={{ border: "none", background: e.costType === 'client' ? "rgba(147,51,234,.12)" : "rgba(74,144,217,.1)", borderRadius: 4, cursor: "pointer", fontSize: 10, padding: "2px 6px", color: e.costType === 'client' ? "#9333EA" : "#4A90D9", whiteSpace: "nowrap" }}>
-                               {e.costType === 'client' ? 'клієнт' : 'агенс.'}
+                             <button onClick={() => { const x=[...expenses]; x[i].costType = x[i].costType === 'client' ? '' : 'client'; setExpenses(x); }} title={e.costType === 'client' ? 'Client cost — click to make agency' : 'Agency cost — click to make client'} style={{ border: "none", background: e.costType === 'client' ? "rgba(147,51,234,.12)" : "rgba(74,144,217,.1)", borderRadius: 4, cursor: "pointer", fontSize: 10, padding: "2px 6px", color: e.costType === 'client' ? "#9333EA" : "#4A90D9", whiteSpace: "nowrap" }}>
+                               {e.costType === 'client' ? 'client' : 'agency'}
                              </button>
                              {e.costType === 'client' && (
-                               <input list="clients-list" value={e.clientName || ""} onChange={ev => { const x=[...expenses]; x[i].clientName=ev.target.value; setExpenses(x); }} placeholder="який клієнт?" style={{ width: "100%", boxSizing: "border-box", marginTop: 3, padding: "2px 4px", border: "1px solid #E9D5FF", borderRadius: 3, fontSize: 10, outline: "none", color: "#9333EA", background: "#FAF5FF" }} />
+                               <input list="clients-list" value={e.clientName || ""} onChange={ev => { const x=[...expenses]; x[i].clientName=ev.target.value; setExpenses(x); }} placeholder="which client?" style={{ width: "100%", boxSizing: "border-box", marginTop: 3, padding: "2px 4px", border: "1px solid #4a3a66", borderRadius: 3, fontSize: 10, outline: "none", color: "#9333EA", background: "#241a2e" }} />
                              )}
                            </td>
                            <td style={{ padding: "4px 6px", textAlign: "center" }}>
-                             <select value={e.workerLink || ""} onChange={ev => { const x=[...expenses]; x[i].workerLink=ev.target.value; setExpenses(x); }} style={{ fontSize: 11, border: "1px solid #ddd", borderRadius: 4, padding: "2px 4px", background: e.workerLink ? "#F0FDF4" : "#fff", color: e.workerLink ? "#166534" : "#999", maxWidth: 110, cursor: "pointer" }}>
-                               <option value="">— не ЗП —</option>
+                             <select value={e.workerLink || ""} onChange={ev => { const x=[...expenses]; x[i].workerLink=ev.target.value; setExpenses(x); }} style={{ fontSize: 11, border: "1px solid #333", borderRadius: 4, padding: "2px 4px", background: e.workerLink ? "#15291b" : "#222", color: e.workerLink ? "#166534" : "#999", maxWidth: 110, cursor: "pointer" }}>
+                               <option value="">— not salary —</option>
                                {workers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                              </select>
                            </td>
                            <td style={{ padding: "8px 6px", textAlign: "center", display: "flex", gap: 8, justifyContent: "center" }}>
-                             <button onClick={() => duplicateExpToNext(e)} title="Копіювати в наступний місяць" style={{ border: "none", background: "none", cursor: "pointer", fontSize: 13 }}>⧉</button>
+                             <button onClick={() => duplicateExpToNext(e)} title="Copy to next month" style={{ border: "none", background: "none", cursor: "pointer", fontSize: 13 }}>⧉</button>
                              <button onClick={() => removeExpense(e.id)} style={{ border: "none", background: "none", cursor: "pointer", fontSize: 14 }}><Icon name="trash" size={14} /></button>
                            </td>
                          </tr>
                        ))}
-                       {expenses.length === 0 && <tr><td colSpan={9} style={{ padding: 20, textAlign: "center", color: "#999" }}>Немає витрат</td></tr>}
+                       {expenses.length === 0 && <tr><td colSpan={9} style={{ padding: 20, textAlign: "center", color: "#999" }}>No expenses</td></tr>}
                      </tbody>
                    </table>
                  </div>
-                 <div style={{ padding: "12px 16px", borderTop: "1px solid #eee" }}>
-                   <button className="btn btn-primary" onClick={() => { setEditExpense(null); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "" }); setShowAddExpense(true); }}><Icon name="plus" size={14} /> Додати витрати</button>
+                 <div style={{ padding: "12px 16px", borderTop: "1px solid #2a2a2a" }}>
+                   <button className="btn btn-primary" onClick={() => { setEditExpense(null); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "" }); setShowAddExpense(true); }}><Icon name="plus" size={14} /> Add expense</button>
                  </div>
                </div>
 
                {/* TRANSFERS */}
-               <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)", height: "fit-content" }}>
-                 <div style={{ padding: "16px 20px", borderBottom: "1px solid #eee" }}>
-                   <h2 style={{ fontSize: 16, fontWeight: 700, color: "#333" }}>Перекази бюджету</h2>
-                   <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Внутрішні перекази між платіжками</div>
+               <div style={{ background: "#1A1A1A", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)", height: "fit-content" }}>
+                 <div style={{ padding: "16px 20px", borderBottom: "1px solid #2a2a2a" }}>
+                   <h2 style={{ fontSize: 16, fontWeight: 700, color: "#E5E5E5" }}>Budget transfers</h2>
+                   <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Internal transfers between accounts</div>
                  </div>
                  <div style={{ overflowX: "auto" }}>
                    <table style={{ width: "100%", minWidth: 300 }}>
                      <thead>
-                       <tr style={{ background: "#F5F3F0" }}>
-                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#666", textAlign: "left" }}>From → To</th>
-                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#666", textAlign: "right" }}>Amount</th>
-                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#666", textAlign: "center" }}>Дії</th>
+                       <tr style={{ background: "#222" }}>
+                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#9a9a9a", textAlign: "left" }}>From → To</th>
+                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#9a9a9a", textAlign: "right" }}>Amount</th>
+                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#9a9a9a", textAlign: "center" }}>Actions</th>
                        </tr>
                      </thead>
                      <tbody>
                        {transfers.map(tr => (
-                         <tr key={tr.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                         <tr key={tr.id} style={{ borderBottom: "1px solid #2a2a2a" }}>
                            <td style={{ padding: "8px 6px" }}>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: "#333" }}>{tr.fromAcc}</div>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: "#E5E5E5" }}>{tr.fromAcc}</div>
                               <div style={{ fontSize: 10, color: "#888" }}>↓ {tr.toAcc}</div>
                            </td>
                            <td style={{ padding: "8px 6px", textAlign: "right" }}>
@@ -1269,12 +1279,12 @@
                            </td>
                          </tr>
                        ))}
-                       {transfers.length === 0 && <tr><td colSpan={3} style={{ padding: 16, textAlign: "center", fontSize: 12, color: "#999" }}>Немає переказів</td></tr>}
+                       {transfers.length === 0 && <tr><td colSpan={3} style={{ padding: 16, textAlign: "center", fontSize: 12, color: "#999" }}>No transfers</td></tr>}
                      </tbody>
                    </table>
                  </div>
-                 <div style={{ padding: "12px 16px", borderTop: "1px solid #eee" }}>
-                   <button className="btn btn-secondary" onClick={() => setShowTransfer(true)}><Icon name="transfer" size={14} /> Додати переказ</button>
+                 <div style={{ padding: "12px 16px", borderTop: "1px solid #2a2a2a" }}>
+                   <button className="btn btn-secondary" onClick={() => setShowTransfer(true)}><Icon name="transfer" size={14} /> Add transfer</button>
                  </div>
                </div>
 
@@ -1287,17 +1297,17 @@
               const byPerson = {};
               allEntries.forEach(i => { byPerson[i.person] = (byPerson[i.person] || 0) + parseNum(i.amount); });
               return (
-                <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
-                  <div style={{ padding: "14px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                <div style={{ background: "#1A1A1A", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
+                  <div style={{ padding: "14px 20px", borderBottom: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                     <div>
-                      <h2 style={{ fontSize: 15, fontWeight: 700, color: "#333" }}>Особисті вкладення фаундерів</h2>
-                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Вливання з особистих рахунків · <span style={{ color: "#4ADE80", fontWeight: 600 }}>авто</span> = підтягнуті з витрат</div>
+                      <h2 style={{ fontSize: 15, fontWeight: 700, color: "#E5E5E5" }}>Founder personal investments</h2>
+                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Top-ups from personal accounts · <span style={{ color: "#4ADE80", fontWeight: 600 }}>auto</span> = pulled from expenses</div>
                     </div>
                     <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                       {Object.entries(byPerson).map(([p, amt]) => (
-                        <div key={p} style={{ fontSize: 12, color: "#555" }}><span style={{ fontWeight: 600 }}>{p}:</span> <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, color: "#4A90D9" }}>{fmt(amt)}</span></div>
+                        <div key={p} style={{ fontSize: 12, color: "#a5a5a5" }}><span style={{ fontWeight: 600 }}>{p}:</span> <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, color: "#4A90D9" }}>{fmt(amt)}</span></div>
                       ))}
-                      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 15, color: "#1A1A1A" }}>Всього: {fmt(totalInvested)}</span>
+                      <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 15, color: "#1A1A1A" }}>Total: {fmt(totalInvested)}</span>
                     </div>
                   </div>
                   {/* Personal account balance: received − expenses = remaining */}
@@ -1305,13 +1315,13 @@
                     <table style={{ width: "100%", minWidth: 600 }}>
                       <colgroup><col style={{ width: 160 }} /><col style={{ width: 110 }} /><col style={{ width: 100 }} /><col style={{ width: 90 }} /><col /><col style={{ width: 50 }} /></colgroup>
                       <thead>
-                        <tr style={{ background: "#F5F3F0" }}>
-                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "left" }}>Рахунок / Фаундер</th>
-                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "right" }}>Сума</th>
-                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "center" }}>Метод</th>
-                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "center" }}>Дата</th>
-                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "left" }}>Коментар / Сервіс</th>
-                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#666", textAlign: "center" }}></th>
+                        <tr style={{ background: "#222" }}>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#9a9a9a", textAlign: "left" }}>Account / Founder</th>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#9a9a9a", textAlign: "right" }}>Amount</th>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#9a9a9a", textAlign: "center" }}>Method</th>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#9a9a9a", textAlign: "center" }}>Date</th>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#9a9a9a", textAlign: "left" }}>Comment / Service</th>
+                          <th style={{ padding: "9px 10px", fontSize: 12, color: "#9a9a9a", textAlign: "center" }}></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1320,9 +1330,9 @@
                           const expIdx = expenses.findIndex(ex => ex.id === inv.id.replace('auto_', ''));
                           const upd = (field, val) => { if (expIdx < 0) return; const x = [...expenses]; x[expIdx] = { ...x[expIdx], [field]: val }; setExpenses(x); };
                           return (
-                            <tr key={inv.id} style={{ borderBottom: "1px solid #f0f0f0", background: "#FAFFF5" }}>
+                            <tr key={inv.id} style={{ borderBottom: "1px solid #2a2a2a", background: "#15241a" }}>
                               <td style={{ padding: "7px 10px", fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
-                                <span style={{ fontSize: 9, background: "#4ADE80", color: "#166534", borderRadius: 3, padding: "1px 5px", fontWeight: 700, letterSpacing: .3, flexShrink: 0 }}>авто</span>
+                                <span style={{ fontSize: 9, background: "#4ADE80", color: "#166534", borderRadius: 3, padding: "1px 5px", fontWeight: 700, letterSpacing: .3, flexShrink: 0 }}>auto</span>
                                 <EditableCell value={inv.person} onChange={v => upd("persona", v)} style={{ fontSize: 13 }} />
                               </td>
                               <td style={{ padding: "7px 10px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, color: "#4A90D9" }}>
@@ -1335,48 +1345,48 @@
                                 <EditableCell value={inv.date} onChange={v => upd("date", v)} isDate={true} activeMonthIdx={currentMonth} style={{ textAlign: "center" }} />
                               </td>
                               <td style={{ padding: "7px 10px" }}>
-                                <EditableCell value={inv.comment || ""} onChange={v => upd("service", v)} style={{ fontSize: 12, color: "#666" }} />
+                                <EditableCell value={inv.comment || ""} onChange={v => upd("service", v)} style={{ fontSize: 12, color: "#9a9a9a" }} />
                               </td>
-                              <td style={{ padding: "7px 10px", textAlign: "center", fontSize: 10, color: "#bbb" }}>←витрати</td>
+                              <td style={{ padding: "7px 10px", textAlign: "center", fontSize: 10, color: "#bbb" }}>←exp</td>
                             </tr>
                           );
                         })}
                         {/* Manual entries */}
                         {investments.map((inv, ii) => (
-                          <tr key={inv.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                          <tr key={inv.id} style={{ borderBottom: "1px solid #2a2a2a" }}>
                             <td style={{ padding: "7px 10px" }}><EditableCell value={inv.person} onChange={v => { const x=[...investments]; x[ii].person=v; setInvestments(x); }} /></td>
                             <td style={{ padding: "7px 10px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, color: "#4A90D9" }}><EditableCell value={inv.amount} onChange={v => { const x=[...investments]; x[ii].amount=v; setInvestments(x); }} type="number" mono style={{ textAlign:"right" }} /></td>
                             <td style={{ padding: "7px 10px", textAlign: "center" }}><EditableCell value={inv.method} onChange={v => { const x=[...investments]; x[ii].method=v; setInvestments(x); }} style={{ textAlign:"center", fontSize:12 }} /></td>
                             <td style={{ padding: "7px 10px", textAlign: "center" }}><EditableCell value={inv.date} onChange={v => { const x=[...investments]; x[ii].date=v; setInvestments(x); }} isDate={true} activeMonthIdx={currentMonth} style={{ textAlign:"center" }} /></td>
-                            <td style={{ padding: "7px 10px" }}><EditableCell value={inv.comment || ""} onChange={v => { const x=[...investments]; x[ii].comment=v; setInvestments(x); }} style={{ fontSize:12, color:"#666" }} /></td>
+                            <td style={{ padding: "7px 10px" }}><EditableCell value={inv.comment || ""} onChange={v => { const x=[...investments]; x[ii].comment=v; setInvestments(x); }} style={{ fontSize:12, color:"#9a9a9a" }} /></td>
                             <td style={{ padding: "7px 10px", textAlign: "center" }}><button onClick={() => removeInvestment(inv.id)} style={{ border:"none", background:"none", cursor:"pointer", fontSize:14 }}><Icon name="trash" size={14} /></button></td>
                           </tr>
                         ))}
-                        {allEntries.length === 0 && <tr><td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#bbb", fontSize: 13 }}>Немає записів · авто-записи появляться якщо витрати зі не-агентських рахунків</td></tr>}
+                        {allEntries.length === 0 && <tr><td colSpan={6} style={{ padding: 16, textAlign: "center", color: "#bbb", fontSize: 13 }}>No entries · auto-rows appear from non-agency expenses</td></tr>}
                       </tbody>
                     </table>
                   </div>
-                  <div style={{ padding: "10px 16px", borderTop: "1px solid #eee" }}>
-                    <button className="btn btn-primary" onClick={() => setShowAddInvestment(true)}><Icon name="plus" size={14} /> Додати вкладення</button>
+                  <div style={{ padding: "10px 16px", borderTop: "1px solid #2a2a2a" }}>
+                    <button className="btn btn-primary" onClick={() => setShowAddInvestment(true)}><Icon name="plus" size={14} /> Add investment</button>
                   </div>
                 </div>
               );
             })()}
 
             {/* BULK ACTIONS & EXPORT */}
-            <div style={{ background: "#fff", borderRadius: 10, padding: "16px 20px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+            <div style={{ background: "#1A1A1A", borderRadius: 10, padding: "16px 20px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#555" }}>Вибрано: {selectedTx.size} транзакцій, {selectedExp.size} витрат</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#a5a5a5" }}>Selected: {selectedTx.size} transactions, {selectedExp.size} expenses</span>
                   <select className="bulk-select" value={bulkTargetMonth} onChange={(e) => setBulkTargetMonth(e.target.value)}>
                      {getMonthOptions()}
                   </select>
-                  <button className="btn btn-action" onClick={() => handleBulkAction('copy')} disabled={selectedTx.size === 0 && selectedExp.size === 0}><Icon name="copy" size={13} /> Копіювати в</button>
-                  <button className="btn btn-action" onClick={() => handleBulkAction('move')} disabled={selectedTx.size === 0 && selectedExp.size === 0} style={{color: "#DC2626"}}><Icon name="transfer" size={13} /> Перенести в</button>
+                  <button className="btn btn-action" onClick={() => handleBulkAction('copy')} disabled={selectedTx.size === 0 && selectedExp.size === 0}><Icon name="copy" size={13} /> Copy to</button>
+                  <button className="btn btn-action" onClick={() => handleBulkAction('move')} disabled={selectedTx.size === 0 && selectedExp.size === 0} style={{color: "#DC2626"}}><Icon name="transfer" size={13} /> Move to</button>
                </div>
                
                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <button className="btn btn-secondary" onClick={exportSelected} style={{ fontSize: 13 }}><Icon name="download" size={14} /> Експорт</button>
-                  <button className="btn btn-secondary" onClick={() => importInputRef.current?.click()} style={{ fontSize: 13 }}><Icon name="upload" size={14} /> Імпорт JSON</button>
+                  <button className="btn btn-secondary" onClick={exportSelected} style={{ fontSize: 13 }}><Icon name="download" size={14} /> Export</button>
+                  <button className="btn btn-secondary" onClick={() => importInputRef.current?.click()} style={{ fontSize: 13 }}><Icon name="upload" size={14} /> Import JSON</button>
                </div>
             </div>
             </>)}
@@ -1385,51 +1395,51 @@
             {activeSection === 'team' && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, color: "#666" }}>Профілі працівників · {workers.length} в команді</div>
-                  <button className="btn btn-primary" onClick={() => setShowAddWorker(true)}><Icon name="plus" size={14} /> Додати працівника</button>
+                  <div style={{ fontSize: 13, color: "#9a9a9a" }}>Team profiles · {workers.length} members</div>
+                  <button className="btn btn-primary" onClick={() => setShowAddWorker(true)}><Icon name="plus" size={14} /> Add team member</button>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 18 }}>
                   {workers.map(w => {
                     const c = wc(w);
                     const fields = [
-                      { key: 'role', icon: 'role', label: 'Роль' },
-                      { key: 'dob', icon: 'cake', label: 'День народження' },
-                      { key: 'email', icon: 'mail', label: 'Пошта' },
-                      { key: 'phone', icon: 'phone', label: 'Телефон' },
-                      { key: 'requisites', icon: 'card', label: 'Реквізити / рахунок' },
+                      { key: 'role', icon: 'role', label: 'Role' },
+                      { key: 'dob', icon: 'cake', label: 'Date of birth' },
+                      { key: 'email', icon: 'mail', label: 'Email' },
+                      { key: 'phone', icon: 'phone', label: 'Phone' },
+                      { key: 'requisites', icon: 'card', label: 'Bank details' },
                       { key: 'telegram', icon: 'send', label: 'Telegram' },
                     ];
                     return (
-                      <div key={w.id} style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", overflow: "hidden" }}>
+                      <div key={w.id} style={{ background: "#1A1A1A", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", overflow: "hidden" }}>
                         <div style={{ background: c.bg, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                             <div style={{ width: 44, height: 44, borderRadius: "50%", background: c.text, color: c.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700 }}>{(w.name || '?').charAt(0).toUpperCase()}</div>
                             <div>
                               <div style={{ fontSize: 16, fontWeight: 700, color: c.text }}>{w.name}</div>
-                              <div style={{ fontSize: 11, color: c.text, opacity: .7 }}>{w.role || 'без ролі'}</div>
+                              <div style={{ fontSize: 11, color: c.text, opacity: .7 }}>{w.role || 'no role'}</div>
                             </div>
                           </div>
-                          <button onClick={() => { if(window.confirm(`Видалити ${w.name}?`)) removeWorker(w.id); }} style={{ background: "rgba(0,0,0,.1)", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, padding: "4px 8px", color: c.text }}><Icon name="trash" size={14} /></button>
+                          <button onClick={() => { if(window.confirm(`Delete ${w.name}?`)) removeWorker(w.id); }} style={{ background: "rgba(0,0,0,.1)", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, padding: "4px 8px", color: c.text }}><Icon name="trash" size={14} /></button>
                         </div>
                         <div style={{ padding: "14px 18px" }}>
                           {fields.map(f => (
-                            <div key={f.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid #f5f5f5" }}>
+                            <div key={f.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid #262626" }}>
                               <span style={{ width: 20, display: "flex", justifyContent: "center", flexShrink: 0, color: "#aaa" }}><Icon name={f.icon} size={15} /></span>
                               <span style={{ fontSize: 11, color: "#999", width: 95, flexShrink: 0 }}>{f.label}</span>
                               <div style={{ flex: 1 }}>
-                                <EditableCell value={w[f.key] || ""} onChange={v => updateWorkerField(w.id, f.key, v)} style={{ fontSize: 13, color: "#333" }} />
+                                <EditableCell value={w[f.key] || ""} onChange={v => updateWorkerField(w.id, f.key, v)} style={{ fontSize: 13, color: "#E5E5E5" }} />
                               </div>
                             </div>
                           ))}
                           <div style={{ paddingTop: 8 }}>
-                            <div style={{ fontSize: 11, color: "#999", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}><Icon name="note" size={14} /> Нотатки</div>
-                            <textarea value={w.notes || ""} onChange={e => updateWorkerField(w.id, 'notes', e.target.value)} placeholder="Будь-яка додаткова інформація..." style={{ width: "100%", boxSizing: "border-box", minHeight: 50, resize: "vertical", border: "1px solid #eee", borderRadius: 6, padding: "6px 8px", fontSize: 12, fontFamily: "'DM Sans',sans-serif", outline: "none" }} onFocus={e => e.target.style.borderColor = "#4A90D9"} onBlur={e => e.target.style.borderColor = "#eee"} />
+                            <div style={{ fontSize: 11, color: "#999", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}><Icon name="note" size={14} /> Notes</div>
+                            <textarea value={w.notes || ""} onChange={e => updateWorkerField(w.id, 'notes', e.target.value)} placeholder="Any additional info..." style={{ width: "100%", boxSizing: "border-box", minHeight: 50, resize: "vertical", border: "1px solid #2a2a2a", borderRadius: 6, padding: "6px 8px", fontSize: 12, fontFamily: "'DM Sans',sans-serif", outline: "none" }} onFocus={e => e.target.style.borderColor = "#4A90D9"} onBlur={e => e.target.style.borderColor = "#2a2a2a"} />
                           </div>
                         </div>
                       </div>
                     );
                   })}
-                  {workers.length === 0 && <div style={{ color: "#999", padding: 24 }}>Немає працівників. Додай першого.</div>}
+                  {workers.length === 0 && <div style={{ color: "#999", padding: 24 }}>No team members yet. Add the first.</div>}
                 </div>
               </div>
             )}
@@ -1438,8 +1448,8 @@
             {activeSection === 'accounts' && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, color: "#666" }}>Платіжки агенції · обороти за всі місяці</div>
-                  <button className="btn btn-primary" onClick={() => { setEditAccount(null); setNewAccountForm({name:"", owner:"", limit:10000}); setShowAddAccount(true); }}><Icon name="plus" size={14} /> Додати платіжку</button>
+                  <div style={{ fontSize: 13, color: "#9a9a9a" }}>Agency payment accounts · turnover across all months</div>
+                  <button className="btn btn-primary" onClick={() => { setEditAccount(null); setNewAccountForm({name:"", owner:"", limit:10000}); setShowAddAccount(true); }}><Icon name="plus" size={14} /> Add account</button>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16, marginBottom: 36 }}>
                   {accountUsage.map(a => {
@@ -1453,7 +1463,7 @@
                           </div>
                           <div style={{ display: "flex", gap: 6 }}>
                             <button onClick={() => startEditAccount(a)} style={{ background: "none", border: "none", cursor: "pointer", color: "#4A90D9" }}><Icon name="edit" size={13} /></button>
-                            <button onClick={() => toggleAccount(a.id)} title={a.isActive ? "Активна" : "Неактивна"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: a.isActive ? "#4ADE80" : "#F87171" }}>{a.isActive ? "●" : "○"}</button>
+                            <button onClick={() => toggleAccount(a.id)} title={a.isActive ? "Active" : "Inactive"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: a.isActive ? "#4ADE80" : "#F87171" }}>{a.isActive ? "●" : "○"}</button>
                             <button onClick={() => confirmRemoveAccount(a.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,.35)" }}><Icon name="trash" size={14} /></button>
                           </div>
                         </div>
@@ -1462,41 +1472,41 @@
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
                           <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 700, color: barColor(a.pct) }}>{fmt(a.used)}</span>
-                          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "rgba(255,255,255,.4)" }}>ліміт {fmt(a.limit)}</span>
+                          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "rgba(255,255,255,.4)" }}>limit {fmt(a.limit)}</span>
                         </div>
-                        <div style={{ fontSize: 10, color: over ? "#F87171" : "rgba(255,255,255,.4)", marginBottom: 8 }}>{over ? `ПЕРЕВИЩЕНО на ${fmt(a.used - a.limit)}` : `Залишок обороту: ${fmt(a.remaining)}`}</div>
+                        <div style={{ fontSize: 10, color: over ? "#F87171" : "rgba(255,255,255,.4)", marginBottom: 8 }}>{over ? `EXCEEDED by ${fmt(a.used - a.limit)}` : `Turnover left: ${fmt(a.remaining)}`}</div>
                         <div style={{ borderTop: "1px solid rgba(255,255,255,.1)", paddingTop: 8, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                          <span style={{ color: "rgba(255,255,255,.5)" }}>Бюджет агенції:</span>
+                          <span style={{ color: "rgba(255,255,255,.5)" }}>Agency budget:</span>
                           <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, color: a.accountBudget >= 0 ? "#4ADE80" : "#F87171" }}>{fmt(a.accountBudget)}</span>
                         </div>
                       </div>
                     );
                   })}
-                  {accounts.length === 0 && <div style={{ color: "#999", padding: 24 }}>Немає платіжок.</div>}
+                  {accounts.length === 0 && <div style={{ color: "#999", padding: 24 }}>No accounts.</div>}
                 </div>
 
                 {/* Personal accounts balance */}
                 {Object.keys(personalAccountStats).length > 0 && (
-                  <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", overflow: "hidden" }}>
-                    <div style={{ padding: "16px 20px", borderBottom: "1px solid #eee" }}>
-                      <h2 style={{ fontSize: 15, fontWeight: 700, color: "#333" }}>Баланс особистих рахунків</h2>
-                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Не-агенційні рахунки · отримано мінус витрачено (за всі місяці)</div>
+                  <div style={{ background: "#1A1A1A", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", overflow: "hidden" }}>
+                    <div style={{ padding: "16px 20px", borderBottom: "1px solid #2a2a2a" }}>
+                      <h2 style={{ fontSize: 15, fontWeight: 700, color: "#E5E5E5" }}>Personal account balance</h2>
+                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Non-agency accounts · received minus spent (all months)</div>
                     </div>
                     <table style={{ width: "100%" }}>
                       <thead>
-                        <tr style={{ background: "#F5F3F0" }}>
-                          <th style={{ padding: "9px 16px", fontSize: 12, color: "#666", textAlign: "left" }}>Рахунок</th>
-                          <th style={{ padding: "9px 16px", fontSize: 12, color: "#666", textAlign: "right" }}>Отримано</th>
-                          <th style={{ padding: "9px 16px", fontSize: 12, color: "#666", textAlign: "right" }}>Витрачено</th>
-                          <th style={{ padding: "9px 16px", fontSize: 12, color: "#666", textAlign: "right" }}>Баланс</th>
+                        <tr style={{ background: "#222" }}>
+                          <th style={{ padding: "9px 16px", fontSize: 12, color: "#9a9a9a", textAlign: "left" }}>Account</th>
+                          <th style={{ padding: "9px 16px", fontSize: 12, color: "#9a9a9a", textAlign: "right" }}>Received</th>
+                          <th style={{ padding: "9px 16px", fontSize: 12, color: "#9a9a9a", textAlign: "right" }}>Spent</th>
+                          <th style={{ padding: "9px 16px", fontSize: 12, color: "#9a9a9a", textAlign: "right" }}>Balance</th>
                         </tr>
                       </thead>
                       <tbody>
                         {Object.entries(personalAccountStats).map(([name, s]) => {
                           const bal = s.received - s.spent;
                           return (
-                            <tr key={name} style={{ borderBottom: "1px solid #f5f5f5" }}>
-                              <td style={{ padding: "9px 16px", fontSize: 13, fontWeight: 600, color: "#333" }}>{name}</td>
+                            <tr key={name} style={{ borderBottom: "1px solid #262626" }}>
+                              <td style={{ padding: "9px 16px", fontSize: 13, fontWeight: 600, color: "#E5E5E5" }}>{name}</td>
                               <td style={{ padding: "9px 16px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: "#16A34A" }}>{fmt(s.received)}</td>
                               <td style={{ padding: "9px 16px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: "#DC2626" }}>{fmt(s.spent)}</td>
                               <td style={{ padding: "9px 16px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 700, color: bal >= 0 ? "#16A34A" : "#DC2626" }}>{fmt(bal)}</td>
@@ -1512,27 +1522,27 @@
 
             {/* ============ JOURNAL SECTION ============ */}
             {activeSection === 'journal' && (
-              <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
+              <div style={{ background: "#1A1A1A", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 16, flexWrap: "wrap" }}>
-                  <div style={{ fontSize: 13, color: "#666" }}>Історія всіх дій на платформі</div>
+                  <div style={{ fontSize: 13, color: "#9a9a9a" }}>Full history of platform actions</div>
                   <div style={{ display: "flex", gap: 10 }}>
-                    <input placeholder="Фільтр..." value={actionLogFilter} onChange={e => setActionLogFilter(e.target.value)} style={{ padding: "7px 12px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13, outline: "none", width: 200 }} />
-                    <button className="btn btn-secondary" style={{ fontSize: 12, color: "#DC2626" }} onClick={() => { if(window.confirm("Очистити весь журнал?")) { localStorage.removeItem('adv_action_log'); setActionLogFilter(''); setActiveSection('journal'); } }}>Очистити</button>
+                    <input placeholder="Filter..." value={actionLogFilter} onChange={e => setActionLogFilter(e.target.value)} style={{ padding: "7px 12px", border: "1px solid #333", borderRadius: 6, fontSize: 13, outline: "none", width: 200 }} />
+                    <button className="btn btn-secondary" style={{ fontSize: 12, color: "#DC2626" }} onClick={() => { if(window.confirm("Clear the entire journal?")) { localStorage.removeItem('adv_action_log'); setActionLogFilter(''); setActiveSection('journal'); } }}>Clear</button>
                   </div>
                 </div>
                 {(() => {
                   const log = (() => { try { return JSON.parse(localStorage.getItem('adv_action_log') || '[]'); } catch(e) { return []; } })();
                   const filtered = actionLogFilter ? log.filter(e => e.action.toLowerCase().includes(actionLogFilter.toLowerCase()) || new Date(e.ts).toLocaleDateString('uk-UA').includes(actionLogFilter) || (e.detail || '').toLowerCase().includes(actionLogFilter.toLowerCase())) : log;
-                  if (filtered.length === 0) return <div style={{ textAlign: "center", color: "#aaa", padding: 40 }}>Немає записів</div>;
+                  if (filtered.length === 0) return <div style={{ textAlign: "center", color: "#aaa", padding: 40 }}>No records</div>;
                   return (
                     <div>
                       {filtered.map((entry, idx) => {
                         const d = new Date(entry.ts);
                         const dt = d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' · ' + d.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
                         return (
-                          <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "6px 8px", borderRadius: 6, background: idx % 2 ? "#fafafa" : "#fff" }}>
+                          <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "6px 8px", borderRadius: 6, background: idx % 2 ? "#222" : "#181818" }}>
                             <span style={{ fontSize: 11, color: "#aaa", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap", width: 110, flexShrink: 0 }}>{dt}</span>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: "#333", whiteSpace: "nowrap", flexShrink: 0 }}>{entry.action}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "#E5E5E5", whiteSpace: "nowrap", flexShrink: 0 }}>{entry.action}</span>
                             {entry.detail && <span style={{ fontSize: 12, color: "#777", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>· {entry.detail}</span>}
                             <span style={{ fontSize: 11, color: "#ccc", whiteSpace: "nowrap", marginLeft: "auto", flexShrink: 0 }}>{entry.month}</span>
                           </div>
@@ -1549,14 +1559,14 @@
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                 {/* Currency */}
                 <div style={{ background: "#1A1A1A", borderRadius: 12, padding: "20px 24px", boxShadow: "0 2px 12px rgba(0,0,0,.08)" }}>
-                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 14 }}>Конвертер валют</h2>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 14 }}>Currency converter</h2>
                   <CurrencyConverter />
                 </div>
                 {/* Products */}
-                <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
+                <div style={{ background: "#1A1A1A", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h2 style={{ fontSize: 15, fontWeight: 700, color: "#333" }}>Продукти</h2>
-                    <button className="btn btn-primary" onClick={() => { setEditProduct(null); setNewProduct({ name: "", color: "#4A90D9", avgPrice: 0 }); setShowAddProduct(true); }}><Icon name="plus" size={14} /> Продукт</button>
+                    <h2 style={{ fontSize: 15, fontWeight: 700, color: "#E5E5E5" }}>Products</h2>
+                    <button className="btn btn-primary" onClick={() => { setEditProduct(null); setNewProduct({ name: "", color: "#4A90D9", avgPrice: 0 }); setShowAddProduct(true); }}><Icon name="plus" size={14} /> Product</button>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
                     {productStats.map(p => (
@@ -1568,26 +1578,26 @@
                             <button onClick={() => removeProduct(p.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11 }}><Icon name="trash" size={14} /></button>
                           </div>
                         </div>
-                        <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>цей міс: <b style={{ color: "#333" }}>{p.monthSales}</b> · всього: {p.totalSales}</div>
-                        {p.avgPrice > 0 && <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>ср. чек {fmt(p.avgPrice)}</div>}
+                        <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>this mo: <b style={{ color: "#E5E5E5" }}>{p.monthSales}</b> · total: {p.totalSales}</div>
+                        {p.avgPrice > 0 && <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>avg {fmt(p.avgPrice)}</div>}
                       </div>
                     ))}
-                    {products.length === 0 && <div style={{ color: "#999", fontSize: 13 }}>Немає продуктів.</div>}
+                    {products.length === 0 && <div style={{ color: "#999", fontSize: 13 }}>No products.</div>}
                   </div>
                 </div>
                 {/* Salary notifications */}
-                <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
+                <div style={{ background: "#1A1A1A", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <h2 style={{ fontSize: 15, fontWeight: 700, color: "#333" }}>Сповіщення про ЗП</h2>
-                    <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => { setSalaryNotifyWorkerIds(null); localStorage.removeItem('salary_notify_workers'); }}>↺ Скинути (всі)</button>
+                    <h2 style={{ fontSize: 15, fontWeight: 700, color: "#E5E5E5" }}>Salary reminders</h2>
+                    <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => { setSalaryNotifyWorkerIds(null); localStorage.removeItem('salary_notify_workers'); }}>↺ Reset (all)</button>
                   </div>
-                  <p style={{ fontSize: 12, color: "#888", marginBottom: 12 }}>Кого включати в нагадування про невиплачену зарплату.</p>
+                  <p style={{ fontSize: 12, color: "#888", marginBottom: 12 }}>Who to include in unpaid-salary reminders.</p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 8 }}>
                     {workers.map(w => {
                       const c = wc(w);
                       const included = salaryNotifyWorkerIds === null || salaryNotifyWorkerIds.includes(w.id);
                       return (
-                        <label key={w.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: included ? c.bgLight : "#f9f9f9", border: `1px solid ${included ? c.border : "#eee"}` }}>
+                        <label key={w.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: included ? c.bgLight : "#222", border: `1px solid ${included ? c.border : "#2a2a2a"}` }}>
                           <input type="checkbox" checked={included} onChange={ev => { const current = salaryNotifyWorkerIds || workers.map(ww => ww.id); const updated = ev.target.checked ? [...current, w.id] : current.filter(id => id !== w.id); setSalaryNotifyWorkerIds(updated); localStorage.setItem('salary_notify_workers', JSON.stringify(updated)); }} style={{ accentColor: c.border }} />
                           <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{w.name}</span>
                         </label>
@@ -1596,83 +1606,170 @@
                   </div>
                 </div>
                 {/* Data */}
-                <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
-                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "#333", marginBottom: 12 }}>Дані</h2>
+                <div style={{ background: "#1A1A1A", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "#E5E5E5", marginBottom: 12 }}>Data</h2>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button className="btn btn-secondary" onClick={exportSelected}><Icon name="download" size={14} /> Експорт вибраного</button>
-                    <button className="btn btn-secondary" onClick={() => importInputRef.current?.click()}><Icon name="upload" size={14} /> Імпорт JSON</button>
+                    <button className="btn btn-secondary" onClick={exportSelected}><Icon name="download" size={14} /> Export selected</button>
+                    <button className="btn btn-secondary" onClick={() => importInputRef.current?.click()}><Icon name="upload" size={14} /> Import JSON</button>
                   </div>
                 </div>
               </div>
             )}
+
+            {/* ============ MECHANICS SECTION ============ */}
+            {activeSection === 'mechanics' && (() => {
+              const card = { background: "#1A1A1A", border: "1px solid #2a2a2a", borderRadius: 12, padding: "20px 24px" };
+              const h = { fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 };
+              const sub = { fontSize: 12.5, color: "#9a9a9a", lineHeight: 1.6 };
+              const code = { fontFamily: "'JetBrains Mono',monospace", fontSize: 11.5, background: "#0F0F0F", border: "1px solid #2a2a2a", borderRadius: 6, padding: "8px 10px", color: "#7dd3fc", display: "block", marginTop: 8, whiteSpace: "pre-wrap" };
+              const li = { fontSize: 12.5, color: "#bdbdbd", lineHeight: 1.7, marginBottom: 3 };
+              const accent = { color: "#4ADE80", fontWeight: 600 };
+              const Section = ({ title, children }) => <div style={card}><div style={h}>{title}</div><div>{children}</div></div>;
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 920 }}>
+                  <div style={{ ...card, background: "linear-gradient(135deg,#1A1A1A,#161616)" }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", marginBottom: 6 }}>How this platform works</div>
+                    <div style={sub}>Living documentation of the data model, money-flow logic and feature behaviour. Every time a new feature ships, it gets documented here so the logic stays transparent and transferable.</div>
+                  </div>
+
+                  <Section title="Data model">
+                    <div style={sub}>Everything lives in Supabase across two tables:</div>
+                    <ul style={{ marginTop: 8, paddingLeft: 18 }}>
+                      <li style={li}><b style={accent}>global_settings</b> — workers (with profiles), payment accounts, products. Shared across all months.</li>
+                      <li style={li}><b style={accent}>monthly_data</b> — one record per month key (<code style={{ fontFamily: "'JetBrains Mono',monospace", color: "#7dd3fc" }}>YYYY-M</code>) holding that month's transactions, expenses, transfers, investments and carryover.</li>
+                    </ul>
+                    <div style={{ ...sub, marginTop: 8 }}>Changes auto-save to the cloud with a 1.5s debounce. Up to 30 undo states are kept in memory.</div>
+                  </Section>
+
+                  <Section title="Transactions & the money equation">
+                    <div style={sub}>Each client deal splits the client payment into three parts:</div>
+                    <code style={code}>payment = cost/tax + agency REV + Σ(worker salaries)</code>
+                    <ul style={{ marginTop: 10, paddingLeft: 18 }}>
+                      <li style={li}><b>payment</b> — gross amount the client paid.</li>
+                      <li style={li}><b>agency REV</b> — what the agency actually earns (the real revenue metric).</li>
+                      <li style={li}><b>cost/tax</b> — fees/taxes that leave on this deal.</li>
+                      <li style={li}><b>worker salaries</b> — per-worker amounts assigned in the colored columns.</li>
+                    </ul>
+                    <div style={{ ...sub, marginTop: 10 }}>The row balance check (left number) must be 0 — if it's red, the split doesn't add up.</div>
+                  </Section>
+
+                  <Section title={<span>Confirmed vs pending — <span style={{ color: "#4ADE80" }}>the green circle</span></span>}>
+                    <div style={sub}>A deal counts in statistics <b style={accent}>only</b> when marked received (green circle). Until then it's a draft: visible in the table but excluded from Agency Turnover, REV, costs, account turnover, product sales and all annual/monthly stats. Pending sums are shown separately as <span style={{ color: "#A16207" }}>"+X pend."</span> so potential income is still visible without inflating the real numbers.</div>
+                  </Section>
+
+                  <Section title="Expenses">
+                    <ul style={{ paddingLeft: 18 }}>
+                      <li style={li}><b>Account (persona)</b> — which account the money left from.</li>
+                      <li style={li}><b>Recur</b> — flags a monthly recurring cost.</li>
+                      <li style={li}><b>Type</b> — <span style={{ color: "#4A90D9" }}>agency</span> (counts against agency P&L) vs <span style={{ color: "#9333EA" }}>client</span> (billed to / bought for a specific client, kept out of agency expenses).</li>
+                      <li style={li}><b>Salary link</b> — tags an expense as a worker's salary so it syncs into that worker's paid total.</li>
+                    </ul>
+                  </Section>
+
+                  <Section title="Payment accounts">
+                    <div style={sub}>Each account has a turnover limit. The bar shows used vs limit; over-limit pulses red.</div>
+                    <code style={code}>account budget = agency REV − expenses − transfers out + transfers in</code>
+                    <div style={{ ...sub, marginTop: 8 }}>Only confirmed transactions contribute to turnover.</div>
+                  </Section>
+
+                  <Section title="Personal accounts & investments">
+                    <div style={sub}>Any account name that is neither an agency account nor a worker is treated as a founder's personal account. When a deal lands on a personal account, the full payment arrives there, but salaries and cost/tax are paid out from it — so only the budget portion should remain:</div>
+                    <code style={code}>personal balance = received − salaries − cost/tax − expenses{"\n"}            ( = agency REV − expenses )</code>
+                    <div style={{ ...sub, marginTop: 8 }}>Expenses paid from personal accounts are auto-pulled into the founder investments table (marked <span style={accent}>auto</span>).</div>
+                  </Section>
+
+                  <Section title="Salaries">
+                    <div style={sub}>Salaries are assigned per transaction in each worker's column. Each cell supports an <b>advance</b> deduction (net = amount − advance) and a paid checkbox. The floating reminder lists workers with unpaid salary for the month; which workers it watches is customizable in Settings.</div>
+                  </Section>
+
+                  <Section title="Carryover & journal">
+                    <ul style={{ paddingLeft: 18 }}>
+                      <li style={li}><b>Carryover</b> — the agency budget rolls into the next month as its opening balance, so the budget accumulates over time.</li>
+                      <li style={li}><b>Journal</b> — every add / delete / edit / salary action is logged locally with date & time for an audit trail.</li>
+                    </ul>
+                  </Section>
+
+                  <Section title="Changelog">
+                    <ul style={{ paddingLeft: 18 }}>
+                      <li style={li}>Sidebar navigation, dark unified theme, full English UI.</li>
+                      <li style={li}>Dashboard with annual summary + monthly margin chart.</li>
+                      <li style={li}>Confirmed-only statistics across turnover, REV, products & accounts.</li>
+                      <li style={li}>Client cost tagging with client name.</li>
+                      <li style={li}>Team profiles, customizable salary reminders, action journal.</li>
+                      <li style={li}>Corrected personal-account balance (salaries + cost/tax deducted).</li>
+                    </ul>
+                  </Section>
+                </div>
+              );
+            })()}
 
           </div>
           </div>
 
           {/* MODAL: Add Worker */}
           {showAddWorker && (<div className="modal-overlay" onClick={() => setShowAddWorker(false)}><div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>Додати працівника</h3>
-            <label>Ім'я<input value={newWorker.name} onChange={e => setNewWorker({ ...newWorker, name: e.target.value })} placeholder="Ім'я" autoFocus /></label>
-            <label>Роль<input value={newWorker.role} onChange={e => setNewWorker({ ...newWorker, role: e.target.value })} placeholder="Посада" /></label>
-            <label>Колір<div style={{ display: "flex", gap: 8, marginTop: 6 }}>{WORKER_COLORS.map((c, i) => (<div key={i} onClick={() => setNewWorker({ ...newWorker, colorIdx: i })} style={{ width: 32, height: 32, borderRadius: 6, background: c.bg, cursor: "pointer", border: newWorker.colorIdx === i ? `3px solid ${c.text}` : "2px solid transparent" }} />))}</div></label>
-            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowAddWorker(false)}>Скасувати</button><button className="btn btn-primary" onClick={addWorker}>Додати</button></div>
+            <h3>Add team member</h3>
+            <label>Name<input value={newWorker.name} onChange={e => setNewWorker({ ...newWorker, name: e.target.value })} placeholder="Name" autoFocus /></label>
+            <label>Role<input value={newWorker.role} onChange={e => setNewWorker({ ...newWorker, role: e.target.value })} placeholder="Position" /></label>
+            <label>Color<div style={{ display: "flex", gap: 8, marginTop: 6 }}>{WORKER_COLORS.map((c, i) => (<div key={i} onClick={() => setNewWorker({ ...newWorker, colorIdx: i })} style={{ width: 32, height: 32, borderRadius: 6, background: c.bg, cursor: "pointer", border: newWorker.colorIdx === i ? `3px solid ${c.text}` : "2px solid transparent" }} />))}</div></label>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowAddWorker(false)}>Cancel</button><button className="btn btn-primary" onClick={addWorker}>Add</button></div>
           </div></div>)}
 
           {/* MODAL: Add/Edit Expense */}
           {showAddExpense && (<div className="modal-overlay" onClick={() => { setShowAddExpense(false); setEditExpense(null); }}><div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>{editExpense ? "Редагувати витрату" : "Додати витрату"}</h3>
-            <label>Сервіс<input value={newExpense.service} onChange={e => setNewExpense({ ...newExpense, service: e.target.value })} placeholder="Назва сервісу" autoFocus /></label>
-            <label>Платіжка<input list="accounts-list" value={newExpense.persona} onChange={e => setNewExpense({ ...newExpense, persona: e.target.value })} style={{ marginTop: 4 }} placeholder="Звідки платимо" /></label>
-            <label>Метод оплати<select value={newExpense.method} onChange={e => setNewExpense({ ...newExpense, method: e.target.value })}><option>USDT</option><option>USD</option><option>EUR</option><option>UAH</option><option>Card</option></select></label>
-            <label>Дата<input value={newExpense.date} onChange={e => setNewExpense({ ...newExpense, date: e.target.value })} placeholder="ДД.ММ" /></label>
-            <label>Сума ($)<input type="number" value={newExpense.cost} onChange={e => setNewExpense({ ...newExpense, cost: parseFloat(e.target.value) || 0 })} /></label>
+            <h3>{editExpense ? "Edit expense" : "Add expense"}</h3>
+            <label>Service<input value={newExpense.service} onChange={e => setNewExpense({ ...newExpense, service: e.target.value })} placeholder="Service name" autoFocus /></label>
+            <label>Account<input list="accounts-list" value={newExpense.persona} onChange={e => setNewExpense({ ...newExpense, persona: e.target.value })} style={{ marginTop: 4 }} placeholder="Pay from" /></label>
+            <label>Payment method<select value={newExpense.method} onChange={e => setNewExpense({ ...newExpense, method: e.target.value })}><option>USDT</option><option>USD</option><option>EUR</option><option>UAH</option><option>Card</option></select></label>
+            <label>Date<input value={newExpense.date} onChange={e => setNewExpense({ ...newExpense, date: e.target.value })} placeholder="DD.MM" /></label>
+            <label>Amount ($)<input type="number" value={newExpense.cost} onChange={e => setNewExpense({ ...newExpense, cost: parseFloat(e.target.value) || 0 })} /></label>
             <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
               <input type="checkbox" checked={newExpense.recurring} onChange={e => setNewExpense({ ...newExpense, recurring: e.target.checked })} style={{ width: 15, height: 15, marginTop: 0 }} />
-              Повторювана (щомісяця)
+              Recurring (monthly)
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
               <input type="checkbox" checked={newExpense.costType === 'client'} onChange={e => setNewExpense({ ...newExpense, costType: e.target.checked ? 'client' : '' })} style={{ width: 15, height: 15, marginTop: 0 }} />
-              Під клієнта (не агенська витрата)
+              Client cost (not agency)
             </label>
             {newExpense.costType === 'client' && (
-              <label>Для якого клієнта<input list="clients-list" value={newExpense.clientName || ""} onChange={e => setNewExpense({ ...newExpense, clientName: e.target.value })} placeholder="Назва клієнта" /></label>
+              <label>For which client<input list="clients-list" value={newExpense.clientName || ""} onChange={e => setNewExpense({ ...newExpense, clientName: e.target.value })} placeholder="Client name" /></label>
             )}
-            <label>Зарплата для (синхр. з воркером)
+            <label>Salary for (sync with worker)
               <select value={newExpense.workerLink} onChange={e => setNewExpense({ ...newExpense, workerLink: e.target.value })} style={{ marginTop: 4 }}>
-                <option value="">— не ЗП —</option>
+                <option value="">— not salary —</option>
                 {workers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
             </label>
-            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => { setShowAddExpense(false); setEditExpense(null); }}>Скасувати</button><button className="btn btn-primary" onClick={addExpense}>{editExpense ? "Зберегти" : "Додати"}</button></div>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => { setShowAddExpense(false); setEditExpense(null); }}>Cancel</button><button className="btn btn-primary" onClick={addExpense}>{editExpense ? "Save" : "Add"}</button></div>
           </div></div>)}
 
           {/* MODAL: Add Transfer */}
           {showTransfer && (<div className="modal-overlay" onClick={() => setShowTransfer(false)}><div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>Переказ між платіжками</h3>
-            <label>Відправник (Звідки)<input list="accounts-list" value={newTransfer.fromAcc} onChange={e => setNewTransfer({ ...newTransfer, fromAcc: e.target.value })} placeholder="Виберіть або введіть..." autoFocus /></label>
-            <label>Отримувач (Куди)<input list="accounts-list" value={newTransfer.toAcc} onChange={e => setNewTransfer({ ...newTransfer, toAcc: e.target.value })} placeholder="Виберіть або введіть..." /></label>
-            <label>Сума ($)<input type="number" value={newTransfer.amount} onChange={e => setNewTransfer({ ...newTransfer, amount: parseFloat(e.target.value) || 0 })} /></label>
-            <label>Комісія за переказ ($)<input type="number" value={newTransfer.fee} onChange={e => setNewTransfer({ ...newTransfer, fee: parseFloat(e.target.value) || 0 })} /></label>
-            <label>Дата<input value={newTransfer.date} onChange={e => setNewTransfer({ ...newTransfer, date: e.target.value })} placeholder="ДД.ММ" /></label>
-            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowTransfer(false)}>Скасувати</button><button className="btn btn-primary" onClick={addTransfer}>Додати</button></div>
+            <h3>Transfer between accounts</h3>
+            <label>Sender (From)<input list="accounts-list" value={newTransfer.fromAcc} onChange={e => setNewTransfer({ ...newTransfer, fromAcc: e.target.value })} placeholder="Select or type..." autoFocus /></label>
+            <label>Recipient (To)<input list="accounts-list" value={newTransfer.toAcc} onChange={e => setNewTransfer({ ...newTransfer, toAcc: e.target.value })} placeholder="Select or type..." /></label>
+            <label>Amount ($)<input type="number" value={newTransfer.amount} onChange={e => setNewTransfer({ ...newTransfer, amount: parseFloat(e.target.value) || 0 })} /></label>
+            <label>Transfer fee ($)<input type="number" value={newTransfer.fee} onChange={e => setNewTransfer({ ...newTransfer, fee: parseFloat(e.target.value) || 0 })} /></label>
+            <label>Date<input value={newTransfer.date} onChange={e => setNewTransfer({ ...newTransfer, date: e.target.value })} placeholder="DD.MM" /></label>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowTransfer(false)}>Cancel</button><button className="btn btn-primary" onClick={addTransfer}>Add</button></div>
           </div></div>)}
 
           {/* MODAL: Add Account */}
           {showAddAccount && (<div className="modal-overlay" onClick={() => setShowAddAccount(false)}><div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>{editAccount ? "Редагувати платіжку" : "Додати платіжку"}</h3>
-            <label>Назва<input value={newAccountForm.name} onChange={e => setNewAccountForm({ ...newAccountForm, name: e.target.value })} placeholder="Назва рахунку" autoFocus /></label>
-            <label>Власник<input value={newAccountForm.owner} onChange={e => setNewAccountForm({ ...newAccountForm, owner: e.target.value })} placeholder="Власник" /></label>
-            <label>Ліміт обороту ($)<input type="number" value={newAccountForm.limit} onChange={e => setNewAccountForm({ ...newAccountForm, limit: parseFloat(e.target.value) || 0 })} /></label>
-            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowAddAccount(false)}>Скасувати</button><button className="btn btn-primary" onClick={submitAccountForm}>{editAccount ? "Зберегти" : "Додати"}</button></div>
+            <h3>{editAccount ? "Edit account" : "Add account"}</h3>
+            <label>Name<input value={newAccountForm.name} onChange={e => setNewAccountForm({ ...newAccountForm, name: e.target.value })} placeholder="Account name" autoFocus /></label>
+            <label>Owner<input value={newAccountForm.owner} onChange={e => setNewAccountForm({ ...newAccountForm, owner: e.target.value })} placeholder="Owner" /></label>
+            <label>Turnover limit ($)<input type="number" value={newAccountForm.limit} onChange={e => setNewAccountForm({ ...newAccountForm, limit: parseFloat(e.target.value) || 0 })} /></label>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowAddAccount(false)}>Cancel</button><button className="btn btn-primary" onClick={submitAccountForm}>{editAccount ? "Save" : "Add"}</button></div>
           </div></div>)}
 
           {/* MODAL: Add Investment */}
           {showAddProduct && (<div className="modal-overlay" onClick={() => { setShowAddProduct(false); setEditProduct(null); }}><div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>{editProduct ? "Редагувати продукт" : "Новий продукт"}</h3>
-            <label>Назва<input value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} placeholder="Mentorship, Media Buying..." autoFocus /></label>
-            <label>Середній чек ($)<input type="number" value={newProduct.avgPrice} onChange={e => setNewProduct({ ...newProduct, avgPrice: parseFloat(e.target.value) || 0 })} /></label>
-            <label style={{ display: "flex", alignItems: "center", gap: 10 }}>Колір<input type="color" value={newProduct.color} onChange={e => setNewProduct({ ...newProduct, color: e.target.value })} style={{ width: 48, height: 34, padding: 2, border: "1.5px solid #ddd", borderRadius: 6, cursor: "pointer", marginTop: 4 }} /></label>
-            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => { setShowAddProduct(false); setEditProduct(null); }}>Скасувати</button><button className="btn btn-primary" onClick={addProduct}>{editProduct ? "Зберегти" : "Додати"}</button></div>
+            <h3>{editProduct ? "Edit product" : "New product"}</h3>
+            <label>Name<input value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} placeholder="Mentorship, Media Buying..." autoFocus /></label>
+            <label>Avg. ticket ($)<input type="number" value={newProduct.avgPrice} onChange={e => setNewProduct({ ...newProduct, avgPrice: parseFloat(e.target.value) || 0 })} /></label>
+            <label style={{ display: "flex", alignItems: "center", gap: 10 }}>Color<input type="color" value={newProduct.color} onChange={e => setNewProduct({ ...newProduct, color: e.target.value })} style={{ width: 48, height: 34, padding: 2, border: "1.5px solid #333", borderRadius: 6, cursor: "pointer", marginTop: 4 }} /></label>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => { setShowAddProduct(false); setEditProduct(null); }}>Cancel</button><button className="btn btn-primary" onClick={addProduct}>{editProduct ? "Save" : "Add"}</button></div>
           </div></div>)}
 
           {/* SALARY REMINDER — floating bottom-right */}
@@ -1685,15 +1782,15 @@
             return (
               <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 2000, background: "#1A1A1A", color: "#fff", borderRadius: 12, padding: "14px 18px", boxShadow: "0 8px 32px rgba(0,0,0,.4)", maxWidth: 290, border: "1px solid rgba(255,200,50,.3)" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#FBBF24" }}>⏰ Нагадування про ЗП</div>
-                  <button onClick={() => setShowSalarySettings(true)} title="Налаштування сповіщень" style={{ border: "none", background: "rgba(255,255,255,.1)", borderRadius: 4, cursor: "pointer", color: "#ccc", padding: "4px 6px", lineHeight: 1, display: "inline-flex" }}><Icon name="settings" size={14} /></button>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#FBBF24", display: "flex", alignItems: "center", gap: 6 }}><Icon name="bell" size={14} /> Salary reminder</div>
+                  <button onClick={() => setShowSalarySettings(true)} title="Notification settings" style={{ border: "none", background: "rgba(255,255,255,.1)", borderRadius: 4, cursor: "pointer", color: "#ccc", padding: "4px 6px", lineHeight: 1, display: "inline-flex" }}><Icon name="settings" size={14} /></button>
                 </div>
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,.7)", marginBottom: 10 }}>
-                  Не виплачено: {unpaid.map(w => w.name).join(", ")}
+                  Unpaid: {unpaid.map(w => w.name).join(", ")}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => { setSalaryDismissed(monthKey); localStorage.setItem('salary_dismissed', monthKey); }} style={{ flex: 1, padding: "6px 10px", background: "rgba(255,255,255,.1)", border: "none", borderRadius: 6, color: "#fff", cursor: "pointer", fontSize: 11 }}>Закрити</button>
-                  <button onClick={() => { setSalaryDismissed('all_paid_' + monthKey); localStorage.setItem('salary_dismissed', 'all_paid_' + monthKey); }} style={{ flex: 1, padding: "6px 10px", background: "#4ADE80", border: "none", borderRadius: 6, color: "#166534", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>✓ ЗП виплачено</button>
+                  <button onClick={() => { setSalaryDismissed(monthKey); localStorage.setItem('salary_dismissed', monthKey); }} style={{ flex: 1, padding: "6px 10px", background: "rgba(255,255,255,.1)", border: "none", borderRadius: 6, color: "#fff", cursor: "pointer", fontSize: 11 }}>Close</button>
+                  <button onClick={() => { setSalaryDismissed('all_paid_' + monthKey); localStorage.setItem('salary_dismissed', 'all_paid_' + monthKey); }} style={{ flex: 1, padding: "6px 10px", background: "#4ADE80", border: "none", borderRadius: 6, color: "#166534", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>✓ Salaries paid</button>
                 </div>
               </div>
             );
@@ -1703,12 +1800,12 @@
           {showActionLog && (
             <div className="modal-overlay" onClick={() => setShowActionLog(false)}>
               <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 580, maxHeight: "80vh", overflowY: "auto" }}>
-                <h3>Журнал дій</h3>
-                <input placeholder="Фільтр за датою або дією..." value={actionLogFilter} onChange={e => setActionLogFilter(e.target.value)} style={{ width: "100%", padding: "8px 10px", marginBottom: 14, border: "1px solid #ddd", borderRadius: 6, boxSizing: "border-box", fontSize: 13 }} />
+                <h3>Action journal</h3>
+                <input placeholder="Filter by date or action..." value={actionLogFilter} onChange={e => setActionLogFilter(e.target.value)} style={{ width: "100%", padding: "8px 10px", marginBottom: 14, border: "1px solid #333", borderRadius: 6, boxSizing: "border-box", fontSize: 13 }} />
                 {(() => {
                   const log = (() => { try { return JSON.parse(localStorage.getItem('adv_action_log') || '[]'); } catch(e) { return []; } })();
                   const filtered = actionLogFilter ? log.filter(e => e.action.toLowerCase().includes(actionLogFilter.toLowerCase()) || new Date(e.ts).toLocaleDateString('uk-UA').includes(actionLogFilter) || (e.detail || '').toLowerCase().includes(actionLogFilter.toLowerCase())) : log;
-                  if (filtered.length === 0) return <div style={{ textAlign: "center", color: "#aaa", padding: 24 }}>Немає записів</div>;
+                  if (filtered.length === 0) return <div style={{ textAlign: "center", color: "#aaa", padding: 24 }}>No records</div>;
                   const grouped = {};
                   filtered.forEach(entry => {
                     const day = new Date(entry.ts).toLocaleDateString('uk-UA', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
@@ -1717,9 +1814,9 @@
                   });
                   return Object.entries(grouped).map(([day, entries]) => (
                     <div key={day} style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 6, paddingBottom: 4, borderBottom: "1px solid #eee" }}>{day}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 6, paddingBottom: 4, borderBottom: "1px solid #2a2a2a" }}>{day}</div>
                       {entries.map(entry => (
-                        <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0", borderBottom: "1px solid #f8f8f8" }}>
+                        <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "5px 0", borderBottom: "1px solid #202020" }}>
                           <span style={{ fontSize: 11, color: "#aaa", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap" }}>{new Date(entry.ts).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</span>
                           <span style={{ fontSize: 13, flex: 1 }}>{entry.action}</span>
                           {entry.detail && <span style={{ fontSize: 11, color: "#888", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.detail}</span>}
@@ -1730,8 +1827,8 @@
                   ));
                 })()}
                 <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "space-between" }}>
-                  <button className="btn btn-secondary" style={{ fontSize: 12, color: "#DC2626" }} onClick={() => { if(window.confirm("Очистити весь журнал?")) { localStorage.removeItem('adv_action_log'); setActionLogFilter(''); } }}>Очистити лог</button>
-                  <button className="btn btn-primary" onClick={() => setShowActionLog(false)}>Закрити</button>
+                  <button className="btn btn-secondary" style={{ fontSize: 12, color: "#DC2626" }} onClick={() => { if(window.confirm("Clear the entire journal?")) { localStorage.removeItem('adv_action_log'); setActionLogFilter(''); } }}>Clear log</button>
+                  <button className="btn btn-primary" onClick={() => setShowActionLog(false)}>Close</button>
                 </div>
               </div>
             </div>
@@ -1741,13 +1838,13 @@
           {showSalarySettings && (
             <div className="modal-overlay" onClick={() => setShowSalarySettings(false)}>
               <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
-                <h3>Сповіщення про ЗП</h3>
-                <p style={{ fontSize: 12, color: "#666", marginBottom: 14 }}>Вибери яких воркерів включати у нагадування. За замовчуванням — всі.</p>
+                <h3>Salary reminders</h3>
+                <p style={{ fontSize: 12, color: "#9a9a9a", marginBottom: 14 }}>Choose which workers to include in reminders. Default — all.</p>
                 {workers.map(w => {
                   const c = wc(w);
                   const included = salaryNotifyWorkerIds === null || salaryNotifyWorkerIds.includes(w.id);
                   return (
-                    <label key={w.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 6, cursor: "pointer", background: included ? c.bgLight : "#f9f9f9", marginBottom: 4, border: `1px solid ${included ? c.border : "#eee"}` }}>
+                    <label key={w.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px", borderRadius: 6, cursor: "pointer", background: included ? c.bgLight : "#222", marginBottom: 4, border: `1px solid ${included ? c.border : "#2a2a2a"}` }}>
                       <input type="checkbox" checked={included} onChange={ev => {
                         const current = salaryNotifyWorkerIds || workers.map(ww => ww.id);
                         const updated = ev.target.checked ? [...current, w.id] : current.filter(id => id !== w.id);
@@ -1760,21 +1857,21 @@
                   );
                 })}
                 <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "space-between" }}>
-                  <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => { setSalaryNotifyWorkerIds(null); localStorage.removeItem('salary_notify_workers'); }}>↺ Скинути (всі)</button>
-                  <button className="btn btn-primary" onClick={() => setShowSalarySettings(false)}>Готово</button>
+                  <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => { setSalaryNotifyWorkerIds(null); localStorage.removeItem('salary_notify_workers'); }}>↺ Reset (all)</button>
+                  <button className="btn btn-primary" onClick={() => setShowSalarySettings(false)}>Done</button>
                 </div>
               </div>
             </div>
           )}
 
           {showAddInvestment && (<div className="modal-overlay" onClick={() => setShowAddInvestment(false)}><div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>Додати вкладення</h3>
-            <label>Фаундер<input value={newInvestment.person} onChange={e => setNewInvestment({ ...newInvestment, person: e.target.value })} placeholder="Ім'я фаундера" autoFocus /></label>
-            <label>Сума ($)<input type="number" value={newInvestment.amount} onChange={e => setNewInvestment({ ...newInvestment, amount: parseFloat(e.target.value) || 0 })} /></label>
-            <label>Метод<select value={newInvestment.method} onChange={e => setNewInvestment({ ...newInvestment, method: e.target.value })}><option>USD</option><option>USDT</option><option>EUR</option><option>PLN</option><option>Card</option></select></label>
-            <label>Дата<input value={newInvestment.date} onChange={e => setNewInvestment({ ...newInvestment, date: e.target.value })} placeholder="ДД.ММ" /></label>
-            <label>Коментар<textarea value={newInvestment.comment} onChange={e => setNewInvestment({ ...newInvestment, comment: e.target.value })} placeholder="Деталі вкладення..." style={{ resize: "vertical", minHeight: 60 }} /></label>
-            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowAddInvestment(false)}>Скасувати</button><button className="btn btn-primary" onClick={addInvestment}>Додати</button></div>
+            <h3>Add investment</h3>
+            <label>Founder<input value={newInvestment.person} onChange={e => setNewInvestment({ ...newInvestment, person: e.target.value })} placeholder="Founder name" autoFocus /></label>
+            <label>Amount ($)<input type="number" value={newInvestment.amount} onChange={e => setNewInvestment({ ...newInvestment, amount: parseFloat(e.target.value) || 0 })} /></label>
+            <label>Method<select value={newInvestment.method} onChange={e => setNewInvestment({ ...newInvestment, method: e.target.value })}><option>USD</option><option>USDT</option><option>EUR</option><option>PLN</option><option>Card</option></select></label>
+            <label>Date<input value={newInvestment.date} onChange={e => setNewInvestment({ ...newInvestment, date: e.target.value })} placeholder="DD.MM" /></label>
+            <label>Comment<textarea value={newInvestment.comment} onChange={e => setNewInvestment({ ...newInvestment, comment: e.target.value })} placeholder="Investment details..." style={{ resize: "vertical", minHeight: 60 }} /></label>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowAddInvestment(false)}>Cancel</button><button className="btn btn-primary" onClick={addInvestment}>Add</button></div>
           </div></div>)}
         </div>
       );
@@ -1799,7 +1896,7 @@
         return () => subscription.unsubscribe();
       }, []);
 
-      if (loading) return <div style={{ minHeight: "100vh", background: "#1A1A1A", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "'DM Sans', sans-serif" }}><h2>Перевірка безпеки...</h2></div>;
+      if (loading) return <div style={{ minHeight: "100vh", background: "#1A1A1A", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "'DM Sans', sans-serif" }}><h2>Security check...</h2></div>;
 
       return session ? <Dashboard userEmail={session.user.email} onLogout={() => supabase.auth.signOut()} /> : <LoginScreen />;
     }
