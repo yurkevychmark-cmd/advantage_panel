@@ -299,8 +299,9 @@
       const [editAccount, setEditAccount] = useState(null);
       
       const [newWorker, setNewWorker] = useState({ name: "", role: "", colorIdx: 5 });
-      const [newExpense, setNewExpense] = useState({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "" });
+      const [newExpense, setNewExpense] = useState({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "" });
       const [salaryDismissed, setSalaryDismissed] = useState(() => localStorage.getItem('salary_dismissed') || "");
+      const [activeSection, setActiveSection] = useState('operations');
       const [showActionLog, setShowActionLog] = useState(false);
       const [actionLogFilter, setActionLogFilter] = useState('');
       const [salaryNotifyWorkerIds, setSalaryNotifyWorkerIds] = useState(() => {
@@ -466,6 +467,22 @@
       };
       const removeProduct = (id) => setProducts(p => p.filter(pr => pr.id !== id));
       const startEditProduct = (pr) => { setEditProduct(pr); setNewProduct({ name: pr.name, color: pr.color, avgPrice: pr.avgPrice }); setShowAddProduct(true); };
+
+      const clientNames = useMemo(() => {
+        const set = new Set();
+        Object.values(monthData).forEach(md => (md.transactions || []).forEach(t => { if (t.client && t.client.trim()) set.add(t.client.trim()); }));
+        return [...set].sort();
+      }, [monthData]);
+
+      // Month P&L summary
+      const monthPL = useMemo(() => {
+        const salariesPaid = transactions.reduce((s, t) => s + workers.reduce((ss, w) => { const wp = t.workerPay?.[w.id]; return ss + (wp?.paid ? parseNum(wp.amount) : 0); }, 0), 0);
+        const salariesPending = transactions.reduce((s, t) => s + workers.reduce((ss, w) => { const wp = t.workerPay?.[w.id]; return ss + (wp && !wp.paid ? parseNum(wp.amount) : 0); }, 0), 0);
+        const clientCosts = expenses.filter(e => e.costType === 'client').reduce((s, e) => s + parseNum(e.cost), 0);
+        const agencyExpenses = expenses.filter(e => e.costType !== 'client').reduce((s, e) => s + parseNum(e.cost), 0);
+        const margin = totalRev - totalExpenses;
+        return { revenue: totalRev, turnover: totalPayment, totalExpenses, agencyExpenses, clientCosts, salariesPaid, salariesPending, margin, carryover, budget: agencyBudget };
+      }, [transactions, expenses, workers, totalRev, totalExpenses, totalPayment, carryover, agencyBudget]);
 
       const workerTotals = useMemo(() => {
         const m = {};
@@ -664,10 +681,11 @@
 
       const addWorker = () => { if (!newWorker.name.trim()) return; const w = { id: uid(), name: newWorker.name.trim(), role: newWorker.role.trim(), colorIdx: newWorker.colorIdx % WORKER_COLORS.length }; setWorkers(p => [...p, w]); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => ({ ...t, workerPay: { ...t.workerPay, [w.id]: { amount: 0, paid: false } } })) }; }); return n; }); setNewWorker({ name: "", role: "", colorIdx: (newWorker.colorIdx + 1) % WORKER_COLORS.length }); setShowAddWorker(false); };
       const removeWorker = (wId) => { setWorkers(p => p.filter(w => w.id !== wId)); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => { const wp = { ...t.workerPay }; delete wp[wId]; return { ...t, workerPay: wp }; }) }; }); return n; }); };
+      const updateWorkerField = (wId, field, val) => setWorkers(p => p.map(w => w.id === wId ? { ...w, [field]: val } : w));
 
-      const addExpense = () => { if (!newExpense.service.trim()) return; const expData = { ...newExpense, date: autoDate(newExpense.date) }; if (editExpense) { setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); logAction('✏️ Витрата оновлена', newExpense.service); } else { setExpenses(p => [...p, { id: uid(), ...expData }]); logAction('➕ Витрата додана', newExpense.service); } setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "" }); setShowAddExpense(false); setEditExpense(null); };
+      const addExpense = () => { if (!newExpense.service.trim()) return; const expData = { ...newExpense, date: autoDate(newExpense.date) }; if (editExpense) { setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); logAction('✏️ Витрата оновлена', newExpense.service); } else { setExpenses(p => [...p, { id: uid(), ...expData }]); logAction('➕ Витрата додана', newExpense.service); } setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "" }); setShowAddExpense(false); setEditExpense(null); };
       const removeExpense = (id) => { const ex = expenses.find(e => e.id === id); setExpenses(p => p.filter(e => e.id !== id)); logAction('🗑️ Витрата видалена', ex?.service || ''); };
-      const startEditExpense = (e) => { setEditExpense(e); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost, recurring: e.recurring || false, workerLink: e.workerLink || "", costType: e.costType || "" }); setShowAddExpense(true); };
+      const startEditExpense = (e) => { setEditExpense(e); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost, recurring: e.recurring || false, workerLink: e.workerLink || "", costType: e.costType || "", clientName: e.clientName || "" }); setShowAddExpense(true); };
 
       const addTransfer = () => { if (!newTransfer.fromAcc || !newTransfer.toAcc) return; setTransfers(p => [...p, { id: uid(), ...newTransfer, date: autoDate(newTransfer.date) }]); setNewTransfer({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" }); setShowTransfer(false); };
       const removeTransfer = (id) => setTransfers(p => p.filter(t => t.id !== id));
@@ -719,8 +737,17 @@
         );
       }
 
+      const NAV_ITEMS = [
+        { id: 'dashboard', icon: '📊', label: 'Дашборд' },
+        { id: 'operations', icon: '💰', label: 'Операції' },
+        { id: 'team', icon: '👥', label: 'Команда' },
+        { id: 'accounts', icon: '🏦', label: 'Рахунки' },
+        { id: 'journal', icon: '📋', label: 'Журнал' },
+        { id: 'settings', icon: '⚙️', label: 'Налаштування' },
+      ];
+
       return (
-        <div style={{ minHeight: "100vh", background: "#E8E4DE", fontFamily: "'DM Sans',sans-serif" }}>
+        <div style={{ minHeight: "100vh", background: "#E8E4DE", fontFamily: "'DM Sans',sans-serif", display: "flex" }}>
           <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
             *{box-sizing:border-box;margin:0;padding:0}
             .editable-cell:hover{background:rgba(0,0,0,.06)!important}
@@ -764,26 +791,51 @@
           <datalist id="products-list">
              {products.map(p => <option key={p.id} value={p.name} />)}
           </datalist>
+          <datalist id="clients-list">
+             {clientNames.map(c => <option key={c} value={c} />)}
+          </datalist>
 
           <input ref={invoiceInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" style={{ display: "none" }} onChange={handleInvoiceUpload} />
           <input ref={importInputRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleImport} />
 
+          {/* SIDEBAR */}
+          <div style={{ width: 210, flexShrink: 0, background: "#141414", borderRight: "1px solid #2a2a2a", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", zIndex: 200 }}>
+            <div style={{ padding: "20px 22px 24px", borderBottom: "1px solid #2a2a2a" }}>
+              <img src={LOGO_SRC} alt="ADvantage" style={{ height: 26, filter: "invert(1) brightness(2)" }} />
+            </div>
+            <nav style={{ padding: "14px 12px", display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+              {NAV_ITEMS.map(item => {
+                const active = activeSection === item.id;
+                return (
+                  <button key={item.id} onClick={() => setActiveSection(item.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderRadius: 9, border: active ? "1px solid rgba(239,68,68,.4)" : "1px solid transparent", background: active ? "rgba(239,68,68,.12)" : "transparent", color: active ? "#F87171" : "rgba(255,255,255,.6)", fontSize: 14, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", textAlign: "left", transition: "all .15s" }} onMouseEnter={e => { if (!active) e.currentTarget.style.background = "rgba(255,255,255,.05)"; }} onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}>
+                    <span style={{ fontSize: 16, width: 20, textAlign: "center" }}>{item.icon}</span>
+                    {item.label}
+                  </button>
+                );
+              })}
+            </nav>
+            <div style={{ padding: "14px 18px", borderTop: "1px solid #2a2a2a" }}>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,.4)", marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>
+              <button onClick={onLogout} style={{ width: "100%", padding: "7px", background: "rgba(255,255,255,.08)", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>Вийти</button>
+            </div>
+          </div>
+
+          {/* MAIN COLUMN */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+
           {/* TOPBAR */}
           <div style={{ background: "#1A1A1A", padding: "12px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, borderBottom: "1px solid #333" }}>
-            <img src={LOGO_SRC} alt="ADvantage" style={{ height: 26, filter: "invert(1) brightness(2)" }} />
+            <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>{NAV_ITEMS.find(n => n.id === activeSection)?.label}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <button onClick={prevMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "6px 14px", fontSize: 18 }}>‹</button>
               <span style={{ color: "#fff", fontSize: 16, fontWeight: 600, minWidth: 160, textAlign: "center" }}>{MONTHS_UA[currentMonth]} {currentYear}</span>
               <button onClick={nextMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "6px 14px", fontSize: 18 }}>›</button>
               <button onClick={undo} className="btn" title="Відмінити дію" style={{ background: historyRef.current.length > 0 ? "rgba(255,200,50,.2)" : "rgba(255,255,255,.05)", border: historyRef.current.length > 0 ? "1px solid rgba(255,200,50,.3)" : "1px solid transparent", color: historyRef.current.length > 0 ? "#FBBF24" : "#555", padding: "6px 10px", fontSize: 14, marginLeft: 6 }}>↩ Відмінити</button>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ color: "rgba(255,255,255,.5)", fontSize: 12 }}>{userEmail}</span>
-              <button onClick={onLogout} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "6px 14px", fontSize: 12 }}>Вийти</button>
-            </div>
           </div>
 
           {/* KPI */}
+          {(activeSection === 'dashboard' || activeSection === 'operations') && (
           <div style={{ background: "#1A1A1A", padding: "20px 28px 16px" }}>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
               {[{ label: "Agency Turnover", value: totalPayment }, { label: "Revenue (REV)", value: totalRev, color: "#4ADE80" }, { label: "Agency Budget", value: agencyBudget, color: agencyBudget >= 0 ? "#4ADE80" : "#F87171" }, { label: "Carryover (попередній)", value: carryover, color: "#FBBF24" }, { label: "REV Fees / Costs", value: totalCosts, color: "#FB923C" }, { label: "Total Expenses", value: totalExpenses, color: "#F87171" }].map((k, i) => (
@@ -813,8 +865,47 @@
               <button onClick={() => { setEditProduct(null); setNewProduct({ name: "", color: "#4A90D9", avgPrice: 0 }); setShowAddProduct(true); }} style={{ background: "rgba(255,255,255,.08)", border: "1px dashed rgba(255,255,255,.2)", borderRadius: 8, padding: "6px 14px", color: "rgba(255,255,255,.5)", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>+ Продукт</button>
             </div>
           </div>
+          )}
 
           <div style={{ padding: "24px 28px" }}>
+
+            {/* ============ DASHBOARD SECTION ============ */}
+            {activeSection === 'dashboard' && (
+              <div style={{ background: "#fff", borderRadius: 10, padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: "#333", marginBottom: 4 }}>P&L — {MONTHS_UA[currentMonth]} {currentYear}</h2>
+                <div style={{ fontSize: 12, color: "#888", marginBottom: 20 }}>Чи заробляє агенція цього місяця</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 24 }}>
+                  {[
+                    { label: "Дохід (REV)", value: monthPL.revenue, color: "#16A34A", hint: "Комісія агенції" },
+                    { label: "Витрати агенції", value: -monthPL.agencyExpenses, color: "#DC2626", hint: "Без витрат під клієнта" },
+                    { label: "ЗП виплачено", value: -monthPL.salariesPaid, color: "#DC2626", hint: monthPL.salariesPending > 0 ? `+ ${fmt(monthPL.salariesPending)} в очікуванні` : "Всі виплати" },
+                    { label: "Маржа місяця", value: monthPL.margin, color: monthPL.margin >= 0 ? "#16A34A" : "#DC2626", hint: "Дохід − всі витрати", big: true },
+                  ].map((c, i) => (
+                    <div key={i} style={{ border: `1px solid ${c.color}22`, borderLeft: `4px solid ${c.color}`, borderRadius: 10, padding: "16px 18px", background: c.big ? `${c.color}08` : "#fafafa" }}>
+                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: .5, color: "#888", marginBottom: 6 }}>{c.label}</div>
+                      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: c.big ? 28 : 22, fontWeight: 700, color: c.color }}>{fmt(c.value)}</div>
+                      <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>{c.hint}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, paddingTop: 20, borderTop: "1px solid #eee" }}>
+                  {[
+                    { label: "Оборот агенції", value: monthPL.turnover },
+                    { label: "Витрати під клієнта", value: monthPL.clientCosts, color: "#9333EA" },
+                    { label: "Перехідний залишок", value: monthPL.carryover, color: "#F59E0B" },
+                    { label: "Бюджет агенції (накопич.)", value: monthPL.budget, color: monthPL.budget >= 0 ? "#16A34A" : "#DC2626" },
+                  ].map((c, i) => (
+                    <div key={i}>
+                      <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{c.label}</div>
+                      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 16, fontWeight: 600, color: c.color || "#333" }}>{fmt(c.value)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ============ OPERATIONS SECTION ============ */}
+            {activeSection === 'operations' && (<>
             {/* TABLE */}
             <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
               <div style={{ overflowX: "auto" }}>
@@ -1043,9 +1134,12 @@
                              <button onClick={() => { const x=[...expenses]; x[i].recurring=!e.recurring; setExpenses(x); }} title={e.recurring ? "Щомісяця (клік — зняти)" : "Одноразово (клік — зробити щомісячним)"} style={{ border: "none", background: e.recurring ? "rgba(74,144,217,.12)" : "none", borderRadius: 4, cursor: "pointer", fontSize: 13, padding: "2px 4px", color: e.recurring ? "#4A90D9" : "#ccc" }}>🔄</button>
                            </td>
                            <td style={{ padding: "4px 6px", textAlign: "center" }}>
-                             <button onClick={() => { const x=[...expenses]; x[i].costType = x[i].costType === 'client' ? '' : 'client'; setExpenses(x); }} title={e.costType === 'client' ? 'Під клієнта — клік щоб змінити на агенську' : 'Агенська — клік щоб змінити на "під клієнта"'} style={{ border: "none", background: e.costType === 'client' ? "rgba(239,68,68,.12)" : "rgba(74,144,217,.1)", borderRadius: 4, cursor: "pointer", fontSize: 10, padding: "2px 6px", color: e.costType === 'client' ? "#DC2626" : "#4A90D9", whiteSpace: "nowrap" }}>
+                             <button onClick={() => { const x=[...expenses]; x[i].costType = x[i].costType === 'client' ? '' : 'client'; setExpenses(x); }} title={e.costType === 'client' ? 'Під клієнта — клік щоб змінити на агенську' : 'Агенська — клік щоб змінити на "під клієнта"'} style={{ border: "none", background: e.costType === 'client' ? "rgba(147,51,234,.12)" : "rgba(74,144,217,.1)", borderRadius: 4, cursor: "pointer", fontSize: 10, padding: "2px 6px", color: e.costType === 'client' ? "#9333EA" : "#4A90D9", whiteSpace: "nowrap" }}>
                                {e.costType === 'client' ? '👥 клієнт' : '🏢 агенс.'}
                              </button>
+                             {e.costType === 'client' && (
+                               <input list="clients-list" value={e.clientName || ""} onChange={ev => { const x=[...expenses]; x[i].clientName=ev.target.value; setExpenses(x); }} placeholder="який клієнт?" style={{ width: "100%", boxSizing: "border-box", marginTop: 3, padding: "2px 4px", border: "1px solid #E9D5FF", borderRadius: 3, fontSize: 10, outline: "none", color: "#9333EA", background: "#FAF5FF" }} />
+                             )}
                            </td>
                            <td style={{ padding: "4px 6px", textAlign: "center" }}>
                              <select value={e.workerLink || ""} onChange={ev => { const x=[...expenses]; x[i].workerLink=ev.target.value; setExpenses(x); }} style={{ fontSize: 11, border: "1px solid #ddd", borderRadius: 4, padding: "2px 4px", background: e.workerLink ? "#F0FDF4" : "#fff", color: e.workerLink ? "#166534" : "#999", maxWidth: 110, cursor: "pointer" }}>
@@ -1064,7 +1158,7 @@
                    </table>
                  </div>
                  <div style={{ padding: "12px 16px", borderTop: "1px solid #eee" }}>
-                   <button className="btn btn-primary" onClick={() => { setEditExpense(null); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "" }); setShowAddExpense(true); }}>➕ Додати витрати</button>
+                   <button className="btn btn-primary" onClick={() => { setEditExpense(null); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "" }); setShowAddExpense(true); }}>➕ Додати витрати</button>
                  </div>
                </div>
 
@@ -1205,12 +1299,237 @@
                </div>
                
                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <button className="btn btn-secondary" onClick={() => setShowActionLog(true)} style={{ fontSize: 13 }}>📋 Журнал дій</button>
                   <button className="btn btn-secondary" onClick={exportSelected} style={{ fontSize: 13 }}>📥 Експорт</button>
                   <button className="btn btn-secondary" onClick={() => importInputRef.current?.click()} style={{ fontSize: 13 }}>📤 Імпорт JSON</button>
                </div>
             </div>
-            
+            </>)}
+
+            {/* ============ TEAM SECTION ============ */}
+            {activeSection === 'team' && (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, color: "#666" }}>Профілі працівників · {workers.length} в команді</div>
+                  <button className="btn btn-primary" onClick={() => setShowAddWorker(true)}>➕ Додати працівника</button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 18 }}>
+                  {workers.map(w => {
+                    const c = wc(w);
+                    const fields = [
+                      { key: 'role', icon: '💼', label: 'Роль' },
+                      { key: 'dob', icon: '🎂', label: 'День народження' },
+                      { key: 'email', icon: '✉️', label: 'Пошта' },
+                      { key: 'phone', icon: '📱', label: 'Телефон' },
+                      { key: 'requisites', icon: '💳', label: 'Реквізити / рахунок' },
+                      { key: 'telegram', icon: '✈️', label: 'Telegram' },
+                    ];
+                    return (
+                      <div key={w.id} style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", overflow: "hidden" }}>
+                        <div style={{ background: c.bg, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <div style={{ width: 44, height: 44, borderRadius: "50%", background: c.text, color: c.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700 }}>{(w.name || '?').charAt(0).toUpperCase()}</div>
+                            <div>
+                              <div style={{ fontSize: 16, fontWeight: 700, color: c.text }}>{w.name}</div>
+                              <div style={{ fontSize: 11, color: c.text, opacity: .7 }}>{w.role || 'без ролі'}</div>
+                            </div>
+                          </div>
+                          <button onClick={() => { if(window.confirm(`Видалити ${w.name}?`)) removeWorker(w.id); }} style={{ background: "rgba(0,0,0,.1)", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, padding: "4px 8px", color: c.text }}>🗑️</button>
+                        </div>
+                        <div style={{ padding: "14px 18px" }}>
+                          {fields.map(f => (
+                            <div key={f.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: "1px solid #f5f5f5" }}>
+                              <span style={{ fontSize: 14, width: 20, textAlign: "center", flexShrink: 0 }}>{f.icon}</span>
+                              <span style={{ fontSize: 11, color: "#999", width: 95, flexShrink: 0 }}>{f.label}</span>
+                              <div style={{ flex: 1 }}>
+                                <EditableCell value={w[f.key] || ""} onChange={v => updateWorkerField(w.id, f.key, v)} style={{ fontSize: 13, color: "#333" }} />
+                              </div>
+                            </div>
+                          ))}
+                          <div style={{ paddingTop: 8 }}>
+                            <div style={{ fontSize: 11, color: "#999", marginBottom: 4 }}>📝 Нотатки</div>
+                            <textarea value={w.notes || ""} onChange={e => updateWorkerField(w.id, 'notes', e.target.value)} placeholder="Будь-яка додаткова інформація..." style={{ width: "100%", boxSizing: "border-box", minHeight: 50, resize: "vertical", border: "1px solid #eee", borderRadius: 6, padding: "6px 8px", fontSize: 12, fontFamily: "'DM Sans',sans-serif", outline: "none" }} onFocus={e => e.target.style.borderColor = "#4A90D9"} onBlur={e => e.target.style.borderColor = "#eee"} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {workers.length === 0 && <div style={{ color: "#999", padding: 24 }}>Немає працівників. Додай першого.</div>}
+                </div>
+              </div>
+            )}
+
+            {/* ============ ACCOUNTS SECTION ============ */}
+            {activeSection === 'accounts' && (
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, color: "#666" }}>Платіжки агенції · обороти за всі місяці</div>
+                  <button className="btn btn-primary" onClick={() => { setEditAccount(null); setNewAccountForm({name:"", owner:"", limit:10000}); setShowAddAccount(true); }}>➕ Додати платіжку</button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16, marginBottom: 36 }}>
+                  {accountUsage.map(a => {
+                    const over = a.pct > 100;
+                    return (
+                      <div key={a.id} style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "16px 18px", opacity: a.isActive ? 1 : .55 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                          <div>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: "#333" }}>{a.name}</div>
+                            {a.owner && <div style={{ fontSize: 11, color: "#999" }}>{a.owner}</div>}
+                          </div>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button onClick={() => startEditAccount(a)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#4A90D9" }}>✏️</button>
+                            <button onClick={() => toggleAccount(a.id)} title={a.isActive ? "Активна" : "Неактивна"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: a.isActive ? "#16A34A" : "#DC2626" }}>{a.isActive ? "●" : "○"}</button>
+                            <button onClick={() => confirmRemoveAccount(a.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#bbb" }}>🗑️</button>
+                          </div>
+                        </div>
+                        <div style={{ background: "#f0f0f0", borderRadius: 4, height: 8, marginBottom: 6, overflow: "hidden" }}>
+                          <div style={{ width: `${Math.min(a.pct, 100)}%`, height: "100%", background: barColor(a.pct), borderRadius: 4 }} />
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 700, color: barColor(a.pct) }}>{fmt(a.used)}</span>
+                          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: "#aaa" }}>ліміт {fmt(a.limit)}</span>
+                        </div>
+                        <div style={{ fontSize: 10, color: over ? "#DC2626" : "#999", marginBottom: 8 }}>{over ? `ПЕРЕВИЩЕНО на ${fmt(a.used - a.limit)}` : `Залишок обороту: ${fmt(a.remaining)}`}</div>
+                        <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 8, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                          <span style={{ color: "#888" }}>Бюджет агенції:</span>
+                          <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, color: a.accountBudget >= 0 ? "#16A34A" : "#DC2626" }}>{fmt(a.accountBudget)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {accounts.length === 0 && <div style={{ color: "#999", padding: 24 }}>Немає платіжок.</div>}
+                </div>
+
+                {/* Personal accounts balance */}
+                {Object.keys(personalAccountStats).length > 0 && (
+                  <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", overflow: "hidden" }}>
+                    <div style={{ padding: "16px 20px", borderBottom: "1px solid #eee" }}>
+                      <h2 style={{ fontSize: 15, fontWeight: 700, color: "#333" }}>🧾 Баланс особистих рахунків</h2>
+                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Не-агенційні рахунки · отримано мінус витрачено (за всі місяці)</div>
+                    </div>
+                    <table style={{ width: "100%" }}>
+                      <thead>
+                        <tr style={{ background: "#F5F3F0" }}>
+                          <th style={{ padding: "9px 16px", fontSize: 12, color: "#666", textAlign: "left" }}>Рахунок</th>
+                          <th style={{ padding: "9px 16px", fontSize: 12, color: "#666", textAlign: "right" }}>Отримано</th>
+                          <th style={{ padding: "9px 16px", fontSize: 12, color: "#666", textAlign: "right" }}>Витрачено</th>
+                          <th style={{ padding: "9px 16px", fontSize: 12, color: "#666", textAlign: "right" }}>Баланс</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(personalAccountStats).map(([name, s]) => {
+                          const bal = s.received - s.spent;
+                          return (
+                            <tr key={name} style={{ borderBottom: "1px solid #f5f5f5" }}>
+                              <td style={{ padding: "9px 16px", fontSize: 13, fontWeight: 600, color: "#333" }}>{name}</td>
+                              <td style={{ padding: "9px 16px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: "#16A34A" }}>{fmt(s.received)}</td>
+                              <td style={{ padding: "9px 16px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: "#DC2626" }}>{fmt(s.spent)}</td>
+                              <td style={{ padding: "9px 16px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontSize: 13, fontWeight: 700, color: bal >= 0 ? "#16A34A" : "#DC2626" }}>{fmt(bal)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ============ JOURNAL SECTION ============ */}
+            {activeSection === 'journal' && (
+              <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 16, flexWrap: "wrap" }}>
+                  <div style={{ fontSize: 13, color: "#666" }}>Кожна дія на платформі · по днях і годинах</div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <input placeholder="Фільтр..." value={actionLogFilter} onChange={e => setActionLogFilter(e.target.value)} style={{ padding: "7px 12px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13, outline: "none", width: 200 }} />
+                    <button className="btn btn-secondary" style={{ fontSize: 12, color: "#DC2626" }} onClick={() => { if(window.confirm("Очистити весь журнал?")) { localStorage.removeItem('adv_action_log'); setActionLogFilter(''); setActiveSection('journal'); } }}>🗑️ Очистити</button>
+                  </div>
+                </div>
+                {(() => {
+                  const log = (() => { try { return JSON.parse(localStorage.getItem('adv_action_log') || '[]'); } catch(e) { return []; } })();
+                  const filtered = actionLogFilter ? log.filter(e => e.action.toLowerCase().includes(actionLogFilter.toLowerCase()) || new Date(e.ts).toLocaleDateString('uk-UA').includes(actionLogFilter) || (e.detail || '').toLowerCase().includes(actionLogFilter.toLowerCase())) : log;
+                  if (filtered.length === 0) return <div style={{ textAlign: "center", color: "#aaa", padding: 40 }}>Немає записів</div>;
+                  const grouped = {};
+                  filtered.forEach(entry => { const day = new Date(entry.ts).toLocaleDateString('uk-UA', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }); if (!grouped[day]) grouped[day] = []; grouped[day].push(entry); });
+                  return Object.entries(grouped).map(([day, entries]) => (
+                    <div key={day} style={{ marginBottom: 18 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8, paddingBottom: 5, borderBottom: "1px solid #eee" }}>{day}</div>
+                      {entries.map(entry => (
+                        <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "7px 0", borderBottom: "1px solid #f8f8f8" }}>
+                          <span style={{ fontSize: 12, color: "#aaa", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap", width: 44 }}>{new Date(entry.ts).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span style={{ fontSize: 14, flex: 1 }}>{entry.action}</span>
+                          {entry.detail && <span style={{ fontSize: 12, color: "#888", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entry.detail}</span>}
+                          <span style={{ fontSize: 11, color: "#ccc", whiteSpace: "nowrap" }}>{entry.month}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ));
+                })()}
+              </div>
+            )}
+
+            {/* ============ SETTINGS SECTION ============ */}
+            {activeSection === 'settings' && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                {/* Currency */}
+                <div style={{ background: "#1A1A1A", borderRadius: 12, padding: "20px 24px", boxShadow: "0 2px 12px rgba(0,0,0,.08)" }}>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 14 }}>💱 Конвертер валют</h2>
+                  <CurrencyConverter />
+                </div>
+                {/* Products */}
+                <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <h2 style={{ fontSize: 15, fontWeight: 700, color: "#333" }}>📦 Продукти</h2>
+                    <button className="btn btn-primary" onClick={() => { setEditProduct(null); setNewProduct({ name: "", color: "#4A90D9", avgPrice: 0 }); setShowAddProduct(true); }}>➕ Продукт</button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+                    {productStats.map(p => (
+                      <div key={p.id} style={{ border: `1px solid ${p.color}33`, borderLeft: `4px solid ${p.color}`, borderRadius: 10, padding: "12px 14px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: p.color }}>{p.name}</div>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button onClick={() => startEditProduct(p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11 }}>✏️</button>
+                            <button onClick={() => removeProduct(p.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11 }}>🗑️</button>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>цей міс: <b style={{ color: "#333" }}>{p.monthSales}</b> · всього: {p.totalSales}</div>
+                        {p.avgPrice > 0 && <div style={{ fontSize: 11, color: "#aaa", marginTop: 2 }}>ср. чек {fmt(p.avgPrice)}</div>}
+                      </div>
+                    ))}
+                    {products.length === 0 && <div style={{ color: "#999", fontSize: 13 }}>Немає продуктів.</div>}
+                  </div>
+                </div>
+                {/* Salary notifications */}
+                <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <h2 style={{ fontSize: 15, fontWeight: 700, color: "#333" }}>🔔 Сповіщення про ЗП</h2>
+                    <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => { setSalaryNotifyWorkerIds(null); localStorage.removeItem('salary_notify_workers'); }}>↺ Скинути (всі)</button>
+                  </div>
+                  <p style={{ fontSize: 12, color: "#888", marginBottom: 12 }}>Кого включати в нагадування про невиплачену зарплату.</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 8 }}>
+                    {workers.map(w => {
+                      const c = wc(w);
+                      const included = salaryNotifyWorkerIds === null || salaryNotifyWorkerIds.includes(w.id);
+                      return (
+                        <label key={w.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: included ? c.bgLight : "#f9f9f9", border: `1px solid ${included ? c.border : "#eee"}` }}>
+                          <input type="checkbox" checked={included} onChange={ev => { const current = salaryNotifyWorkerIds || workers.map(ww => ww.id); const updated = ev.target.checked ? [...current, w.id] : current.filter(id => id !== w.id); setSalaryNotifyWorkerIds(updated); localStorage.setItem('salary_notify_workers', JSON.stringify(updated)); }} style={{ accentColor: c.border }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{w.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+                {/* Data */}
+                <div style={{ background: "#fff", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,.08)", padding: "20px 24px" }}>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, color: "#333", marginBottom: 12 }}>💾 Дані</h2>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button className="btn btn-secondary" onClick={exportSelected}>📥 Експорт вибраного</button>
+                    <button className="btn btn-secondary" onClick={() => importInputRef.current?.click()}>📤 Імпорт JSON</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
           </div>
 
           {/* MODAL: Add Worker */}
@@ -1238,6 +1557,9 @@
               <input type="checkbox" checked={newExpense.costType === 'client'} onChange={e => setNewExpense({ ...newExpense, costType: e.target.checked ? 'client' : '' })} style={{ width: 15, height: 15, marginTop: 0 }} />
               👥 Під клієнта (не агенська витрата)
             </label>
+            {newExpense.costType === 'client' && (
+              <label>Для якого клієнта<input list="clients-list" value={newExpense.clientName || ""} onChange={e => setNewExpense({ ...newExpense, clientName: e.target.value })} placeholder="Назва клієнта" /></label>
+            )}
             <label>👤 Зарплата для (синхр. з воркером)
               <select value={newExpense.workerLink} onChange={e => setNewExpense({ ...newExpense, workerLink: e.target.value })} style={{ marginTop: 4 }}>
                 <option value="">— не ЗП —</option>
