@@ -857,8 +857,8 @@
             .tx-row:hover .row-delete{opacity:1!important}
             .tx-row{transition:background .2s}.tx-row.invalid{background:#1e1616!important;border-left:2px solid rgba(248,113,113,.4)}.tx-row.received{background:#15291b}
             .status-btn{border:none;background:none;cursor:pointer;font-size:14px;padding:1px;border-radius:50%;transition:transform .15s;line-height:1;display:block;margin:0 auto}.status-btn:hover{transform:scale(1.2)}
-            .sc{position:sticky;z-index:10}.sc0{left:0}.sc1{left:36px}.sc2{left:66px;box-shadow:6px 0 18px rgba(0,0,0,.75)}
-            thead .sc{z-index:20}
+            .scol{position:sticky;left:0;z-index:10;box-shadow:8px 0 16px -4px rgba(0,0,0,.7)}
+            thead .scol,tfoot .scol{z-index:20}
             .worker-th{cursor:grab}.worker-th:active{cursor:grabbing}
             table{border-collapse:collapse}
             ::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-track{background:#1a1a1a;border-radius:4px}::-webkit-scrollbar-thumb{background:#444;border-radius:4px}
@@ -1057,48 +1057,18 @@
                 </div>
               )}
 
-              {/* Top clients + pending this month */}
+              {/* Awaiting payment this month */}
               {(() => {
-                const topClients = [...transactions]
-                  .filter(t => t.status === 'received' && t.client && parseNum(t.payment) > 0)
-                  .sort((a,b) => parseNum(b.payment) - parseNum(a.payment))
-                  .slice(0, 5);
                 const pendingTotal = transactions.filter(t => t.status !== 'received').reduce((s,t) => s + parseNum(t.payment), 0);
                 const pendingCount = transactions.filter(t => t.status !== 'received' && parseNum(t.payment) > 0).length;
-                if (topClients.length === 0 && pendingTotal === 0) return null;
+                if (pendingTotal === 0) return null;
                 return (
-                  <div style={{ display: "grid", gridTemplateColumns: pendingTotal > 0 ? "1fr 260px" : "1fr", gap: 16, marginBottom: 24 }}>
-                    {topClients.length > 0 && (
-                      <div style={{ background: "#1A1A1A", borderRadius: 12, padding: "20px 24px" }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "#E5E5E5", marginBottom: 14, textTransform: "uppercase", letterSpacing: ".06em", opacity: .7 }}>Top clients — {MONTHS_UA[currentMonth]}</div>
-                        {topClients.map((t, idx) => {
-                          const maxP = parseNum(topClients[0].payment);
-                          const pct = maxP > 0 ? (parseNum(t.payment) / maxP) * 100 : 0;
-                          return (
-                            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                              <span style={{ fontSize: 11, color: "#555", fontFamily: "'JetBrains Mono',monospace", width: 16, flexShrink: 0 }}>{idx+1}</span>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                                  <span style={{ fontSize: 13, color: "#E5E5E5", fontWeight: 500 }}>{t.client}</span>
-                                  <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: "#4ADE80" }}>{fmt(t.payment)}</span>
-                                </div>
-                                <div style={{ background: "#222", borderRadius: 2, height: 3 }}>
-                                  <div style={{ width: `${pct}%`, height: "100%", background: "#4ADE80", borderRadius: 2, opacity: .6 }} />
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {pendingTotal > 0 && (
-                      <div style={{ background: "#1A1A1A", borderRadius: 12, padding: "20px 24px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "#E5E5E5", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em", opacity: .7 }}>Awaiting payment</div>
-                        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 32, fontWeight: 700, color: "#F59E0B" }}>{fmt(pendingTotal)}</div>
-                        <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>{pendingCount} deal{pendingCount !== 1 ? "s" : ""} not confirmed</div>
-                        <div style={{ marginTop: 14, fontSize: 11, color: "#555" }}>Mark as received (green circle) when payment lands.</div>
-                      </div>
-                    )}
+                  <div style={{ background: "#1A1A1A", borderRadius: 12, padding: "18px 24px", marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", borderLeft: "4px solid #F59E0B" }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#E5E5E5", textTransform: "uppercase", letterSpacing: ".06em", opacity: .7, marginBottom: 4 }}>Awaiting payment</div>
+                      <div style={{ fontSize: 11, color: "#666" }}>{pendingCount} deal{pendingCount !== 1 ? "s" : ""} not confirmed — mark the green circle when payment lands</div>
+                    </div>
+                    <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 30, fontWeight: 700, color: "#F59E0B" }}>{fmt(pendingTotal)}</div>
                   </div>
                 );
               })()}
@@ -1143,15 +1113,13 @@
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", minWidth: 950 + workers.length * 160 }}>
                   <colgroup>
-                    <col style={{ width: 36 }} /><col style={{ width: 30 }} /><col style={{ width: 150 }} /><col style={{ width: 170 }} /><col style={{ width: 140 }} /><col style={{ width: 110 }} /><col style={{ width: 70 }} /><col style={{ width: 90 }} /><col style={{ width: 110 }} /><col style={{ width: 46 }} />
+                    <col style={{ width: 224 }} /><col style={{ width: 170 }} /><col style={{ width: 140 }} /><col style={{ width: 110 }} /><col style={{ width: 70 }} /><col style={{ width: 90 }} /><col style={{ width: 110 }} /><col style={{ width: 46 }} />
                     {workers.map(w => <col key={w.id} style={{ width: 150 }} />)}
                     <col style={{ width: 40 }} />
                   </colgroup>
                   <thead>
                     <tr style={{ background: "#444", color: "#fff" }}>
-                      <th className="sc sc0" style={{ padding: 0, background: "#131313" }}></th>
-                      <th className="sc sc1" style={{ padding: 0, background: "#131313" }}></th>
-                      <th className="sc sc2" style={{ padding: 0, background: "#131313" }}></th>
+                      <th className="scol" style={{ padding: 0, background: "#131313" }}></th>
                       <th colSpan={6} style={{ padding: 0 }}></th>
                       <th style={{ padding: "6px 4px", fontSize: 11, fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", verticalAlign: "top" }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,.7)", fontSize: 11, letterSpacing: .5 }}>Total Revenue Per Person:<button onClick={() => setShowAddWorker(true)} style={{ background: "rgba(255,255,255,.15)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600, marginLeft: 2 }}><Icon name="plus" size={15} /></button></span>
@@ -1169,11 +1137,15 @@
                     </tr>
                     
                     <tr style={{ background: "#1A1A1A", color: "#fff" }}>
-                      <th className="sc sc0" style={{ padding: "6px 4px", textAlign: "center", verticalAlign: "middle", background: "#141414" }}>
-                        <input type="checkbox" checked={transactions.length > 0 && selectedTx.size === transactions.length} onChange={toggleAllTx} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9" }} title="Select all" />
+                      <th className="scol" style={{ padding: 0, background: "#141414" }}>
+                        <div style={{ display: "flex", alignItems: "center", height: "100%" }}>
+                          <div style={{ width: 36, flexShrink: 0, display: "flex", justifyContent: "center" }}>
+                            <input type="checkbox" checked={transactions.length > 0 && selectedTx.size === transactions.length} onChange={toggleAllTx} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9" }} title="Select all" />
+                          </div>
+                          <div style={{ width: 30, flexShrink: 0, textAlign: "center", fontSize: 11, color: "#888" }}>#</div>
+                          <div style={{ flex: 1, padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Clients</div>
+                        </div>
                       </th>
-                      <th className="sc sc1" style={{ padding: "10px 6px", fontSize: 11, background: "#141414" }}>#</th>
-                      <th className="sc sc2" style={{ padding: "10px 6px", fontSize: 12, textAlign: "left", background: "#141414" }}>Clients</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Our service</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Account</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "right" }}>Payment</th>
@@ -1191,18 +1163,22 @@
                       const isReceived = t.status === 'received';
                       return (
                         <tr key={t.id} className={`tx-row ${isInvalid ? "invalid" : isReceived ? "received" : ""}`} draggable onDragStart={() => onTxDragStart(i)} onDragOver={(e) => onTxDragOver(e, i)} onDrop={() => onTxDrop(i)} style={{ borderBottom: `1px solid ${isReceived && !isInvalid ? "#1f3d2a" : "#2a2a2a"}`, opacity: dragTxIdx === i ? 0.4 : 1 }}>
-                          <td className="sc sc0" style={{ padding: "2px 2px", textAlign: "center", background: isInvalid ? "#1e1616" : isReceived ? "#15291b" : "#141414" }}>
-                            <button className="status-btn" onClick={() => updateTx(t.id, 'status', isReceived ? 'pending' : 'received')} title={isReceived ? "Received — click to undo" : "Not confirmed — excluded from stats"}>
-                              <svg width="15" height="15" viewBox="0 0 24 24" style={{ display: "block" }}><circle cx="12" cy="12" r="8" fill={isReceived ? "#16A34A" : "none"} stroke={isReceived ? "#16A34A" : "#bbb"} strokeWidth="2" />{isReceived && <path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}</svg>
-                            </button>
-                            <DragHandle />
-                            <input type="checkbox" checked={selectedTx.has(t.id)} onChange={() => toggleSelectTx(t.id)} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9" }} />
-                            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 600, color: diff > 0 ? "#16A34A" : diff < 0 ? "#DC2626" : "#999", marginTop: 1 }}>{isInvalid ? (diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)) : "✓"}</div>
-                          </td>
-                          <td className="sc sc1" style={{ padding: "6px", fontSize: 12, color: "#999", textAlign: "center", background: isInvalid ? "#1e1616" : isReceived ? "#15291b" : "#141414" }}>{i + 1}</td>
-                          <td className="sc sc2" style={{ padding: "2px", background: isInvalid ? "#1e1616" : isReceived ? "#15291b" : "#141414" }}>
-                            <EditableCell value={t.client} onChange={v => updateTx(t.id, "client", v)} />
-                            <CommentCell value={t.comment} onChange={v => updateTx(t.id, "comment", v)} />
+                          <td className="scol" style={{ padding: 0, background: isInvalid ? "#1e1616" : isReceived ? "#15291b" : "#141414" }}>
+                            <div style={{ display: "flex", alignItems: "flex-start" }}>
+                              <div style={{ width: 36, flexShrink: 0, textAlign: "center", padding: "2px 0" }}>
+                                <button className="status-btn" onClick={() => updateTx(t.id, 'status', isReceived ? 'pending' : 'received')} title={isReceived ? "Received — click to undo" : "Not confirmed — excluded from stats"}>
+                                  <svg width="15" height="15" viewBox="0 0 24 24" style={{ display: "block" }}><circle cx="12" cy="12" r="8" fill={isReceived ? "#16A34A" : "none"} stroke={isReceived ? "#16A34A" : "#bbb"} strokeWidth="2" />{isReceived && <path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}</svg>
+                                </button>
+                                <DragHandle />
+                                <input type="checkbox" checked={selectedTx.has(t.id)} onChange={() => toggleSelectTx(t.id)} style={{ width: 13, height: 13, cursor: "pointer", accentColor: "#4A90D9" }} />
+                                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 10, fontWeight: 600, color: diff > 0 ? "#16A34A" : diff < 0 ? "#DC2626" : "#999", marginTop: 1 }}>{isInvalid ? (diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)) : "✓"}</div>
+                              </div>
+                              <div style={{ width: 30, flexShrink: 0, padding: "6px 2px", fontSize: 12, color: "#999", textAlign: "center" }}>{i + 1}</div>
+                              <div style={{ flex: 1, minWidth: 0, padding: "2px" }}>
+                                <EditableCell value={t.client} onChange={v => updateTx(t.id, "client", v)} />
+                                <CommentCell value={t.comment} onChange={v => updateTx(t.id, "comment", v)} />
+                              </div>
+                            </div>
                           </td>
                           <td style={{ padding: "2px" }}>
                             <input list="products-list" value={t.service || ""} onChange={e => updateTx(t.id, "service", e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", transition: "border .2s", background: "transparent" }} onFocus={e => e.target.style.border="1px solid #4A90D9"} onBlur={e => e.target.style.border="1px solid transparent"} placeholder="Service" />
@@ -1250,9 +1226,8 @@
                   </tbody>
                   <tfoot>
                     <tr style={{ background: "#222", fontWeight: 600 }}>
-                      <td className="sc sc0" style={{ background: "#1e1e1e" }}></td>
-                      <td className="sc sc1" style={{ background: "#1e1e1e" }}></td>
-                      <td className="sc sc2" colSpan={3} style={{ padding: "10px 6px", fontSize: 13, background: "#1e1e1e" }}>TOTALS <span style={{ fontSize: 10, fontWeight: 400, color: "#666" }}>(confirmed only)</span></td>
+                      <td className="scol" style={{ padding: "10px 6px 10px 72px", fontSize: 13, background: "#1e1e1e" }}>TOTALS <span style={{ fontSize: 10, fontWeight: 400, color: "#666" }}>(confirmed only)</span></td>
+                      <td></td><td></td>
                       <td style={{ padding: "10px 6px", textAlign: "right" }}>
                         <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{fmt(totalPayment)}</div>
                         {pendingPayment > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: "#A16207", fontWeight: 500 }}>+{fmt(pendingPayment)} pend.</div>}
