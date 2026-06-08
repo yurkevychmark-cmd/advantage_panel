@@ -418,6 +418,29 @@
       
       const historyRef = useRef([]);
       const MAX_HISTORY = 30;
+      const hasLoadedRef = useRef(false); // true once initial fetch completes — prevents premature saves
+
+      // Reconciliation backup helpers — dedicated localStorage key, updated immediately on every reconcile
+      const backupReconciliations = (accs) => {
+        try {
+          const map = {};
+          accs.forEach(a => { if ((a.reconciliations || []).length > 0) map[a.id] = a.reconciliations; });
+          if (Object.keys(map).length > 0) localStorage.setItem('adv_reconciliations', JSON.stringify(map));
+        } catch(e) {}
+      };
+      // Merge reconciliation backup into accounts array — always keeps the version with more entries
+      const mergeReconciliations = (accs) => {
+        try {
+          const raw = localStorage.getItem('adv_reconciliations');
+          if (!raw) return accs;
+          const map = JSON.parse(raw);
+          return accs.map(a => {
+            const bak = map[a.id] || [];
+            const cur = a.reconciliations || [];
+            return bak.length > cur.length ? { ...a, reconciliations: bak } : a;
+          });
+        } catch(e) { return accs; }
+      };
 
       useEffect(() => {
         async function fetchData() {
@@ -425,10 +448,18 @@
           if (settings) {
             if (settings.workers && settings.workers.length > 0) setWorkers(settings.workers);
             if (settings.accounts && settings.accounts.length > 0) {
-              setAccounts(settings.accounts);
-              localStorage.setItem('adv_accounts', JSON.stringify(settings.accounts));
+              // Always merge reconciliation backup — so even if Supabase lost reconciliations, local backup restores them
+              const merged = mergeReconciliations(settings.accounts);
+              setAccounts(merged);
+              localStorage.setItem('adv_accounts', JSON.stringify(merged));
             } else {
-              try { const la = localStorage.getItem('adv_accounts'); if (la) { const aa = JSON.parse(la); if (aa.length > 0) setAccounts(aa); } } catch(e) {}
+              try {
+                const la = localStorage.getItem('adv_accounts');
+                if (la) {
+                  const aa = JSON.parse(la);
+                  if (aa.length > 0) { setAccounts(mergeReconciliations(aa)); }
+                }
+              } catch(e) {}
             }
             if (settings.products && settings.products.length > 0) {
               setProducts(settings.products);
@@ -451,16 +482,19 @@
              setMonthData({ "2026-2": { transactions: [], expenses: [], transfers: [], carryover: 0 } });
           }
           setIsInitialLoad(false);
+          hasLoadedRef.current = true;
         }
         fetchData();
       }, []);
 
       useEffect(() => {
-        if (isInitialLoad) return;
+        if (isInitialLoad || !hasLoadedRef.current) return;
         const timer = setTimeout(async () => {
-          await supabase.from('global_settings').upsert({ id: 1, workers, accounts, products });
+          // Merge reconciliation backup before saving to Supabase — ensures we never lose reconciliations
+          const accountsToSave = accounts.length > 0 ? mergeReconciliations(accounts) : accounts;
+          await supabase.from('global_settings').upsert({ id: 1, workers, accounts: accountsToSave, products });
           if (products.length > 0) localStorage.setItem('adv_products', JSON.stringify(products));
-          if (accounts.length > 0) localStorage.setItem('adv_accounts', JSON.stringify(accounts));
+          if (accountsToSave.length > 0) localStorage.setItem('adv_accounts', JSON.stringify(accountsToSave));
 
           const updates = Object.keys(monthData).map(key => ({ month_key: key, data: monthData[key] }));
           if (updates.length > 0) {
@@ -933,7 +967,10 @@
         const actual = parseNum(reconcileForm.actual);
         const computed = reconcileAccount.computed;
         const entry = { id: uid(), ts: Date.now(), computed, actual, delta: actual - computed, note: reconcileForm.note.trim() };
-        setAccounts(p => p.map(a => a.id === reconcileAccount.id ? { ...a, reconciliations: [...(a.reconciliations || []), entry] } : a));
+        const newAccounts = accounts.map(a => a.id === reconcileAccount.id ? { ...a, reconciliations: [...(a.reconciliations || []), entry] } : a);
+        setAccounts(newAccounts);
+        // Immediately backup reconciliations — don't wait for the 1.5s debounced save
+        backupReconciliations(newAccounts);
         logAction('Reconciled — ' + reconcileAccount.name, `system ${fmt(computed)} → real ${fmt(actual)} · Δ ${fmt(actual - computed)}${entry.note ? ' · ' + entry.note : ''}`);
         setReconcileAccount(null);
         setReconcileForm({ actual: 0, note: "" });
