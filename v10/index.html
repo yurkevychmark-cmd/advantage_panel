@@ -359,6 +359,9 @@
       });
       const [showSalarySettings, setShowSalarySettings] = useState(false);
       const [newAccountForm, setNewAccountForm] = useState({ name: "", owner: "", limit: 10000 });
+      const [reconcileAccount, setReconcileAccount] = useState(null);
+      const [reconcileForm, setReconcileForm] = useState({ actual: 0, note: "" });
+      const [expandedRec, setExpandedRec] = useState(null);
       const [newTransfer, setNewTransfer] = useState({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" });
       
       const [expandedAcct, setExpandedAcct] = useState(null);
@@ -380,7 +383,12 @@
           const { data: settings } = await supabase.from('global_settings').select('*').eq('id', 1).single();
           if (settings) {
             if (settings.workers && settings.workers.length > 0) setWorkers(settings.workers);
-            if (settings.accounts && settings.accounts.length > 0) setAccounts(settings.accounts);
+            if (settings.accounts && settings.accounts.length > 0) {
+              setAccounts(settings.accounts);
+              localStorage.setItem('adv_accounts', JSON.stringify(settings.accounts));
+            } else {
+              try { const la = localStorage.getItem('adv_accounts'); if (la) { const aa = JSON.parse(la); if (aa.length > 0) setAccounts(aa); } } catch(e) {}
+            }
             if (settings.products && settings.products.length > 0) {
               setProducts(settings.products);
               localStorage.setItem('adv_products', JSON.stringify(settings.products));
@@ -411,6 +419,7 @@
         const timer = setTimeout(async () => {
           await supabase.from('global_settings').upsert({ id: 1, workers, accounts, products });
           if (products.length > 0) localStorage.setItem('adv_products', JSON.stringify(products));
+          if (accounts.length > 0) localStorage.setItem('adv_accounts', JSON.stringify(accounts));
           
           const updates = Object.keys(monthData).map(key => ({ month_key: key, data: monthData[key] }));
           if (updates.length > 0) {
@@ -628,6 +637,42 @@
         return parseNum(t.payment) - wp - parseNum(t.costTax) - parseNum(t.agencyRev);
       }, [workers]);
 
+      // Predictive checks — flags cases that likely cause budget mismatch
+      const anomalies = useMemo(() => {
+        const out = [];
+        const plural = (n) => n > 1 ? 's' : '';
+
+        const unbalanced = transactions.filter(t => Math.abs(rowDiff(t)) > 0.01);
+        if (unbalanced.length) out.push({ sev: 'high', title: `${unbalanced.length} unbalanced transaction${plural(unbalanced.length)}`, detail: 'payment ≠ cost + REV + salaries — see the red rows in Transactions' });
+
+        const noAcc = transactions.filter(t => t.status === 'received' && parseNum(t.payment) > 0 && !resolveAccount(t.platforma));
+        if (noAcc.length) out.push({ sev: 'high', title: `${noAcc.length} received deal${plural(noAcc.length)} with no account`, detail: 'money received but not attributed to any payment account — directly distorts balances' });
+
+        const expNoAcc = expenses.filter(e => parseNum(e.cost) > 0 && !(e.persona || '').trim());
+        if (expNoAcc.length) out.push({ sev: 'med', title: `${expNoAcc.length} expense${plural(expNoAcc.length)} with no account`, detail: 'spending not tied to a payment account' });
+
+        const noRev = transactions.filter(t => t.status === 'received' && parseNum(t.payment) > 0 && parseNum(t.agencyRev) === 0);
+        if (noRev.length) out.push({ sev: 'med', title: `${noRev.length} confirmed deal${plural(noRev.length)} with $0 REV`, detail: 'payment received but no agency revenue recorded — check the split' });
+
+        accountUsage.filter(a => a.pct > 100).forEach(a => out.push({ sev: 'med', title: `${a.name} over turnover limit`, detail: `exceeded by ${fmt(a.used - a.limit)}` }));
+
+        const bigFee = transfers.filter(tr => parseNum(tr.amount) > 0 && parseNum(tr.fee) > parseNum(tr.amount) * 0.1);
+        if (bigFee.length) out.push({ sev: 'low', title: `${bigFee.length} transfer${plural(bigFee.length)} with fee > 10%`, detail: 'unusually high transfer cost' });
+
+        let totalDrift = 0, driftAccts = 0;
+        accountUsage.forEach(a => {
+          const recs = a.reconciliations || [];
+          if (recs.length) { const last = recs[recs.length - 1]; if (Math.abs(last.delta) > 1) { driftAccts++; totalDrift += last.delta; } }
+        });
+        if (driftAccts) out.push({ sev: 'high', title: `Reconciliation drift on ${driftAccts} account${plural(driftAccts)}`, detail: `last verified balances differ from the system by ${fmt(totalDrift)} in total` });
+
+        const neverRec = accountUsage.filter(a => !(a.reconciliations || []).length).length;
+        if (neverRec && accountUsage.length) out.push({ sev: 'low', title: `${neverRec} account${plural(neverRec)} never reconciled`, detail: 'run a manual balance check to verify the books match reality' });
+
+        const order = { high: 0, med: 1, low: 2 };
+        return out.sort((a, b) => order[a.sev] - order[b.sev]);
+      }, [transactions, expenses, transfers, accountUsage, rowDiff]);
+
       const prevMonth = () => { if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); } else setCurrentMonth(m => m - 1); };
       const nextMonth = () => { 
         const nm = currentMonth === 11 ? 0 : currentMonth + 1; 
@@ -816,6 +861,17 @@
 
       const toggleAccount = (id) => setAccounts(p => p.map(a => a.id === id ? { ...a, isActive: !a.isActive } : a));
 
+      const submitReconcile = () => {
+        if (!reconcileAccount) return;
+        const actual = parseNum(reconcileForm.actual);
+        const computed = reconcileAccount.computed;
+        const entry = { id: uid(), ts: Date.now(), computed, actual, delta: actual - computed, note: reconcileForm.note.trim() };
+        setAccounts(p => p.map(a => a.id === reconcileAccount.id ? { ...a, reconciliations: [...(a.reconciliations || []), entry] } : a));
+        logAction('Reconciled — ' + reconcileAccount.name, `system ${fmt(computed)} → real ${fmt(actual)} · Δ ${fmt(actual - computed)}${entry.note ? ' · ' + entry.note : ''}`);
+        setReconcileAccount(null);
+        setReconcileForm({ actual: 0, note: "" });
+      };
+
       const wc = (w) => WORKER_COLORS[w.colorIdx % WORKER_COLORS.length];
       const barColor = (pct) => pct >= 100 ? "#DC2626" : pct >= 85 ? "#DC2626" : pct >= 60 ? "#F59E0B" : "#16A34A";
 
@@ -843,6 +899,31 @@
         { id: 'settings', icon: 'settings', label: 'Settings' },
         { id: 'mechanics', icon: 'book', label: 'Mechanics' },
       ];
+
+      const SEV = {
+        high: { c: "#F87171", bg: "rgba(248,113,113,.1)", b: "rgba(248,113,113,.35)", label: "ATTENTION" },
+        med:  { c: "#F59E0B", bg: "rgba(245,158,11,.1)",  b: "rgba(245,158,11,.3)",  label: "CHECK" },
+        low:  { c: "#60A5FA", bg: "rgba(96,165,250,.08)", b: "rgba(96,165,250,.25)", label: "INFO" },
+      };
+      const renderAnomalies = (compact) => (
+        <div style={{ background: "#1A1A1A", border: anomalies.some(a => a.sev === 'high') ? "1px solid rgba(248,113,113,.3)" : "1px solid #2a2a2a", borderRadius: 12, padding: "18px 22px", marginBottom: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: anomalies.length ? 14 : 0 }}>
+            <Icon name={anomalies.length ? "bell" : "check"} size={16} color={anomalies.length ? "#F59E0B" : "#4ADE80"} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#E5E5E5", textTransform: "uppercase", letterSpacing: ".06em", opacity: .8 }}>System checks</span>
+            {anomalies.length > 0 && <span style={{ marginLeft: "auto", fontSize: 11, color: "#888" }}>{anomalies.length} flagged</span>}
+          </div>
+          {anomalies.length === 0
+            ? <div style={{ fontSize: 13, color: "#4ADE80" }}>All checks passed — nothing unusual detected.</div>
+            : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {anomalies.map((a, i) => { const s = SEV[a.sev]; return (
+                  <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", background: s.bg, border: `1px solid ${s.b}`, borderRadius: 8, padding: "10px 12px" }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: s.c, border: `1px solid ${s.b}`, borderRadius: 4, padding: "2px 6px", marginTop: 1, flexShrink: 0, letterSpacing: .3 }}>{s.label}</span>
+                    <div><div style={{ fontSize: 13, color: "#E5E5E5", fontWeight: 600 }}>{a.title}</div><div style={{ fontSize: 11.5, color: "#999", marginTop: 2 }}>{a.detail}</div></div>
+                  </div>
+                ); })}
+              </div>}
+        </div>
+      );
 
       return (
         <div style={{ minHeight: "100vh", background: "#0F0F0F", color: "#E5E5E5", fontFamily: "'DM Sans',sans-serif", display: "flex" }}>
@@ -984,6 +1065,7 @@
 
             {/* ============ DASHBOARD SECTION ============ */}
             {activeSection === 'dashboard' && (<>
+              {renderAnomalies()}
               {/* Annual stats */}
               <div style={{ background: "#1A1A1A", borderRadius: 12, padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 24 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 8 }}>
@@ -1527,8 +1609,9 @@
             {/* ============ ACCOUNTS SECTION ============ */}
             {activeSection === 'accounts' && (
               <div>
+                {anomalies.length > 0 && renderAnomalies()}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                  <div style={{ fontSize: 13, color: "#9a9a9a" }}>Agency payment accounts · turnover across all months</div>
+                  <div style={{ fontSize: 13, color: "#9a9a9a" }}>Agency payment accounts · turnover across all months · reconcile to match real balances</div>
                   <button className="btn btn-primary" onClick={() => { setEditAccount(null); setNewAccountForm({name:"", owner:"", limit:10000}); setShowAddAccount(true); }}><Icon name="plus" size={14} /> Add account</button>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16, marginBottom: 36 }}>
@@ -1556,9 +1639,47 @@
                         </div>
                         <div style={{ fontSize: 10, color: over ? "#F87171" : "rgba(255,255,255,.4)", marginBottom: 8 }}>{over ? `EXCEEDED by ${fmt(a.used - a.limit)}` : `Turnover left: ${fmt(a.remaining)}`}</div>
                         <div style={{ borderTop: "1px solid rgba(255,255,255,.1)", paddingTop: 8, display: "flex", justifyContent: "space-between", fontSize: 11 }}>
-                          <span style={{ color: "rgba(255,255,255,.5)" }}>Agency budget:</span>
+                          <span style={{ color: "rgba(255,255,255,.5)" }}>System balance:</span>
                           <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, color: a.accountBudget >= 0 ? "#4ADE80" : "#F87171" }}>{fmt(a.accountBudget)}</span>
                         </div>
+                        {/* Reconciliation */}
+                        {(() => {
+                          const recs = a.reconciliations || [];
+                          const last = recs.length ? recs[recs.length - 1] : null;
+                          return (
+                            <div style={{ borderTop: "1px solid rgba(255,255,255,.1)", marginTop: 8, paddingTop: 8 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                                <span style={{ color: "rgba(255,255,255,.5)" }}>Verified balance:</span>
+                                {last
+                                  ? <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, color: "#fff" }}>{fmt(last.actual)}</span>
+                                  : <span style={{ fontSize: 11, color: "#666" }}>not reconciled</span>}
+                              </div>
+                              {last && Math.abs(last.delta) > 0.01 && (
+                                <div style={{ fontSize: 10, color: last.delta < 0 ? "#F87171" : "#FBBF24", marginTop: 3 }}>
+                                  Δ {fmt(last.delta)} found on {new Date(last.ts).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                </div>
+                              )}
+                              <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                                <button onClick={() => { setReconcileAccount({ id: a.id, name: a.name, computed: a.accountBudget }); setReconcileForm({ actual: Math.round(a.accountBudget * 100) / 100, note: "" }); }} style={{ flex: 1, padding: "6px", background: "rgba(74,144,217,.15)", border: "1px solid rgba(74,144,217,.35)", borderRadius: 6, color: "#7db8f0", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>Reconcile</button>
+                                {recs.length > 0 && <button onClick={() => setExpandedRec(expandedRec === a.id ? null : a.id)} style={{ padding: "6px 10px", background: "rgba(255,255,255,.06)", border: "1px solid #2a2a2a", borderRadius: 6, color: "#9a9a9a", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>History ({recs.length})</button>}
+                              </div>
+                              {expandedRec === a.id && recs.length > 0 && (
+                                <div style={{ marginTop: 8, borderTop: "1px solid #2a2a2a", paddingTop: 6, maxHeight: 160, overflowY: "auto" }}>
+                                  {recs.slice().reverse().map(r => (
+                                    <div key={r.id} style={{ fontSize: 10, color: "#9a9a9a", padding: "4px 0", borderBottom: "1px solid #222" }}>
+                                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                        <span>{new Date(r.ts).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' })} {new Date(r.ts).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</span>
+                                        <span style={{ fontFamily: "'JetBrains Mono',monospace", color: r.delta === 0 ? "#4ADE80" : Math.abs(r.delta) > 0 ? "#FBBF24" : "#9a9a9a" }}>Δ {fmt(r.delta)}</span>
+                                      </div>
+                                      <div style={{ fontFamily: "'JetBrains Mono',monospace", color: "#666", marginTop: 1 }}>system {fmt(r.computed)} → real {fmt(r.actual)}</div>
+                                      {r.note && <div style={{ color: "#777", marginTop: 1, fontStyle: "italic" }}>{r.note}</div>}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
@@ -1777,6 +1898,16 @@
                       <li style={li}>Client cost tagging with client name.</li>
                       <li style={li}>Team profiles, customizable salary reminders, action journal.</li>
                       <li style={li}>Corrected personal-account balance (salaries + cost/tax deducted).</li>
+                      <li style={li}>Account reconciliation tickets + predictive system checks (anomaly detection).</li>
+                    </ul>
+                  </Section>
+
+                  <Section title="Reconciliation & system checks">
+                    <div style={sub}>The system value of an account (System balance = agency REV − expenses − transfers) can drift from the real balance because of mixed payment accounts, varying fees and untracked edge cases. To stay accurate:</div>
+                    <ul style={{ marginTop: 8, paddingLeft: 18 }}>
+                      <li style={li}><b style={accent}>Reconcile</b> — on any account card, enter the real balance. The system logs a ticket with the system value, the real value, the delta and an optional note. The original system value is always still shown, so a reconciliation never overwrites it — it sits alongside as the verified figure.</li>
+                      <li style={li}><b style={accent}>History</b> — every reconciliation is kept (date, time, delta, note) and viewable per account, plus mirrored in the Journal.</li>
+                      <li style={li}><b style={accent}>System checks</b> — a predictive panel (Dashboard + Accounts) flags cases that usually cause mismatch: unbalanced rows, received deals with no account or no REV, expenses with no account, over-limit accounts, oversized transfer fees, and reconciliation drift. Higher-risk items are marked ATTENTION.</li>
                     </ul>
                   </Section>
                 </div>
@@ -1833,6 +1964,26 @@
             <label>Date<input value={newTransfer.date} onChange={e => setNewTransfer({ ...newTransfer, date: e.target.value })} placeholder="DD.MM" /></label>
             <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowTransfer(false)}>Cancel</button><button className="btn btn-primary" onClick={addTransfer}>Add</button></div>
           </div></div>)}
+
+          {/* MODAL: Reconcile account */}
+          {reconcileAccount && (() => {
+            const actual = parseNum(reconcileForm.actual);
+            const delta = actual - reconcileAccount.computed;
+            return (
+              <div className="modal-overlay" onClick={() => setReconcileAccount(null)}><div className="modal" onClick={e => e.stopPropagation()}>
+                <h3>Reconcile — {reconcileAccount.name}</h3>
+                <p style={{ fontSize: 12, color: "#9a9a9a", marginBottom: 16 }}>Enter the real balance currently on this account. The difference vs the system value is logged so you keep a history and know how far the books drifted.</p>
+                <div style={{ background: "#222", borderRadius: 8, padding: "12px 14px", marginBottom: 18 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}><span style={{ color: "#9a9a9a" }}>System balance</span><span style={{ fontFamily: "'JetBrains Mono',monospace", color: "#E5E5E5" }}>{fmt(reconcileAccount.computed)}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginTop: 6 }}><span style={{ color: "#9a9a9a" }}>Real balance</span><span style={{ fontFamily: "'JetBrains Mono',monospace", color: "#E5E5E5" }}>{fmt(actual)}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, marginTop: 8, paddingTop: 8, borderTop: "1px solid #333", fontWeight: 700 }}><span style={{ color: "#9a9a9a" }}>Difference</span><span style={{ fontFamily: "'JetBrains Mono',monospace", color: Math.abs(delta) < 0.01 ? "#4ADE80" : delta < 0 ? "#F87171" : "#FBBF24" }}>{delta > 0 ? "+" : ""}{fmt(delta)}</span></div>
+                </div>
+                <label>Real balance ($)<input type="number" value={reconcileForm.actual} onChange={e => setReconcileForm({ ...reconcileForm, actual: e.target.value })} autoFocus /></label>
+                <label>Note — what was off / why? (optional)<textarea value={reconcileForm.note} onChange={e => setReconcileForm({ ...reconcileForm, note: e.target.value })} placeholder="e.g. missing FX fee on a transfer, untracked card charge..." style={{ resize: "vertical", minHeight: 56 }} /></label>
+                <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setReconcileAccount(null)}>Cancel</button><button className="btn btn-primary" onClick={submitReconcile}>Save reconciliation</button></div>
+              </div></div>
+            );
+          })()}
 
           {/* MODAL: Add Account */}
           {showAddAccount && (<div className="modal-overlay" onClick={() => setShowAddAccount(false)}><div className="modal" onClick={e => e.stopPropagation()}>
