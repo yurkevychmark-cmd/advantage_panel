@@ -330,6 +330,7 @@
       const [currentMonth, setCurrentMonth] = useState(2);
       const [currentYear, setCurrentYear] = useState(2026);
       
+      const [lastSaved, setLastSaved] = useState(null);
       const [workers, setWorkers] = useState([]);
       const [accounts, setAccounts] = useState([]);
       const [products, setProducts] = useState([]);
@@ -420,11 +421,12 @@
           await supabase.from('global_settings').upsert({ id: 1, workers, accounts, products });
           if (products.length > 0) localStorage.setItem('adv_products', JSON.stringify(products));
           if (accounts.length > 0) localStorage.setItem('adv_accounts', JSON.stringify(accounts));
-          
+
           const updates = Object.keys(monthData).map(key => ({ month_key: key, data: monthData[key] }));
           if (updates.length > 0) {
              await supabase.from('monthly_data').upsert(updates);
           }
+          setLastSaved(Date.now());
         }, 1500); 
         return () => clearTimeout(timer);
       }, [workers, accounts, products, monthData, isInitialLoad]);
@@ -632,6 +634,18 @@
         });
       }, [accounts, monthData, transactions, expenses, transfers]);
 
+      // Sum of latest verified (reconciled) balances, falling back to system balance for unreconciled accounts
+      const verifiedBudget = useMemo(() => {
+        if (!accountUsage.length) return null;
+        return accountUsage.reduce((sum, a) => {
+          const recs = a.reconciliations || [];
+          const last = recs.length ? recs[recs.length - 1] : null;
+          return sum + (last ? last.actual : a.accountBudget);
+        }, 0);
+      }, [accountUsage]);
+
+      const reconciledCount = useMemo(() => accountUsage.filter(a => (a.reconciliations || []).length > 0).length, [accountUsage]);
+
       const rowDiff = useCallback((t) => {
         const wp = workers.reduce((s, w) => s + parseNum(t.workerPay?.[w.id]?.amount), 0);
         return parseNum(t.payment) - wp - parseNum(t.costTax) - parseNum(t.agencyRev);
@@ -696,12 +710,13 @@
         if (field === 'paid') {
           const wName = workers.find(w => w.id === wId)?.name || '';
           const tx = transactions.find(t => t.id === txId);
-          logAction(val ? `Salary paid — ${wName}` : `Salary unpaid — ${wName}`, tx?.client || '');
+          const wAmt = parseNum(tx?.workerPay?.[wId]?.amount);
+          logAction(val ? `Salary paid — ${wName}` : `Salary unpaid — ${wName}`, [tx?.client, wAmt > 0 ? fmt(wAmt) : ''].filter(Boolean).join(' · '));
         }
         setTransactions(p => p.map(t => { if (t.id !== txId) return t; return { ...t, workerPay: { ...t.workerPay, [wId]: { ...t.workerPay[wId], [field]: val } } }; }));
       };
       const addTransaction = () => { setTransactions(p => [...p, { id: uid(), client: "", service: "", platforma: "", payment: 0, date: "", costTax: 0, agencyRev: 0, comment: "", invoice: null, status: 'pending', workerPay: makeWorkerPay(workers) }]); logAction('Added transaction'); };
-      const removeTx = (id) => { const tx = transactions.find(t => t.id === id); setTransactions(p => p.filter(t => t.id !== id)); logAction('Deleted transaction', tx?.client || ''); };
+      const removeTx = (id) => { const tx = transactions.find(t => t.id === id); setTransactions(p => p.filter(t => t.id !== id)); logAction('Deleted transaction', [tx?.client, parseNum(tx?.payment) > 0 ? fmt(parseNum(tx?.payment)) : '', resolveAccount(tx?.platforma) ? 'acc: ' + resolveAccount(tx.platforma) : ''].filter(Boolean).join(' · ')); };
 
       const handleBulkAction = (actionType) => {
         if (!bulkTargetMonth) return;
@@ -825,12 +840,24 @@
       const removeWorker = (wId) => { setWorkers(p => p.filter(w => w.id !== wId)); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => { const wp = { ...t.workerPay }; delete wp[wId]; return { ...t, workerPay: wp }; }) }; }); return n; }); };
       const updateWorkerField = (wId, field, val) => setWorkers(p => p.map(w => w.id === wId ? { ...w, [field]: val } : w));
 
-      const addExpense = () => { if (!newExpense.service.trim()) return; const expData = { ...newExpense, date: autoDate(newExpense.date) }; if (editExpense) { setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); logAction('Updated expense', newExpense.service); } else { setExpenses(p => [...p, { id: uid(), ...expData }]); logAction('Added expense', newExpense.service); } setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "" }); setShowAddExpense(false); setEditExpense(null); };
-      const removeExpense = (id) => { const ex = expenses.find(e => e.id === id); setExpenses(p => p.filter(e => e.id !== id)); logAction('Deleted expense', ex?.service || ''); };
+      const addExpense = () => {
+        if (!newExpense.service.trim()) return;
+        const expData = { ...newExpense, date: autoDate(newExpense.date) };
+        const detail = [newExpense.service, parseNum(newExpense.cost) > 0 ? fmt(parseNum(newExpense.cost)) : '', newExpense.persona || '', newExpense.costType || ''].filter(Boolean).join(' · ');
+        if (editExpense) { setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); logAction('Updated expense', detail); }
+        else { setExpenses(p => [...p, { id: uid(), ...expData }]); logAction('Added expense', detail); }
+        setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "" }); setShowAddExpense(false); setEditExpense(null);
+      };
+      const removeExpense = (id) => { const ex = expenses.find(e => e.id === id); setExpenses(p => p.filter(e => e.id !== id)); logAction('Deleted expense', [ex?.service, parseNum(ex?.cost) > 0 ? fmt(parseNum(ex?.cost)) : '', ex?.persona || ''].filter(Boolean).join(' · ')); };
       const startEditExpense = (e) => { setEditExpense(e); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost, recurring: e.recurring || false, workerLink: e.workerLink || "", costType: e.costType || "", clientName: e.clientName || "" }); setShowAddExpense(true); };
 
-      const addTransfer = () => { if (!newTransfer.fromAcc || !newTransfer.toAcc) return; setTransfers(p => [...p, { id: uid(), ...newTransfer, date: autoDate(newTransfer.date) }]); setNewTransfer({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" }); setShowTransfer(false); };
-      const removeTransfer = (id) => setTransfers(p => p.filter(t => t.id !== id));
+      const addTransfer = () => {
+        if (!newTransfer.fromAcc || !newTransfer.toAcc) return;
+        setTransfers(p => [...p, { id: uid(), ...newTransfer, date: autoDate(newTransfer.date) }]);
+        logAction('Transfer added', [newTransfer.fromAcc + ' → ' + newTransfer.toAcc, fmt(parseNum(newTransfer.amount)), parseNum(newTransfer.fee) > 0 ? 'fee ' + fmt(parseNum(newTransfer.fee)) : ''].filter(Boolean).join(' · '));
+        setNewTransfer({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" }); setShowTransfer(false);
+      };
+      const removeTransfer = (id) => { const tr = transfers.find(t => t.id === id); setTransfers(p => p.filter(t => t.id !== id)); logAction('Transfer deleted', tr ? tr.fromAcc + ' → ' + tr.toAcc + ' · ' + fmt(parseNum(tr.amount)) : ''); };
 
       const addInvestment = () => { if (!newInvestment.person.trim() || !newInvestment.amount) return; setInvestments(p => [...p, { id: uid(), ...newInvestment, date: autoDate(newInvestment.date) }]); setNewInvestment({ person: "", amount: 0, method: "USD", date: "", comment: "" }); setShowAddInvestment(false); };
       const removeInvestment = (id) => setInvestments(p => p.filter(i => i.id !== id));
@@ -1024,6 +1051,7 @@
                 <span style={{ color: "#fff", fontSize: 16, fontWeight: 600, minWidth: 160, textAlign: "center" }}>{MONTHS_UA[currentMonth]} {currentYear}</span>
                 <button onClick={nextMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "8px 12px" }}><Icon name="chevronRight" size={16} /></button>
               </>}
+              {lastSaved && <span style={{ fontSize: 11, color: "#4ADE80", opacity: .7, marginLeft: 4 }} title={`Last saved ${new Date(lastSaved).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' })}`}>✓ saved</span>}
               <button onClick={undo} className="btn" title="Undo action" style={{ background: historyRef.current.length > 0 ? "rgba(255,200,50,.2)" : "rgba(255,255,255,.05)", border: historyRef.current.length > 0 ? "1px solid rgba(255,200,50,.3)" : "1px solid transparent", color: historyRef.current.length > 0 ? "#FBBF24" : "#a5a5a5", padding: "8px 12px", marginLeft: 6 }}><Icon name="undo" size={15} /> Undo</button>
             </div>
           </div>
@@ -1186,6 +1214,62 @@
                   ))}
                 </div>
               </div>
+
+              {/* Real Accounts Balance */}
+              {accountUsage.length > 0 && (
+                <div style={{ background: "#1A1A1A", borderRadius: 10, padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 8 }}>
+                    <div>
+                      <h2 style={{ fontSize: 18, fontWeight: 700, color: "#E5E5E5", marginBottom: 4 }}>Real Accounts Balance</h2>
+                      <div style={{ fontSize: 12, color: "#888" }}>
+                        {reconciledCount === 0
+                          ? "No accounts reconciled yet — values below are system estimates"
+                          : `${reconciledCount} of ${accountUsage.length} account${accountUsage.length > 1 ? "s" : ""} reconciled · unreconciled show system estimate`}
+                      </div>
+                    </div>
+                    {verifiedBudget !== null && (
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase", letterSpacing: .5, marginBottom: 3 }}>Total verified</div>
+                        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 28, fontWeight: 700, color: verifiedBudget >= 0 ? "#4ADE80" : "#F87171" }}>{fmt(verifiedBudget)}</div>
+                        {Math.abs(verifiedBudget - agencyBudget) > 0.5 && (
+                          <div style={{ fontSize: 11, color: "#F59E0B", marginTop: 3 }}>
+                            Δ {fmt(verifiedBudget - agencyBudget)} vs P&L budget
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+                    {accountUsage.map(a => {
+                      const recs = a.reconciliations || [];
+                      const last = recs.length ? recs[recs.length - 1] : null;
+                      const displayBal = last ? last.actual : a.accountBudget;
+                      const drift = last ? last.delta : 0;
+                      return (
+                        <div key={a.id} style={{ background: "#141414", borderRadius: 9, padding: "14px 16px", border: last && Math.abs(drift) > 1 ? "1px solid rgba(245,158,11,.3)" : "1px solid #222" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: "#E5E5E5" }}>{a.name}</span>
+                            {last
+                              ? <span style={{ fontSize: 10, color: "#4ADE80", letterSpacing: .3 }}>✓ verified</span>
+                              : <span style={{ fontSize: 10, color: "#555" }}>estimated</span>}
+                          </div>
+                          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 20, fontWeight: 700, color: displayBal >= 0 ? "#fff" : "#F87171", marginBottom: 4 }}>{fmt(displayBal)}</div>
+                          {last && (
+                            <div style={{ fontSize: 10, color: "#666" }}>
+                              <span>verified {new Date(last.ts).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                              {Math.abs(drift) > 0.01 && <span style={{ color: drift < 0 ? "#F87171" : "#FBBF24", marginLeft: 6 }}>Δ {fmt(drift)}</span>}
+                            </div>
+                          )}
+                          {!last && <div style={{ fontSize: 10, color: "#555" }}>system estimate</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #2a2a2a", display: "flex", justifyContent: "flex-end" }}>
+                    <button onClick={() => setActiveSection('accounts')} style={{ background: "none", border: "none", color: "#4A90D9", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>Reconcile accounts →</button>
+                  </div>
+                </div>
+              )}
             </>)}
 
             {/* ============ OPERATIONS SECTION ============ */}
@@ -1248,7 +1332,7 @@
                           <td className="scol" style={{ padding: 0, background: isInvalid ? "#1e1616" : isReceived ? "#15291b" : "#141414" }}>
                             <div style={{ display: "flex", alignItems: "flex-start" }}>
                               <div style={{ width: 36, flexShrink: 0, textAlign: "center", padding: "2px 0" }}>
-                                <button className="status-btn" onClick={() => updateTx(t.id, 'status', isReceived ? 'pending' : 'received')} title={isReceived ? "Received — click to undo" : "Not confirmed — excluded from stats"}>
+                                <button className="status-btn" onClick={() => { const next = isReceived ? 'pending' : 'received'; updateTx(t.id, 'status', next); logAction(next === 'received' ? 'Payment confirmed' : 'Payment unconfirmed', [t.client, parseNum(t.payment) > 0 ? fmt(parseNum(t.payment)) : '', resolveAccount(t.platforma) ? 'acc: ' + resolveAccount(t.platforma) : ''].filter(Boolean).join(' · ')); }} title={isReceived ? "Received — click to undo" : "Not confirmed — excluded from stats"}>
                                   <svg width="15" height="15" viewBox="0 0 24 24" style={{ display: "block" }}><circle cx="12" cy="12" r="8" fill={isReceived ? "#16A34A" : "none"} stroke={isReceived ? "#16A34A" : "#bbb"} strokeWidth="2" />{isReceived && <path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}</svg>
                                 </button>
                                 <DragHandle />
@@ -1741,11 +1825,13 @@
                         const d = new Date(entry.ts);
                         const dt = d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' · ' + d.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
                         return (
-                          <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "6px 8px", borderRadius: 6, background: idx % 2 ? "#222" : "#181818" }}>
-                            <span style={{ fontSize: 11, color: "#aaa", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap", width: 110, flexShrink: 0 }}>{dt}</span>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: "#E5E5E5", whiteSpace: "nowrap", flexShrink: 0 }}>{entry.action}</span>
-                            {entry.detail && <span style={{ fontSize: 12, color: "#777", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>· {entry.detail}</span>}
-                            <span style={{ fontSize: 11, color: "#ccc", whiteSpace: "nowrap", marginLeft: "auto", flexShrink: 0 }}>{entry.month}</span>
+                          <div key={entry.id} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "7px 8px", borderRadius: 6, background: idx % 2 ? "#222" : "#181818" }}>
+                            <span style={{ fontSize: 11, color: "#aaa", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap", width: 110, flexShrink: 0, paddingTop: 2 }}>{dt}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: "#E5E5E5" }}>{entry.action}</span>
+                              {entry.detail && <span style={{ fontSize: 12, color: "#777", marginLeft: 6 }}>· {entry.detail}</span>}
+                            </div>
+                            <span style={{ fontSize: 11, color: "#ccc", whiteSpace: "nowrap", flexShrink: 0, paddingTop: 2 }}>{entry.month}</span>
                           </div>
                         );
                       })}
