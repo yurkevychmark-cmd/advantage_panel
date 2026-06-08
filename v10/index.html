@@ -180,6 +180,45 @@
       );
     };
 
+    const ClientPickerInput = ({ value, onChange, clients, placeholder = "Search or type client...", style = {} }) => {
+      const [search, setSearch] = React.useState(value || '');
+      const [open, setOpen] = React.useState(false);
+      const wrapRef = React.useRef(null);
+      React.useEffect(() => { setSearch(value || ''); }, [value]);
+      React.useEffect(() => {
+        const handler = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+      }, []);
+      const filtered = clients.filter(c => c.toLowerCase().includes((search || '').toLowerCase()));
+      return (
+        <div ref={wrapRef} style={{ position: 'relative', ...style }}>
+          <input
+            value={search}
+            onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            placeholder={placeholder}
+            style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #333', borderRadius: 6, fontSize: 14, fontFamily: "'DM Sans',sans-serif", marginTop: 4, background: '#222', color: '#E5E5E5', outline: 'none', boxSizing: 'border-box' }}
+            onKeyDown={e => { if (e.key === 'Escape') setOpen(false); }}
+          />
+          {open && filtered.length > 0 && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, maxHeight: 220, overflowY: 'auto', background: '#1e1e1e', border: '1px solid #3a3a3a', borderRadius: 8, zIndex: 2000, boxShadow: '0 8px 24px rgba(0,0,0,.5)' }}>
+              {filtered.map(c => (
+                <div key={c} onMouseDown={() => { onChange(c); setSearch(c); setOpen(false); }} style={{ padding: '9px 14px', cursor: 'pointer', fontSize: 13, color: '#E5E5E5', borderBottom: '1px solid #2a2a2a', transition: 'background .1s' }} onMouseEnter={e => e.currentTarget.style.background='#2a2a2a'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                  {c}
+                </div>
+              ))}
+            </div>
+          )}
+          {open && filtered.length === 0 && search.length > 0 && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, background: '#1e1e1e', border: '1px solid #3a3a3a', borderRadius: 8, zIndex: 2000, padding: '10px 14px', fontSize: 12, color: '#555' }}>
+              New client: <b style={{ color: '#E5E5E5' }}>{search}</b>
+            </div>
+          )}
+        </div>
+      );
+    };
+
     const CurrencyConverter = () => {
       const [rates, setRates] = useState(null);
       const [loading, setLoading] = useState(true);
@@ -363,6 +402,7 @@
       const [reconcileAccount, setReconcileAccount] = useState(null);
       const [reconcileForm, setReconcileForm] = useState({ actual: 0, note: "" });
       const [expandedRec, setExpandedRec] = useState(null);
+      const [showChecksPanel, setShowChecksPanel] = useState(false);
       const [newTransfer, setNewTransfer] = useState({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" });
       
       const [expandedAcct, setExpandedAcct] = useState(null);
@@ -657,31 +697,31 @@
         const plural = (n) => n > 1 ? 's' : '';
 
         const unbalanced = transactions.filter(t => Math.abs(rowDiff(t)) > 0.01);
-        if (unbalanced.length) out.push({ sev: 'high', title: `${unbalanced.length} unbalanced transaction${plural(unbalanced.length)}`, detail: 'payment ≠ cost + REV + salaries — see the red rows in Transactions' });
+        if (unbalanced.length) out.push({ sev: 'high', section: 'operations', title: `${unbalanced.length} unbalanced transaction${plural(unbalanced.length)}`, detail: 'payment ≠ cost + REV + salaries — see the red rows in Transactions' });
 
         const noAcc = transactions.filter(t => t.status === 'received' && parseNum(t.payment) > 0 && !resolveAccount(t.platforma));
-        if (noAcc.length) out.push({ sev: 'high', title: `${noAcc.length} received deal${plural(noAcc.length)} with no account`, detail: 'money received but not attributed to any payment account — directly distorts balances' });
+        if (noAcc.length) out.push({ sev: 'high', section: 'operations', title: `${noAcc.length} received deal${plural(noAcc.length)} with no account`, detail: 'money received but not attributed to any payment account — directly distorts balances' });
 
         const expNoAcc = expenses.filter(e => parseNum(e.cost) > 0 && !(e.persona || '').trim());
-        if (expNoAcc.length) out.push({ sev: 'med', title: `${expNoAcc.length} expense${plural(expNoAcc.length)} with no account`, detail: 'spending not tied to a payment account' });
+        if (expNoAcc.length) out.push({ sev: 'med', section: 'operations', title: `${expNoAcc.length} expense${plural(expNoAcc.length)} with no account`, detail: 'spending not tied to a payment account' });
 
         const noRev = transactions.filter(t => t.status === 'received' && parseNum(t.payment) > 0 && parseNum(t.agencyRev) === 0);
-        if (noRev.length) out.push({ sev: 'med', title: `${noRev.length} confirmed deal${plural(noRev.length)} with $0 REV`, detail: 'payment received but no agency revenue recorded — check the split' });
+        if (noRev.length) out.push({ sev: 'med', section: 'operations', title: `${noRev.length} confirmed deal${plural(noRev.length)} with $0 REV`, detail: 'payment received but no agency revenue recorded — check the split' });
 
-        accountUsage.filter(a => a.pct > 100).forEach(a => out.push({ sev: 'med', title: `${a.name} over turnover limit`, detail: `exceeded by ${fmt(a.used - a.limit)}` }));
+        accountUsage.filter(a => a.pct > 100).forEach(a => out.push({ sev: 'med', section: 'accounts', title: `${a.name} over turnover limit`, detail: `exceeded by ${fmt(a.used - a.limit)}` }));
 
         const bigFee = transfers.filter(tr => parseNum(tr.amount) > 0 && parseNum(tr.fee) > parseNum(tr.amount) * 0.1);
-        if (bigFee.length) out.push({ sev: 'low', title: `${bigFee.length} transfer${plural(bigFee.length)} with fee > 10%`, detail: 'unusually high transfer cost' });
+        if (bigFee.length) out.push({ sev: 'low', section: 'operations', title: `${bigFee.length} transfer${plural(bigFee.length)} with fee > 10%`, detail: 'unusually high transfer cost' });
 
         let totalDrift = 0, driftAccts = 0;
         accountUsage.forEach(a => {
           const recs = a.reconciliations || [];
           if (recs.length) { const last = recs[recs.length - 1]; if (Math.abs(last.delta) > 1) { driftAccts++; totalDrift += last.delta; } }
         });
-        if (driftAccts) out.push({ sev: 'high', title: `Reconciliation drift on ${driftAccts} account${plural(driftAccts)}`, detail: `last verified balances differ from the system by ${fmt(totalDrift)} in total` });
+        if (driftAccts) out.push({ sev: 'high', section: 'accounts', title: `Reconciliation drift on ${driftAccts} account${plural(driftAccts)}`, detail: `last verified balances differ from the system by ${fmt(totalDrift)} in total` });
 
         const neverRec = accountUsage.filter(a => !(a.reconciliations || []).length).length;
-        if (neverRec && accountUsage.length) out.push({ sev: 'low', title: `${neverRec} account${plural(neverRec)} never reconciled`, detail: 'run a manual balance check to verify the books match reality' });
+        if (neverRec && accountUsage.length) out.push({ sev: 'low', section: 'accounts', title: `${neverRec} account${plural(neverRec)} never reconciled`, detail: 'run a manual balance check to verify the books match reality' });
 
         const order = { high: 0, med: 1, low: 2 };
         return out.sort((a, b) => order[a.sev] - order[b.sev]);
@@ -932,20 +972,24 @@
         med:  { c: "#F59E0B", bg: "rgba(245,158,11,.1)",  b: "rgba(245,158,11,.3)",  label: "CHECK" },
         low:  { c: "#60A5FA", bg: "rgba(96,165,250,.08)", b: "rgba(96,165,250,.25)", label: "INFO" },
       };
-      const renderAnomalies = (compact) => (
-        <div style={{ background: "#1A1A1A", border: anomalies.some(a => a.sev === 'high') ? "1px solid rgba(248,113,113,.3)" : "1px solid #2a2a2a", borderRadius: 12, padding: "18px 22px", marginBottom: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: anomalies.length ? 14 : 0 }}>
-            <Icon name={anomalies.length ? "bell" : "check"} size={16} color={anomalies.length ? "#F59E0B" : "#4ADE80"} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#E5E5E5", textTransform: "uppercase", letterSpacing: ".06em", opacity: .8 }}>System checks</span>
-            {anomalies.length > 0 && <span style={{ marginLeft: "auto", fontSize: 11, color: "#888" }}>{anomalies.length} flagged</span>}
+      const checksBadgeColor = anomalies.some(a => a.sev === 'high') ? "#F87171" : anomalies.some(a => a.sev === 'med') ? "#F59E0B" : anomalies.length ? "#60A5FA" : null;
+      const renderChecksPanel = () => (
+        <div style={{ position: "fixed", top: 50, right: 12, width: 360, maxHeight: "80vh", overflowY: "auto", background: "#1e1e1e", border: `1px solid ${checksBadgeColor || "#2a2a2a"}`, borderRadius: 12, boxShadow: "0 12px 40px rgba(0,0,0,.7)", zIndex: 500, padding: "16px 18px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#E5E5E5", textTransform: "uppercase", letterSpacing: ".06em" }}>System checks</span>
+            <button onClick={() => setShowChecksPanel(false)} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
           </div>
           {anomalies.length === 0
-            ? <div style={{ fontSize: 13, color: "#4ADE80" }}>All checks passed — nothing unusual detected.</div>
+            ? <div style={{ fontSize: 13, color: "#4ADE80", padding: "8px 0" }}>✓ All checks passed</div>
             : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {anomalies.map((a, i) => { const s = SEV[a.sev]; return (
-                  <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start", background: s.bg, border: `1px solid ${s.b}`, borderRadius: 8, padding: "10px 12px" }}>
+                  <div key={i} onClick={() => { setActiveSection(a.section || 'operations'); setShowChecksPanel(false); }} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: s.bg, border: `1px solid ${s.b}`, borderRadius: 8, padding: "10px 12px", cursor: a.section ? "pointer" : "default", transition: "opacity .15s" }} onMouseEnter={e => { if(a.section) e.currentTarget.style.opacity='.8'; }} onMouseLeave={e => e.currentTarget.style.opacity='1'}>
                     <span style={{ fontSize: 9, fontWeight: 700, color: s.c, border: `1px solid ${s.b}`, borderRadius: 4, padding: "2px 6px", marginTop: 1, flexShrink: 0, letterSpacing: .3 }}>{s.label}</span>
-                    <div><div style={{ fontSize: 13, color: "#E5E5E5", fontWeight: 600 }}>{a.title}</div><div style={{ fontSize: 11.5, color: "#999", marginTop: 2 }}>{a.detail}</div></div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, color: "#E5E5E5", fontWeight: 600 }}>{a.title}</div>
+                      <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>{a.detail}</div>
+                      {a.section && <div style={{ fontSize: 10, color: s.c, marginTop: 4, opacity: .7 }}>→ Go to {a.section}</div>}
+                    </div>
                   </div>
                 ); })}
               </div>}
@@ -1052,6 +1096,16 @@
                 <button onClick={nextMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "8px 12px" }}><Icon name="chevronRight" size={16} /></button>
               </>}
               {lastSaved && <span style={{ fontSize: 11, color: "#4ADE80", opacity: .7, marginLeft: 4 }} title={`Last saved ${new Date(lastSaved).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' })}`}>✓ saved</span>}
+              {/* System checks bell */}
+              <div style={{ position: "relative", display: "inline-flex" }}>
+                <button onClick={() => setShowChecksPanel(v => !v)} title="System checks" style={{ background: showChecksPanel ? "rgba(255,255,255,.12)" : checksBadgeColor ? `${checksBadgeColor}18` : "rgba(255,255,255,.05)", border: checksBadgeColor ? `1px solid ${checksBadgeColor}55` : "1px solid transparent", borderRadius: 6, padding: "8px 10px", cursor: "pointer", display: "inline-flex", alignItems: "center" }}>
+                  <Icon name="bell" size={16} color={checksBadgeColor || "#666"} />
+                </button>
+                {anomalies.length > 0 && (
+                  <span style={{ position: "absolute", top: -4, right: -4, background: checksBadgeColor, color: "#000", borderRadius: 10, fontSize: 9, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px", fontFamily: "'JetBrains Mono',monospace" }}>{anomalies.length}</span>
+                )}
+              </div>
+              {showChecksPanel && renderChecksPanel()}
               <button onClick={undo} className="btn" title="Undo action" style={{ background: historyRef.current.length > 0 ? "rgba(255,200,50,.2)" : "rgba(255,255,255,.05)", border: historyRef.current.length > 0 ? "1px solid rgba(255,200,50,.3)" : "1px solid transparent", color: historyRef.current.length > 0 ? "#FBBF24" : "#a5a5a5", padding: "8px 12px", marginLeft: 6 }}><Icon name="undo" size={15} /> Undo</button>
             </div>
           </div>
@@ -1060,9 +1114,21 @@
           {activeSection === 'operations' && (
           <div style={{ background: "#1A1A1A", padding: "20px 28px 16px" }}>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
-              {[{ label: "Agency Turnover", value: totalPayment }, { label: "Revenue (REV)", value: totalRev, color: "#4ADE80" }, { label: "Agency Budget", value: agencyBudget, color: agencyBudget >= 0 ? "#4ADE80" : "#F87171" }, { label: "Carryover (previous)", value: carryover, color: "#FBBF24" }, { label: "REV Fees / Costs", value: totalCosts, color: "#FB923C" }, { label: "Total Expenses", value: totalExpenses, color: "#F87171" }].map((k, i) => (
-                <div key={i} className="kpi-card"><div className="kpi-label">{k.label}</div><div className="kpi-value" style={k.color ? { color: k.color } : {}}>{fmt(k.value)}</div></div>
-              ))}
+              {(() => {
+                const budgetVal = verifiedBudget !== null ? verifiedBudget : agencyBudget;
+                const budgetLabel = verifiedBudget !== null ? "Accounts Balance ✓" : "Agency Budget";
+                const budgetColor = budgetVal >= 0 ? "#4ADE80" : "#F87171";
+                return [
+                  { label: "Agency Turnover", value: totalPayment },
+                  { label: "Revenue (REV)", value: totalRev, color: "#4ADE80" },
+                  { label: budgetLabel, value: budgetVal, color: budgetColor },
+                  { label: "Carryover (previous)", value: carryover, color: "#FBBF24" },
+                  { label: "REV Fees / Costs", value: totalCosts, color: "#FB923C" },
+                  { label: "Total Expenses", value: totalExpenses, color: "#F87171" },
+                ].map((k, i) => (
+                  <div key={i} className="kpi-card"><div className="kpi-label">{k.label}</div><div className="kpi-value" style={k.color ? { color: k.color } : {}}>{fmt(k.value)}</div></div>
+                ));
+              })()}
             </div>
             <CurrencyConverter />
             {/* PRODUCTS */}
@@ -1093,7 +1159,6 @@
 
             {/* ============ DASHBOARD SECTION ============ */}
             {activeSection === 'dashboard' && (<>
-              {renderAnomalies()}
               {/* Annual stats */}
               <div style={{ background: "#1A1A1A", borderRadius: 12, padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 24 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 8 }}>
@@ -1205,7 +1270,7 @@
                     { label: "Agency turnover", value: monthPL.turnover },
                     { label: "Client-billed costs", value: monthPL.clientCosts, color: "#9333EA" },
                     { label: "Carryover", value: monthPL.carryover, color: "#F59E0B" },
-                    { label: "Agency budget (cumulative)", value: monthPL.budget, color: monthPL.budget >= 0 ? "#16A34A" : "#DC2626" },
+                    { label: verifiedBudget !== null ? "Accounts balance ✓" : "Agency budget (cumulative)", value: verifiedBudget !== null ? verifiedBudget : monthPL.budget, color: (verifiedBudget !== null ? verifiedBudget : monthPL.budget) >= 0 ? "#16A34A" : "#DC2626" },
                   ].map((c, i) => (
                     <div key={i}>
                       <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{c.label}</div>
@@ -1470,7 +1535,7 @@
                                {e.costType === 'client' ? 'client' : 'agency'}
                              </button>
                              {e.costType === 'client' && (
-                               <input list="clients-list" value={e.clientName || ""} onChange={ev => { const x=[...expenses]; x[i].clientName=ev.target.value; setExpenses(x); }} placeholder="which client?" style={{ width: "100%", boxSizing: "border-box", marginTop: 3, padding: "2px 4px", border: "1px solid #4a3a66", borderRadius: 3, fontSize: 10, outline: "none", color: "#9333EA", background: "#241a2e" }} />
+                               <ClientPickerInput value={e.clientName || ""} onChange={v => { const x=[...expenses]; x[i].clientName=v; setExpenses(x); }} clients={clientNames} placeholder="which client?" style={{ marginTop: 3 }} />
                              )}
                            </td>
                            <td style={{ padding: "4px 6px", textAlign: "center" }}>
@@ -1693,7 +1758,6 @@
             {/* ============ ACCOUNTS SECTION ============ */}
             {activeSection === 'accounts' && (
               <div>
-                {anomalies.length > 0 && renderAnomalies()}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                   <div style={{ fontSize: 13, color: "#9a9a9a" }}>Agency payment accounts · turnover across all months · reconcile to match real balances</div>
                   <button className="btn btn-primary" onClick={() => { setEditAccount(null); setNewAccountForm({name:"", owner:"", limit:10000}); setShowAddAccount(true); }}><Icon name="plus" size={14} /> Add account</button>
@@ -2029,7 +2093,14 @@
               Client cost (not agency)
             </label>
             {newExpense.costType === 'client' && (
-              <label>For which client<input list="clients-list" value={newExpense.clientName || ""} onChange={e => setNewExpense({ ...newExpense, clientName: e.target.value })} placeholder="Client name" /></label>
+              <label>For which client
+                <ClientPickerInput
+                  value={newExpense.clientName || ""}
+                  onChange={v => setNewExpense({ ...newExpense, clientName: v })}
+                  clients={clientNames}
+                  placeholder="Search or type client name..."
+                />
+              </label>
             )}
             <label>Salary for (sync with worker)
               <select value={newExpense.workerLink} onChange={e => setNewExpense({ ...newExpense, workerLink: e.target.value })} style={{ marginTop: 4 }}>
