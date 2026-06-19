@@ -114,6 +114,8 @@
       role: <><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></>,
       receipt: <><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></>,
       book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></>,
+      eye: <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></>,
+      'eye-off': <><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="M2 2l20 20"/></>,
     };
 
     const Icon = ({ name, size = 16, color = "currentColor", strokeWidth = 2, style = {} }) => (
@@ -403,6 +405,8 @@
       const [reconcileForm, setReconcileForm] = useState({ actual: 0, note: "" });
       const [expandedRec, setExpandedRec] = useState(null);
       const [showChecksPanel, setShowChecksPanel] = useState(false);
+      const [showWorkerPay, setShowWorkerPay] = useState(false);
+      const workerPayTimerRef = useRef(null);
       const [newTransfer, setNewTransfer] = useState({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" });
       
       const [expandedAcct, setExpandedAcct] = useState(null);
@@ -911,6 +915,16 @@
       const downloadInvoice = (inv) => { const a = document.createElement("a"); a.href = inv.data; a.download = inv.name; a.click(); };
 
       const addWorker = () => { if (!newWorker.name.trim()) return; const w = { id: uid(), name: newWorker.name.trim(), role: newWorker.role.trim(), colorIdx: newWorker.colorIdx % WORKER_COLORS.length }; setWorkers(p => [...p, w]); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => ({ ...t, workerPay: { ...t.workerPay, [w.id]: { amount: 0, paid: false } } })) }; }); return n; }); setNewWorker({ name: "", role: "", colorIdx: (newWorker.colorIdx + 1) % WORKER_COLORS.length }); setShowAddWorker(false); };
+      const toggleWorkerPay = () => {
+        if (showWorkerPay) {
+          clearTimeout(workerPayTimerRef.current);
+          setShowWorkerPay(false);
+        } else {
+          setShowWorkerPay(true);
+          workerPayTimerRef.current = setTimeout(() => setShowWorkerPay(false), 10 * 60 * 1000);
+        }
+      };
+
       const removeWorker = (wId) => { setWorkers(p => p.filter(w => w.id !== wId)); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => { const wp = { ...t.workerPay }; delete wp[wId]; return { ...t, workerPay: wp }; }) }; }); return n; }); };
       const updateWorkerField = (wId, field, val) => setWorkers(p => p.map(w => w.id === wId ? { ...w, [field]: val } : w));
 
@@ -1378,6 +1392,12 @@
             {activeSection === 'operations' && (<>
             {/* TABLE */}
             <div style={{ background: "#1A1A1A", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
+              <div style={{ padding: "10px 16px", borderBottom: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                <button onClick={toggleWorkerPay} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: showWorkerPay ? "rgba(74,222,128,.12)" : "rgba(255,255,255,.06)", border: showWorkerPay ? "1px solid rgba(74,222,128,.35)" : "1px solid #333", borderRadius: 6, padding: "5px 12px", cursor: "pointer", color: showWorkerPay ? "#4ADE80" : "#888", fontSize: 12, fontFamily: "'DM Sans',sans-serif", fontWeight: 500, transition: "all .2s" }}>
+                  <Icon name={showWorkerPay ? "eye" : "eye-off"} size={14} />
+                  {showWorkerPay ? "Hide salaries" : "Show salaries"}
+                </button>
+              </div>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", minWidth: 950 + workers.length * 160 }}>
                   <colgroup>
@@ -1390,15 +1410,15 @@
                       <th className="scol" style={{ padding: 0, background: "#131313" }}></th>
                       <th colSpan={6} style={{ padding: 0 }}></th>
                       <th style={{ padding: "6px 4px", fontSize: 11, fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", verticalAlign: "top" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,.7)", fontSize: 11, letterSpacing: .5 }}>Total Revenue Per Person:<button onClick={() => setShowAddWorker(true)} style={{ background: "rgba(255,255,255,.15)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600, marginLeft: 2 }}><Icon name="plus" size={15} /></button></span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,.7)", fontSize: 11, letterSpacing: .5 }}>Total Revenue Per Person:<button onClick={toggleWorkerPay} title={showWorkerPay ? "Hide salaries" : "Show salaries"} style={{ background: "rgba(255,255,255,.1)", border: "none", color: showWorkerPay ? "#4ADE80" : "#888", borderRadius: 4, padding: "1px 7px", cursor: "pointer", fontSize: 12, marginLeft: 2, display: "inline-flex", alignItems: "center" }}><Icon name={showWorkerPay ? "eye" : "eye-off"} size={13} /></button><button onClick={() => setShowAddWorker(true)} style={{ background: "rgba(255,255,255,.15)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600, marginLeft: 2 }}><Icon name="plus" size={15} /></button></span>
                       </th>
                       {workers.map((w, wIdx) => { const c = wc(w); const t = workerTotals[w.id] || { paid: 0, pending: 0 }; return (
                         <th key={w.id} className="worker-th" draggable onDragStart={e => onWorkerDragStart(e, wIdx)} onDragOver={onWorkerDragOver} onDrop={e => onWorkerDrop(e, wIdx)} onDragEnd={() => setDragWorkerIdx(null)} style={{ padding: "6px 6px 5px", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, textAlign: "center", position: "relative", verticalAlign: "middle", opacity: dragWorkerIdx === wIdx ? 0.4 : 1, outline: dragWorkerIdx !== null && dragWorkerIdx !== wIdx ? `2px dashed ${c.border}` : 'none', transition: 'opacity .2s' }}>
                           <button onClick={() => removeWorker(w.id)} style={{ position: "absolute", top: 2, right: 3, background: "none", border: "none", cursor: "pointer", color: c.text, opacity: .3 }}><Icon name="trash" size={12} /></button>
                           <div style={{ fontWeight: 700, fontSize: 13, fontStyle: "italic", color: c.text }}>{w.name}</div>
                           <div style={{ fontSize: 9, color: c.text, opacity: .6, fontWeight: 400, lineHeight: 1.2, marginBottom: 3 }}>{w.role}</div>
-                          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 15, color: c.text }}>{fmt(t.paid)}</div>
-                          {t.pending > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: c.text, opacity: .55 }}>+{fmt(t.pending)} pending</div>}
+                          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 15, color: c.text, filter: showWorkerPay ? 'none' : 'blur(5px)', transition: 'filter .3s', userSelect: showWorkerPay ? 'auto' : 'none' }}>{fmt(t.paid)}</div>
+                          {t.pending > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: c.text, opacity: .55, filter: showWorkerPay ? 'none' : 'blur(5px)', transition: 'filter .3s', userSelect: showWorkerPay ? 'auto' : 'none' }}>+{fmt(t.pending)} pending</div>}
                         </th>
                       ); })}
                       <th style={{ background: "#444" }}></th>
@@ -1461,19 +1481,19 @@
                           <td style={{ padding: "2px 4px", textAlign: "center" }}>
                             {t.invoice ? (<div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "center" }}><button className="invoice-btn" onClick={() => downloadInvoice(t.invoice)} title={t.invoice.name} style={{ color: "#16A34A", display: "inline-flex" }}><Icon name="download" size={14} /></button><button className="invoice-btn" onClick={() => updateTx(t.id, "invoice", null)} style={{ color: "#DC2626", display: "inline-flex" }}><Icon name="trash" size={13} /></button></div>) : (<button className="invoice-btn" onClick={() => triggerInvoiceUpload(t.id)} style={{ color: "#999", display: "inline-flex" }}><Icon name="attach" size={14} /></button>)}
                           </td>
-                          {workers.map(w => { const c = wc(w); const wp = t.workerPay?.[w.id] || { amount: 0, paid: false, comment: "", advance: 0 }; const adv = parseNum(wp.advance); const net = parseNum(wp.amount) - adv; return (
+                          {workers.map(w => { const c = wc(w); const wp = t.workerPay?.[w.id] || { amount: 0, paid: false, comment: "", advance: 0 }; const adv = parseNum(wp.advance); const net = parseNum(wp.amount) - adv; const payBlur = { filter: showWorkerPay ? 'none' : 'blur(5px)', transition: 'filter .3s', userSelect: showWorkerPay ? 'auto' : 'none', pointerEvents: showWorkerPay ? 'auto' : 'none' }; return (
                             <td key={w.id} style={{ padding: "2px 4px", background: c.bgLight, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}` }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                <div style={{ flex: 1 }}><EditableCell value={wp.amount} onChange={v => updateWorkerPay(t.id, w.id, "amount", v)} type="number" mono style={{ textAlign: "right", fontSize: 12, color: wp.paid ? c.text : "#555" }} /></div>
+                                <div style={{ flex: 1, ...payBlur }}><EditableCell value={wp.amount} onChange={v => updateWorkerPay(t.id, w.id, "amount", v)} type="number" mono style={{ textAlign: "right", fontSize: 12, color: wp.paid ? c.text : "#555" }} /></div>
                                 <input type="checkbox" className="checkbox-paid" checked={wp.paid} onChange={e => updateWorkerPay(t.id, w.id, "paid", e.target.checked)} />
                               </div>
                               {/* Advance deduction row */}
                               <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 1 }}>
                                 <span style={{ fontSize: 8, color: c.text, opacity: .4, whiteSpace: "nowrap" }}>adv:</span>
-                                <div style={{ flex: 1 }}><EditableCell value={wp.advance || 0} onChange={v => updateWorkerPay(t.id, w.id, "advance", v)} type="number" mono style={{ textAlign: "right", fontSize: 10, color: adv > 0 ? "#F87171" : "#666" }} /></div>
+                                <div style={{ flex: 1, ...payBlur }}><EditableCell value={wp.advance || 0} onChange={v => updateWorkerPay(t.id, w.id, "advance", v)} type="number" mono style={{ textAlign: "right", fontSize: 10, color: adv > 0 ? "#F87171" : "#666" }} /></div>
                               </div>
                               {adv > 0 && (
-                                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: c.text, opacity: .7, textAlign: "right", paddingRight: 2 }}>= {fmt(net)}</div>
+                                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: c.text, opacity: .7, textAlign: "right", paddingRight: 2, ...payBlur }}>= {fmt(net)}</div>
                               )}
                               {wp.comment ? (
                                 <EditableCell value={wp.comment} onChange={v => updateWorkerPay(t.id, w.id, "comment", v)} style={{ fontSize: 10, color: c.text, opacity: .7, padding: "1px 4px" }} />
@@ -1505,7 +1525,7 @@
                         <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13 }}>{fmt(totalRev)}</div>
                         {pendingRev > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: "#A16207", fontWeight: 500 }}>+{fmt(pendingRev)} pend.</div>}
                       </td><td></td>
-                      {workers.map(w => { const c = wc(w); const t = workerTotals[w.id] || { paid: 0, pending: 0 }; return (<td key={w.id} style={{ padding: "10px 6px", background: c.bg, fontFamily: "'JetBrains Mono',monospace", fontSize: 13, textAlign: "center", color: c.text }}>{fmt(t.paid + t.pending)}</td>); })}
+                      {workers.map(w => { const c = wc(w); const t = workerTotals[w.id] || { paid: 0, pending: 0 }; return (<td key={w.id} style={{ padding: "10px 6px", background: c.bg, fontFamily: "'JetBrains Mono',monospace", fontSize: 13, textAlign: "center", color: c.text }}><span style={{ filter: showWorkerPay ? 'none' : 'blur(5px)', transition: 'filter .3s', userSelect: showWorkerPay ? 'auto' : 'none', display: 'inline-block' }}>{fmt(t.paid + t.pending)}</span></td>); })}
                       <td></td>
                     </tr>
                   </tfoot>
