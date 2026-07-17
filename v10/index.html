@@ -128,6 +128,11 @@
       return o;
     };
 
+    // --- ADvantage comp policy (v1): founders = Marko + Stepan; monthly floor $1,500 each; default agency budget 18% ---
+    const FOUNDER_FLOOR = 1500;
+    const AGENCY_PCT = 0.18;
+    const isFounderName = (name) => { const fn = (name || "").trim().toLowerCase().split(/\s+/)[0]; return fn === "marko" || fn === "stepan"; };
+
     const resolveAccount = (raw) => {
       if (!raw) return "";
       if (raw.includes(">")) return raw.split(">").pop().trim();
@@ -368,8 +373,8 @@
 
     const Dashboard = ({ userEmail, onLogout }) => {
       const [isInitialLoad, setIsInitialLoad] = useState(true);
-      const [currentMonth, setCurrentMonth] = useState(2);
-      const [currentYear, setCurrentYear] = useState(2026);
+      const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+      const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
       
       const [lastSaved, setLastSaved] = useState(null);
       const [workers, setWorkers] = useState([]);
@@ -450,7 +455,15 @@
         async function fetchData() {
           const { data: settings } = await supabase.from('global_settings').select('*').eq('id', 1).single();
           if (settings) {
-            if (settings.workers && settings.workers.length > 0) setWorkers(settings.workers);
+            if (settings.workers && settings.workers.length > 0) {
+              setWorkers(settings.workers);
+              localStorage.setItem('adv_workers', JSON.stringify(settings.workers));
+            } else {
+              try {
+                const lw = localStorage.getItem('adv_workers');
+                if (lw) { const ww = JSON.parse(lw); if (ww.length > 0) setWorkers(ww); }
+              } catch(e) {}
+            }
             if (settings.accounts && settings.accounts.length > 0) {
               // Always merge reconciliation backup — so even if Supabase lost reconciliations, local backup restores them
               const merged = mergeReconciliations(settings.accounts);
@@ -496,7 +509,17 @@
         const timer = setTimeout(async () => {
           // Merge reconciliation backup before saving to Supabase — ensures we never lose reconciliations
           const accountsToSave = accounts.length > 0 ? mergeReconciliations(accounts) : accounts;
-          await supabase.from('global_settings').upsert({ id: 1, workers, accounts: accountsToSave, products });
+          // Non-destructive save: never overwrite DB workers/accounts/products with an EMPTY local array.
+          // Guards the products-disappear bug — a failed/partial load leaves state [] and the next autosave
+          // would otherwise wipe the DB. If local state is non-empty it wins; if empty, keep what's in DB.
+          const { data: __existing } = await supabase.from('global_settings').select('workers,accounts,products').eq('id', 1).single();
+          await supabase.from('global_settings').upsert({
+            id: 1,
+            workers: workers.length ? workers : (__existing?.workers || workers),
+            accounts: accountsToSave.length ? accountsToSave : (__existing?.accounts || accountsToSave),
+            products: products.length ? products : (__existing?.products || products),
+          });
+          if (workers.length > 0) localStorage.setItem('adv_workers', JSON.stringify(workers));
           if (products.length > 0) localStorage.setItem('adv_products', JSON.stringify(products));
           if (accountsToSave.length > 0) localStorage.setItem('adv_accounts', JSON.stringify(accountsToSave));
 
@@ -646,6 +669,38 @@
         const margin = totalRev - totalExpenses;
         return { revenue: totalRev, turnover: totalPayment, totalExpenses, agencyExpenses, clientCosts, salariesPaid, salariesPending, margin, carryover, budget: agencyBudget };
       }, [transactions, expenses, workers, totalRev, totalExpenses, totalPayment, carryover, agencyBudget]);
+
+      // Founders (Marko + Stepan) earnings this month + reserve/runway vs policy floor
+      const foundersStats = useMemo(() => {
+        const fids = workers.filter(w => isFounderName(w.name)).map(w => w.id);
+        let alloc = 0, paid = 0;
+        transactions.filter(isReceivedTx).forEach(t => {
+          fids.forEach(id => { const wp = t.workerPay?.[id]; if (wp) { const a = parseNum(wp.amount); alloc += a; if (wp.paid) paid += a; } });
+        });
+        const n = fids.length || 2;
+        const floorTotal = FOUNDER_FLOOR * n;
+        const monthlyObligation = floorTotal + parseNum(monthPL.agencyExpenses);
+        const runway = monthlyObligation > 0 ? agencyBudget / monthlyObligation : 0;
+        return { fids, alloc, paid, pending: alloc - paid, n, eachAlloc: alloc / n, eachPaid: paid / n, floorTotal, floorOk: alloc >= floorTotal, runway };
+      }, [transactions, workers, monthPL, agencyBudget]);
+
+      // Balance a deal's leftover 50/50 to the two founders — preserves payment = costTax + agencyRev + Σ workerPay
+      const balanceToFounders = (t) => {
+        const fids = foundersStats.fids;
+        if (fids.length < 2) { alert("Founders (Marko + Stepan) not found among workers"); return; }
+        const nonFounder = workers.filter(w => !fids.includes(w.id)).reduce((s, w) => s + parseNum(t.workerPay?.[w.id]?.amount), 0);
+        const residual = parseNum(t.payment) - parseNum(t.costTax) - parseNum(t.agencyRev) - nonFounder;
+        const half = Math.round((residual / 2) * 100) / 100;
+        const other = Math.round((residual - half) * 100) / 100;
+        setTransactions(p => p.map(x => {
+          if (x.id !== t.id) return x;
+          const wp = { ...x.workerPay };
+          wp[fids[0]] = { ...(wp[fids[0]] || { paid: false, comment: "", advance: 0 }), amount: half };
+          wp[fids[1]] = { ...(wp[fids[1]] || { paid: false, comment: "", advance: 0 }), amount: other };
+          return { ...x, workerPay: wp };
+        }));
+        logAction('Balanced 50/50 to founders', [t.client, fmt(residual)].filter(Boolean).join(' · '));
+      };
 
       // Annual stats (whole currentYear) — received transactions only
       const annualStats = useMemo(() => {
@@ -1143,7 +1198,13 @@
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               {(activeSection === 'dashboard' || activeSection === 'operations') && <>
                 <button onClick={prevMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "8px 12px" }}><Icon name="chevronLeft" size={16} /></button>
-                <span style={{ color: "#fff", fontSize: 16, fontWeight: 600, minWidth: 160, textAlign: "center" }}>{MONTHS_UA[currentMonth]} {currentYear}</span>
+                <select value={`${currentYear}-${currentMonth}`} onChange={e => { const [y, m] = e.target.value.split('-').map(Number); setCurrentYear(y); setCurrentMonth(m); }} title="Jump to any month" style={{ background: "rgba(255,255,255,.12)", color: "#fff", fontSize: 15, fontWeight: 600, minWidth: 150, border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", outline: "none" }}>
+                  {Array.from(new Set([...Object.keys(monthData).map(k => parseInt((k || '').split('-')[0])).filter(n => !isNaN(n)), currentYear])).sort((a, b) => a - b).map(y => (
+                    <optgroup key={y} label={String(y)}>
+                      {MONTHS_UA.map((mn, m) => <option key={`${y}-${m}`} value={`${y}-${m}`} style={{ color: "#000" }}>{mn} {y}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
                 <button onClick={nextMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "8px 12px" }}><Icon name="chevronRight" size={16} /></button>
               </>}
               {lastSaved && <span style={{ fontSize: 11, color: "#4ADE80", opacity: .7, marginLeft: 4 }} title={`Last saved ${new Date(lastSaved).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' })}`}>✓ saved</span>}
@@ -1331,6 +1392,40 @@
                 </div>
               </div>
 
+              {/* Founders & Reserve — ADvantage comp policy v1 */}
+              <div style={{ background: "#1A1A1A", borderRadius: 10, padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: "#E5E5E5", marginBottom: 4 }}>Founders &amp; Reserve — {MONTHS_UA[currentMonth]} {currentYear}</h2>
+                <div style={{ fontSize: 12, color: "#888", marginBottom: 20 }}>Marko + Stepan · floor {fmt(FOUNDER_FLOOR)}/each · 50/50 split</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 20 }}>
+                  {[
+                    { label: "Founders — accrued", value: foundersStats.alloc, color: "#16A34A", hint: `each ${fmt(foundersStats.eachAlloc)}` },
+                    { label: "Founders — paid", value: foundersStats.paid, color: "#888", hint: foundersStats.pending > 0.5 ? `${fmt(foundersStats.pending)} still owed` : "all paid" },
+                    { label: `Floor ${fmt(foundersStats.floorTotal)}`, value: foundersStats.alloc, color: foundersStats.floorOk ? "#16A34A" : "#DC2626", hint: foundersStats.floorOk ? "above floor ✓" : "BELOW floor — top up from reserve", big: true },
+                  ].map((c, i) => (
+                    <div key={i} style={{ border: `1px solid ${c.color}22`, borderLeft: `4px solid ${c.color}`, borderRadius: 10, padding: "16px 18px", background: c.big ? `${c.color}08` : "#222" }}>
+                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: .5, color: "#888", marginBottom: 6 }}>{c.label}</div>
+                      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: c.big ? 28 : 22, fontWeight: 700, color: c.color }}>{fmt(c.value)}</div>
+                      <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>{c.hint}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, paddingTop: 20, borderTop: "1px solid #2a2a2a" }}>
+                  {[
+                    { label: "Reserve (cumulative)", text: fmt(agencyBudget), color: agencyBudget >= 0 ? "#16A34A" : "#DC2626" },
+                    { label: "Runway", text: foundersStats.runway.toFixed(1) + " mo", color: foundersStats.runway >= 2 ? "#16A34A" : "#F59E0B" },
+                    { label: "Reserve target", text: fmt(9000), color: "#888" },
+                  ].map((c, i) => (
+                    <div key={i}>
+                      <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{c.label}</div>
+                      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 16, fontWeight: 600, color: c.color || "#E5E5E5" }}>{c.text}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid #2a2a2a", fontSize: 11, color: "#777", lineHeight: 1.7 }}>
+                  <b style={{ color: "#999" }}>Money flow:</b> turnover (client payment) = costTax (fees/kickbacks) + agencyRev (agency margin — the "REV"/"budget" number, not sales) + workerPay (everyone incl. founders). <b style={{ color: "#999" }}>Accrued</b> = allocated regardless of the paid checkbox; <b style={{ color: "#999" }}>paid</b> = paid checkbox on. Reserve = &Sigma; agencyRev &minus; expenses, carried monthly.
+                </div>
+              </div>
+
               {/* Real Accounts Balance */}
               {accountUsage.length > 0 && (
                 <div style={{ background: "#1A1A1A", borderRadius: 10, padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
@@ -1477,7 +1572,10 @@
                           <td style={{ padding: "2px" }}><EditableCell value={t.payment} onChange={v => updateTx(t.id, "payment", v)} type="number" mono style={{ textAlign: "right" }} /></td>
                           <td style={{ padding: "2px" }}><EditableCell value={t.date} onChange={v => updateTx(t.id, "date", v)} isDate={true} activeMonthIdx={currentMonth} style={{ textAlign: "center" }} /></td>
                           <td style={{ padding: "2px" }}><EditableCell value={t.costTax} onChange={v => updateTx(t.id, "costTax", v)} type="number" mono style={{ textAlign: "right" }} /></td>
-                          <td style={{ padding: "2px" }}><EditableCell value={t.agencyRev} onChange={v => updateTx(t.id, "agencyRev", v)} type="number" mono style={{ textAlign: "right" }} /></td>
+                          <td style={{ padding: "2px" }}>
+                            <EditableCell value={t.agencyRev} onChange={v => updateTx(t.id, "agencyRev", v)} type="number" mono style={{ textAlign: "right" }} />
+                            <button onClick={() => updateTx(t.id, "agencyRev", Math.round(parseNum(t.payment) * AGENCY_PCT))} title={`Set ${Math.round(AGENCY_PCT * 100)}% of payment as agency budget`} style={{ display: "block", width: "100%", marginTop: 1, border: "none", background: "none", cursor: "pointer", color: "#4A90D9", fontSize: 9, fontFamily: "'JetBrains Mono',monospace", opacity: .45 }} onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = .45}>⇒{Math.round(AGENCY_PCT * 100)}%</button>
+                          </td>
                           <td style={{ padding: "2px 4px", textAlign: "center" }}>
                             {t.invoice ? (<div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "center" }}><button className="invoice-btn" onClick={() => downloadInvoice(t.invoice)} title={t.invoice.name} style={{ color: "#16A34A", display: "inline-flex" }}><Icon name="download" size={14} /></button><button className="invoice-btn" onClick={() => updateTx(t.id, "invoice", null)} style={{ color: "#DC2626", display: "inline-flex" }}><Icon name="trash" size={13} /></button></div>) : (<button className="invoice-btn" onClick={() => triggerInvoiceUpload(t.id)} style={{ color: "#999", display: "inline-flex" }}><Icon name="attach" size={14} /></button>)}
                           </td>
@@ -1504,6 +1602,7 @@
                           ); })}
                           <td style={{ padding: "2px 4px", textAlign: "center" }}>
                             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                              <button className="row-delete" onClick={() => balanceToFounders(t)} title="Balance leftover 50/50 to founders (Marko + Stepan)" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#16A34A", transition: "opacity .15s", fontSize: 9, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace" }}>50/50</button>
                               <button className="row-delete" onClick={() => duplicateTxToNext(t)} title="Copy to next month" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#4A90D9", transition: "opacity .15s", display: "flex" }}><Icon name="copy" size={14} /></button>
                               <button className="row-delete" onClick={() => removeTx(t.id)} title="Delete" style={{ opacity: 0, border: "none", background: "none", cursor: "pointer", color: "#DC2626", transition: "opacity .15s", display: "flex" }}><Icon name="trash" size={15} /></button>
                             </div>
