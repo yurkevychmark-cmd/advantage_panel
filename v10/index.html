@@ -1574,7 +1574,15 @@
                           <td style={{ padding: "2px" }}><EditableCell value={t.costTax} onChange={v => updateTx(t.id, "costTax", v)} type="number" mono style={{ textAlign: "right" }} /></td>
                           <td style={{ padding: "2px" }}>
                             <EditableCell value={t.agencyRev} onChange={v => updateTx(t.id, "agencyRev", v)} type="number" mono style={{ textAlign: "right" }} />
-                            <button onClick={() => updateTx(t.id, "agencyRev", Math.round(parseNum(t.payment) * AGENCY_PCT))} title={`Set ${Math.round(AGENCY_PCT * 100)}% of payment as agency budget`} style={{ display: "block", width: "100%", marginTop: 1, border: "none", background: "none", cursor: "pointer", color: "#4A90D9", fontSize: 9, fontFamily: "'JetBrains Mono',monospace", opacity: .45 }} onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = .45}>⇒{Math.round(AGENCY_PCT * 100)}%</button>
+                            {(() => {
+                              const net = parseNum(t.payment) - parseNum(t.costTax);
+                              const rev = parseNum(t.agencyRev);
+                              if (rev > 0 && net > 0) {
+                                const pct = (rev / net) * 100;
+                                return <div title={`${fmt(rev)} of net ${fmt(net)} (payment − cost/tax)`} style={{ marginTop: 1, textAlign: "right", color: "#7C8CA0", fontSize: 9, fontFamily: "'JetBrains Mono',monospace" }}>{pct.toFixed(1)}% of net</div>;
+                              }
+                              return <button onClick={() => { if (net > 0) updateTx(t.id, "agencyRev", Math.round(net * AGENCY_PCT)); }} title={`Set ${Math.round(AGENCY_PCT * 100)}% of net (payment − cost/tax) as agency budget`} style={{ display: "block", width: "100%", marginTop: 1, border: "none", background: "none", cursor: "pointer", color: "#4A90D9", fontSize: 9, fontFamily: "'JetBrains Mono',monospace", opacity: .45 }} onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = .45}>⇒{Math.round(AGENCY_PCT * 100)}%</button>;
+                            })()}
                           </td>
                           <td style={{ padding: "2px 4px", textAlign: "center" }}>
                             {t.invoice ? (<div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "center" }}><button className="invoice-btn" onClick={() => downloadInvoice(t.invoice)} title={t.invoice.name} style={{ color: "#16A34A", display: "inline-flex" }}><Icon name="download" size={14} /></button><button className="invoice-btn" onClick={() => updateTx(t.id, "invoice", null)} style={{ color: "#DC2626", display: "inline-flex" }}><Icon name="trash" size={13} /></button></div>) : (<button className="invoice-btn" onClick={() => triggerInvoiceUpload(t.id)} style={{ color: "#999", display: "inline-flex" }}><Icon name="attach" size={14} /></button>)}
