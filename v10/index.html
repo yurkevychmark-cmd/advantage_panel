@@ -389,13 +389,15 @@
       const [showAddExpense, setShowAddExpense] = useState(false);
       const [showAddAccount, setShowAddAccount] = useState(false);
       const [showTransfer, setShowTransfer] = useState(false);
+      const [showCashout, setShowCashout] = useState(false);
+      const [partnerTxId, setPartnerTxId] = useState(null);
       const [showAddInvestment, setShowAddInvestment] = useState(false);
       const [newInvestment, setNewInvestment] = useState({ person: "", amount: 0, method: "USD", date: "", comment: "" });
       const [editExpense, setEditExpense] = useState(null);
       const [editAccount, setEditAccount] = useState(null);
       
       const [newWorker, setNewWorker] = useState({ name: "", role: "", colorIdx: 5 });
-      const [newExpense, setNewExpense] = useState({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "" });
+      const [newExpense, setNewExpense] = useState({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "", salaryStatus: "planned" });
       const [salaryDismissed, setSalaryDismissed] = useState(() => localStorage.getItem('salary_dismissed') || "");
       const [activeSection, setActiveSection] = useState('operations');
       const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === '1');
@@ -413,6 +415,7 @@
       const [showWorkerPay, setShowWorkerPay] = useState(false);
       const workerPayTimerRef = useRef(null);
       const [newTransfer, setNewTransfer] = useState({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" });
+      const [newCashout, setNewCashout] = useState({ fromAcc: "", exchanger: "", sentUsdt: 0, feeUsdt: 0, cashAmount: 0, cashCurrency: "UAH", date: "", note: "" });
       
       const [expandedAcct, setExpandedAcct] = useState(null);
       
@@ -496,7 +499,7 @@
             months.forEach(m => { md[m.month_key] = m.data; });
             setMonthData(md);
           } else {
-             setMonthData({ "2026-2": { transactions: [], expenses: [], transfers: [], carryover: 0 } });
+             setMonthData({ "2026-2": { transactions: [], expenses: [], transfers: [], cashouts: [], carryover: 0 } });
           }
           setIsInitialLoad(false);
           hasLoadedRef.current = true;
@@ -551,24 +554,29 @@
           localStorage.setItem('adv_action_log', JSON.stringify([entry, ...prev].slice(0, 500)));
         } catch(e) {}
       };
-      const data = monthData[monthKey] || { transactions: [], expenses: [], transfers: [], investments: [], carryover: 0 };
+      const data = monthData[monthKey] || { transactions: [], expenses: [], transfers: [], cashouts: [], investments: [], carryover: 0 };
       const transactions = data.transactions || [];
       const expenses = data.expenses || [];
       const transfers = data.transfers || [];
+      const cashouts = data.cashouts || [];
       const investments = data.investments || [];
       const carryover = data.carryover || 0;
 
       const setTransactions = (txs) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, transactions: typeof txs === "function" ? txs(data.transactions || []) : txs } })); };
       const setExpenses = (exps) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, expenses: typeof exps === "function" ? exps(data.expenses || []) : exps } })); };
       const setTransfers = (trfs) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, transfers: typeof trfs === "function" ? trfs(data.transfers || []) : trfs } })); };
+      const setCashouts = (items) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, cashouts: typeof items === "function" ? items(data.cashouts || []) : items } })); };
       const setInvestments = (invs) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, investments: typeof invs === "function" ? invs(data.investments || []) : invs } })); };
 
       // Only "received" (confirmed green) transactions count toward statistics.
       // Unconfirmed deals are shown in the table but excluded from all totals.
       const isReceivedTx = (t) => t.status === 'received';
+      const partnerCommission = (t) => parseNum(t.partnerRate) > 0 ? Math.round(parseNum(t.payment) * parseNum(t.partnerRate)) / 100 : parseNum(t.partnerAmount);
+      const dealCosts = (t) => parseNum(t.costTax) + partnerCommission(t);
+      const isPaidSalaryExpense = (e) => !e.salaryStatus || e.salaryStatus === 'paid';
       const totalPayment = useMemo(() => transactions.filter(isReceivedTx).reduce((s, t) => s + parseNum(t.payment), 0), [transactions]);
       const totalRev = useMemo(() => transactions.filter(isReceivedTx).reduce((s, t) => s + parseNum(t.agencyRev), 0), [transactions]);
-      const totalCosts = useMemo(() => transactions.filter(isReceivedTx).reduce((s, t) => s + parseNum(t.costTax), 0), [transactions]);
+      const totalCosts = useMemo(() => transactions.filter(isReceivedTx).reduce((s, t) => s + dealCosts(t), 0), [transactions]);
       const pendingPayment = useMemo(() => transactions.filter(t => !isReceivedTx(t)).reduce((s, t) => s + parseNum(t.payment), 0), [transactions]);
       const pendingRev = useMemo(() => transactions.filter(t => !isReceivedTx(t)).reduce((s, t) => s + parseNum(t.agencyRev), 0), [transactions]);
       const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + parseNum(e.cost), 0), [expenses]);
@@ -595,7 +603,7 @@
               s.received += parseNum(tx.payment);
               // money that leaves the account: salaries + cost/tax
               const salaries = (workers || []).reduce((sum, w) => sum + parseNum(tx.workerPay?.[w.id]?.amount), 0);
-              s.spent += salaries + parseNum(tx.costTax);
+              s.spent += salaries + dealCosts(tx);
             }
           });
           (md.expenses || []).forEach(ex => {
@@ -662,12 +670,14 @@
 
       // Month P&L summary
       const monthPL = useMemo(() => {
-        const salariesPaid = transactions.reduce((s, t) => s + workers.reduce((ss, w) => { const wp = t.workerPay?.[w.id]; return ss + (wp?.paid ? parseNum(wp.amount) : 0); }, 0), 0);
-        const salariesPending = transactions.reduce((s, t) => s + workers.reduce((ss, w) => { const wp = t.workerPay?.[w.id]; return ss + (wp && !wp.paid ? parseNum(wp.amount) : 0); }, 0), 0);
+        const dealSalariesPaid = transactions.reduce((s, t) => s + workers.reduce((ss, w) => { const wp = t.workerPay?.[w.id]; return ss + (wp?.paid ? parseNum(wp.amount) : 0); }, 0), 0);
+        const dealSalariesPending = transactions.reduce((s, t) => s + workers.reduce((ss, w) => { const wp = t.workerPay?.[w.id]; return ss + (wp && !wp.paid ? parseNum(wp.amount) : 0); }, 0), 0);
+        const fixedSalariesPaid = expenses.filter(e => e.workerLink && isPaidSalaryExpense(e)).reduce((s, e) => s + parseNum(e.cost), 0);
+        const fixedSalariesPending = expenses.filter(e => e.workerLink && !isPaidSalaryExpense(e)).reduce((s, e) => s + parseNum(e.cost), 0);
         const clientCosts = expenses.filter(e => e.costType === 'client').reduce((s, e) => s + parseNum(e.cost), 0);
         const agencyExpenses = expenses.filter(e => e.costType !== 'client').reduce((s, e) => s + parseNum(e.cost), 0);
         const margin = totalRev - totalExpenses;
-        return { revenue: totalRev, turnover: totalPayment, totalExpenses, agencyExpenses, clientCosts, salariesPaid, salariesPending, margin, carryover, budget: agencyBudget };
+        return { revenue: totalRev, turnover: totalPayment, totalExpenses, agencyExpenses, clientCosts, salariesPaid: dealSalariesPaid + fixedSalariesPaid, salariesPending: dealSalariesPending + fixedSalariesPending, margin, carryover, budget: agencyBudget };
       }, [transactions, expenses, workers, totalRev, totalExpenses, totalPayment, carryover, agencyBudget]);
 
       // Founders (Marko + Stepan) earnings this month + reserve/runway vs policy floor
@@ -684,12 +694,12 @@
         return { fids, alloc, paid, pending: alloc - paid, n, eachAlloc: alloc / n, eachPaid: paid / n, floorTotal, floorOk: alloc >= floorTotal, runway };
       }, [transactions, workers, monthPL, agencyBudget]);
 
-      // Balance a deal's leftover 50/50 to the two founders — preserves payment = costTax + agencyRev + Σ workerPay
+      // Balance a deal's leftover 50/50 to the founders — preserves payment = deal costs + agencyRev + Σ workerPay
       const balanceToFounders = (t) => {
         const fids = foundersStats.fids;
         if (fids.length < 2) { alert("Founders (Marko + Stepan) not found among workers"); return; }
         const nonFounder = workers.filter(w => !fids.includes(w.id)).reduce((s, w) => s + parseNum(t.workerPay?.[w.id]?.amount), 0);
-        const residual = parseNum(t.payment) - parseNum(t.costTax) - parseNum(t.agencyRev) - nonFounder;
+        const residual = parseNum(t.payment) - dealCosts(t) - parseNum(t.agencyRev) - nonFounder;
         const half = Math.round((residual / 2) * 100) / 100;
         const other = Math.round((residual - half) * 100) / 100;
         setTransactions(p => p.map(x => {
@@ -712,7 +722,7 @@
           if (md) {
             (md.transactions || []).forEach(t => {
               if (t.status === 'received') {
-                turnover += parseNum(t.payment); revenue += parseNum(t.agencyRev); costs += parseNum(t.costTax); deals += 1; mRev += parseNum(t.agencyRev);
+                turnover += parseNum(t.payment); revenue += parseNum(t.agencyRev); costs += dealCosts(t); deals += 1; mRev += parseNum(t.agencyRev);
                 workers.forEach(w => { const wp = t.workerPay?.[w.id]; if (wp?.paid) salaries += parseNum(wp.amount); });
               } else {
                 pendingRevA += parseNum(t.agencyRev);
@@ -729,8 +739,12 @@
         const m = {};
         workers.forEach((w) => { m[w.id] = { paid: 0, pending: 0 }; });
         transactions.forEach((t) => { workers.forEach((w) => { const wp = t.workerPay?.[w.id]; if (wp && wp.amount) { if (wp.paid) m[w.id].paid += parseNum(wp.amount); else m[w.id].pending += parseNum(wp.amount); } }); });
-        // Expenses linked to a worker (e.g. salary paid via agency expense)
-        expenses.forEach(ex => { if (ex.workerLink && m[ex.workerLink]) m[ex.workerLink].paid += parseNum(ex.cost); });
+        // Fixed salary rows retain their own lifecycle: a newly planned payment is not treated as paid.
+        expenses.forEach(ex => {
+          if (!ex.workerLink || !m[ex.workerLink]) return;
+          if (isPaidSalaryExpense(ex)) m[ex.workerLink].paid += parseNum(ex.cost);
+          else m[ex.workerLink].pending += parseNum(ex.cost);
+        });
         return m;
       }, [transactions, expenses, workers]);
 
@@ -781,7 +795,7 @@
 
       const rowDiff = useCallback((t) => {
         const wp = workers.reduce((s, w) => s + parseNum(t.workerPay?.[w.id]?.amount), 0);
-        return parseNum(t.payment) - wp - parseNum(t.costTax) - parseNum(t.agencyRev);
+        return parseNum(t.payment) - wp - dealCosts(t) - parseNum(t.agencyRev);
       }, [workers]);
 
       // Predictive checks — flags cases that likely cause budget mismatch
@@ -825,7 +839,7 @@
         const nm = currentMonth === 11 ? 0 : currentMonth + 1; 
         const ny = currentMonth === 11 ? currentYear + 1 : currentYear; 
         const nk = `${ny}-${nm}`; 
-        setMonthData(p => ({ ...p, [nk]: { transactions: p[nk]?.transactions || [], expenses: p[nk]?.expenses || [], transfers: p[nk]?.transfers || [], carryover: agencyBudget } })); 
+        setMonthData(p => ({ ...p, [nk]: { transactions: p[nk]?.transactions || [], expenses: p[nk]?.expenses || [], transfers: p[nk]?.transfers || [], cashouts: p[nk]?.cashouts || [], carryover: agencyBudget } }));
         setCurrentMonth(nm); 
         setCurrentYear(ny); 
       };
@@ -870,7 +884,7 @@
         
         setMonthData(prev => {
            const nextState = {...prev};
-           if (!nextState[bulkTargetMonth]) nextState[bulkTargetMonth] = { transactions: [], expenses: [], transfers: [], carryover: 0 };
+           if (!nextState[bulkTargetMonth]) nextState[bulkTargetMonth] = { transactions: [], expenses: [], transfers: [], cashouts: [], carryover: 0 };
            
            const newTxs = txsToProcess.map(t => ({
              ...t, 
@@ -882,7 +896,8 @@
            const newExps = expsToProcess.map(e => ({
              ...e, 
              id: uid(), 
-             date: formatTransferredDate(e.date) 
+             date: formatTransferredDate(e.date),
+             salaryStatus: e.workerLink ? 'planned' : e.salaryStatus
            }));
            
            nextState[bulkTargetMonth].transactions = [...(nextState[bulkTargetMonth].transactions || []), ...newTxs];
@@ -903,7 +918,7 @@
       const exportSelected = () => {
         const txToExport = selectedTx.size > 0 ? transactions.filter(t => selectedTx.has(t.id)) : transactions;
         const expToExport = selectedExp.size > 0 ? expenses.filter(e => selectedExp.has(e.id)) : expenses;
-        const payload = { month: monthKey, transactions: txToExport, expenses: expToExport, transfers: transfers, exportedAt: new Date().toISOString() };
+        const payload = { month: monthKey, transactions: txToExport, expenses: expToExport, transfers: transfers, cashouts: cashouts, exportedAt: new Date().toISOString() };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -923,7 +938,7 @@
             const imported = JSON.parse(reader.result);
             pushHistory();
             setMonthData(p => {
-              const cur = p[monthKey] || { transactions: [], expenses: [], transfers: [], carryover: 0 };
+              const cur = p[monthKey] || { transactions: [], expenses: [], transfers: [], cashouts: [], carryover: 0 };
               const updated = { ...cur };
               if (imported.transactions && Array.isArray(imported.transactions)) {
                 updated.transactions = [...(cur.transactions || []), ...imported.transactions.map(t => ({ ...t, id: uid() }))];
@@ -933,6 +948,9 @@
               }
               if (imported.transfers && Array.isArray(imported.transfers)) {
                 updated.transfers = [...(cur.transfers || []), ...imported.transfers.map(tr => ({ ...tr, id: uid() }))];
+              }
+              if (imported.cashouts && Array.isArray(imported.cashouts)) {
+                updated.cashouts = [...(cur.cashouts || []), ...imported.cashouts.map(c => ({ ...c, id: uid() }))];
               }
               return { ...p, [monthKey]: updated };
             });
@@ -985,14 +1003,14 @@
 
       const addExpense = () => {
         if (!newExpense.service.trim()) return;
-        const expData = { ...newExpense, date: autoDate(newExpense.date) };
+        const expData = { ...newExpense, salaryStatus: newExpense.workerLink ? newExpense.salaryStatus : '', date: autoDate(newExpense.date) };
         const detail = [newExpense.service, parseNum(newExpense.cost) > 0 ? fmt(parseNum(newExpense.cost)) : '', newExpense.persona || '', newExpense.costType || ''].filter(Boolean).join(' · ');
         if (editExpense) { setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); logAction('Updated expense', detail); }
         else { setExpenses(p => [...p, { id: uid(), ...expData }]); logAction('Added expense', detail); }
-        setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "" }); setShowAddExpense(false); setEditExpense(null);
+        setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "", salaryStatus: "planned" }); setShowAddExpense(false); setEditExpense(null);
       };
       const removeExpense = (id) => { const ex = expenses.find(e => e.id === id); setExpenses(p => p.filter(e => e.id !== id)); logAction('Deleted expense', [ex?.service, parseNum(ex?.cost) > 0 ? fmt(parseNum(ex?.cost)) : '', ex?.persona || ''].filter(Boolean).join(' · ')); };
-      const startEditExpense = (e) => { setEditExpense(e); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost, recurring: e.recurring || false, workerLink: e.workerLink || "", costType: e.costType || "", clientName: e.clientName || "" }); setShowAddExpense(true); };
+      const startEditExpense = (e) => { setEditExpense(e); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost, recurring: e.recurring || false, workerLink: e.workerLink || "", costType: e.costType || "", clientName: e.clientName || "", salaryStatus: e.salaryStatus || "paid" }); setShowAddExpense(true); };
 
       const addTransfer = () => {
         if (!newTransfer.fromAcc || !newTransfer.toAcc) return;
@@ -1001,6 +1019,34 @@
         setNewTransfer({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" }); setShowTransfer(false);
       };
       const removeTransfer = (id) => { const tr = transfers.find(t => t.id === id); setTransfers(p => p.filter(t => t.id !== id)); logAction('Transfer deleted', tr ? tr.fromAcc + ' → ' + tr.toAcc + ' · ' + fmt(parseNum(tr.amount)) : ''); };
+
+      const addCashout = () => {
+        if (!newCashout.fromAcc || !newCashout.exchanger || parseNum(newCashout.sentUsdt) <= 0 || parseNum(newCashout.cashAmount) <= 0) return;
+        const item = { id: uid(), ...newCashout, date: autoDate(newCashout.date) };
+        setCashouts(p => [...p, item]);
+        logAction('Cash-out recorded', `${item.fromAcc} → ${item.exchanger} · ${parseNum(item.sentUsdt)} USDT → ${parseNum(item.cashAmount)} ${item.cashCurrency}`);
+        setNewCashout({ fromAcc: "", exchanger: "", sentUsdt: 0, feeUsdt: 0, cashAmount: 0, cashCurrency: "UAH", date: "", note: "" });
+        setShowCashout(false);
+      };
+      const removeCashout = (id) => { const item = cashouts.find(c => c.id === id); setCashouts(p => p.filter(c => c.id !== id)); logAction('Cash-out deleted', item ? `${item.fromAcc} · ${item.sentUsdt} USDT` : ''); };
+
+      // Copies are future obligations, never proof that a payment was already made.
+      const copyToNextMonth = (kind, item) => {
+        const nextM = currentMonth === 11 ? 0 : currentMonth + 1;
+        const nextY = currentMonth === 11 ? currentYear + 1 : currentYear;
+        const nextKey = `${nextY}-${nextM}`;
+        const copied = { ...item, id: uid(), date: incrementDate(item.date) };
+        if (kind === 'expenses' && copied.workerLink) copied.salaryStatus = 'planned';
+        if (kind === 'transactions') copied.workerPay = Object.fromEntries(Object.entries(copied.workerPay || {}).map(([id, pay]) => [id, { ...pay, paid: false }]));
+        pushHistory();
+        setMonthData(prev => {
+          const target = prev[nextKey] || { transactions: [], expenses: [], transfers: [], cashouts: [], carryover: 0 };
+          return { ...prev, [nextKey]: { ...target, [kind]: [...(target[kind] || []), copied] } };
+        });
+        logAction('Copied to next month', `${kind === 'expenses' ? item.service : item.client} · ${MONTHS_UA[nextM]} ${nextY}`);
+      };
+      const duplicateTxToNext = (t) => copyToNextMonth('transactions', t);
+      const duplicateExpToNext = (e) => copyToNextMonth('expenses', e);
 
       const addInvestment = () => { if (!newInvestment.person.trim() || !newInvestment.amount) return; setInvestments(p => [...p, { id: uid(), ...newInvestment, date: autoDate(newInvestment.date) }]); setNewInvestment({ person: "", amount: 0, method: "USD", date: "", comment: "" }); setShowAddInvestment(false); };
       const removeInvestment = (id) => setInvestments(p => p.filter(i => i.id !== id));
@@ -1422,7 +1468,7 @@
                   ))}
                 </div>
                 <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid #2a2a2a", fontSize: 11, color: "#777", lineHeight: 1.7 }}>
-                  <b style={{ color: "#999" }}>Money flow:</b> turnover (client payment) = costTax (fees/kickbacks) + agencyRev (agency margin — the "REV"/"budget" number, not sales) + workerPay (everyone incl. founders). <b style={{ color: "#999" }}>Accrued</b> = allocated regardless of the paid checkbox; <b style={{ color: "#999" }}>paid</b> = paid checkbox on. Reserve = &Sigma; agencyRev &minus; expenses, carried monthly.
+                  <b style={{ color: "#999" }}>Money flow:</b> turnover (client payment) = deal costs (tax/fees + partner commission) + agencyRev (agency margin — the "REV"/"budget" number, not sales) + workerPay (everyone incl. founders). <b style={{ color: "#999" }}>Accrued</b> = allocated regardless of the paid checkbox; <b style={{ color: "#999" }}>paid</b> = paid checkbox on. Reserve = &Sigma; agencyRev &minus; expenses, carried monthly.
                 </div>
               </div>
 
@@ -1533,7 +1579,7 @@
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "left" }}>Account</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "right" }}>Payment</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "center" }}>Date</th>
-                      <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "right" }}>Cost/tax</th>
+                      <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "right" }}>Deal costs</th>
                       <th style={{ padding: "10px 6px", fontSize: 12, textAlign: "right" }}>Agency REV</th>
                       <th style={{ padding: "10px 6px", fontSize: 10, textAlign: "center" }}>Inv.</th>
                       {workers.map(w => { const c = wc(w); return (<th key={w.id} style={{ padding: "8px 6px", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}` }}></th>); })}
@@ -1571,11 +1617,16 @@
                           </td>
                           <td style={{ padding: "2px" }}><EditableCell value={t.payment} onChange={v => updateTx(t.id, "payment", v)} type="number" mono style={{ textAlign: "right" }} /></td>
                           <td style={{ padding: "2px" }}><EditableCell value={t.date} onChange={v => updateTx(t.id, "date", v)} isDate={true} activeMonthIdx={currentMonth} style={{ textAlign: "center" }} /></td>
-                          <td style={{ padding: "2px" }}><EditableCell value={t.costTax} onChange={v => updateTx(t.id, "costTax", v)} type="number" mono style={{ textAlign: "right" }} /></td>
+                          <td style={{ padding: "2px" }}>
+                            <EditableCell value={t.costTax} onChange={v => updateTx(t.id, "costTax", v)} type="number" mono style={{ textAlign: "right" }} />
+                            <button onClick={() => setPartnerTxId(t.id)} title="Partner commission" style={{ display: "block", marginLeft: "auto", border: "none", background: "none", cursor: "pointer", color: t.partnerName ? (t.partnerPaid ? "#4ADE80" : "#FBBF24") : "#666", fontSize: 9, fontFamily: "'JetBrains Mono',monospace", padding: "1px 0" }}>
+                              {t.partnerName ? `P: ${fmt(partnerCommission(t))}${t.partnerPaid ? ' ✓' : ''}` : '+ partner'}
+                            </button>
+                          </td>
                           <td style={{ padding: "2px" }}>
                             <EditableCell value={t.agencyRev} onChange={v => updateTx(t.id, "agencyRev", v)} type="number" mono style={{ textAlign: "right" }} />
                             {(() => {
-                              const net = parseNum(t.payment) - parseNum(t.costTax);
+                              const net = parseNum(t.payment) - dealCosts(t);
                               const rev = parseNum(t.agencyRev);
                               if (rev > 0 && net > 0) {
                                 const pct = (rev / net) * 100;
@@ -1654,7 +1705,7 @@
                  </div>
                  <div style={{ overflowX: "auto" }}>
                    <table style={{ width: "100%", minWidth: 600 }}>
-                     <colgroup><col style={{ width: 40 }} /><col style={{ width: "20%" }} /><col style={{ width: "15%" }} /><col style={{ width: "10%" }} /><col style={{ width: "10%" }} /><col style={{ width: "12%" }} /><col style={{ width: 36 }} /><col style={{ width: 120 }} /><col style={{ width: 70 }} /></colgroup>
+                     <colgroup><col style={{ width: 40 }} /><col style={{ width: "20%" }} /><col style={{ width: "15%" }} /><col style={{ width: "10%" }} /><col style={{ width: "10%" }} /><col style={{ width: "12%" }} /><col style={{ width: 36 }} /><col style={{ width: 120 }} /><col style={{ width: 90 }} /><col style={{ width: 70 }} /></colgroup>
                      <thead>
                        <tr style={{ background: "#222" }}>
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#9a9a9a", textAlign: "center" }}>
@@ -1667,7 +1718,7 @@
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#9a9a9a", textAlign: "right" }}>Cost</th>
                          <th style={{ padding: "10px 6px", fontSize: 11, color: "#9a9a9a", textAlign: "center" }} title="Recurring monthly">Recur</th>
                          <th style={{ padding: "10px 6px", fontSize: 11, color: "#9a9a9a", textAlign: "center" }} title="Cost type: agency / client">Type</th>
-                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#9a9a9a", textAlign: "center" }}>Salary</th>
+                         <th style={{ padding: "10px 6px", fontSize: 11, color: "#9a9a9a", textAlign: "center" }}>Salary status</th>
                          <th style={{ padding: "10px 6px", fontSize: 12, color: "#9a9a9a", textAlign: "center" }}>Actions</th>
                        </tr>
                      </thead>
@@ -1703,10 +1754,11 @@
                              )}
                            </td>
                            <td style={{ padding: "4px 6px", textAlign: "center" }}>
-                             <select value={e.workerLink || ""} onChange={ev => { const x=[...expenses]; x[i].workerLink=ev.target.value; setExpenses(x); }} style={{ fontSize: 11, border: "1px solid #333", borderRadius: 4, padding: "2px 4px", background: e.workerLink ? "rgba(52,211,153,.12)" : "#222", color: e.workerLink ? "#34D399" : "#666", maxWidth: 110, cursor: "pointer" }}>
+                             <select value={e.workerLink || ""} onChange={ev => { const x=[...expenses]; x[i].workerLink=ev.target.value; if (ev.target.value && !x[i].salaryStatus) x[i].salaryStatus = 'planned'; setExpenses(x); }} style={{ fontSize: 11, border: "1px solid #333", borderRadius: 4, padding: "2px 4px", background: e.workerLink ? "rgba(52,211,153,.12)" : "#222", color: e.workerLink ? "#34D399" : "#666", maxWidth: 110, cursor: "pointer" }}>
                                <option value="">— not salary —</option>
                                {workers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                              </select>
+                             {e.workerLink && <button onClick={() => { const x=[...expenses]; x[i].salaryStatus = isPaidSalaryExpense(e) ? 'planned' : 'paid'; setExpenses(x); logAction(x[i].salaryStatus === 'paid' ? 'Fixed salary paid' : 'Fixed salary planned', `${e.service} · ${fmt(parseNum(e.cost))}`); }} title={isPaidSalaryExpense(e) ? 'Marked paid — click to mark planned' : 'Planned — click after payment'} style={{ display: 'block', width: '100%', marginTop: 4, border: '1px solid', borderColor: isPaidSalaryExpense(e) ? 'rgba(74,222,128,.35)' : 'rgba(251,191,36,.35)', background: isPaidSalaryExpense(e) ? 'rgba(74,222,128,.1)' : 'rgba(251,191,36,.1)', borderRadius: 4, cursor: 'pointer', padding: '2px 4px', color: isPaidSalaryExpense(e) ? '#4ADE80' : '#FBBF24', fontSize: 10, whiteSpace: 'nowrap' }}>{isPaidSalaryExpense(e) ? '✓ paid' : 'planned'}</button>}
                            </td>
                            <td style={{ padding: "8px 6px", textAlign: "center", display: "flex", gap: 8, justifyContent: "center" }}>
                              <button onClick={() => duplicateExpToNext(e)} title="Copy to next month" style={{ border: "none", background: "none", cursor: "pointer", fontSize: 13 }}>⧉</button>
@@ -1714,12 +1766,12 @@
                            </td>
                          </tr>
                        ))}
-                       {expenses.length === 0 && <tr><td colSpan={9} style={{ padding: 20, textAlign: "center", color: "#999" }}>No expenses</td></tr>}
+                       {expenses.length === 0 && <tr><td colSpan={10} style={{ padding: 20, textAlign: "center", color: "#999" }}>No expenses</td></tr>}
                      </tbody>
                    </table>
                  </div>
                  <div style={{ padding: "12px 16px", borderTop: "1px solid #2a2a2a" }}>
-                   <button className="btn btn-primary" onClick={() => { setEditExpense(null); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "" }); setShowAddExpense(true); }}><Icon name="plus" size={14} /> Add expense</button>
+                   <button className="btn btn-primary" onClick={() => { setEditExpense(null); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "", salaryStatus: "planned" }); setShowAddExpense(true); }}><Icon name="plus" size={14} /> Add expense</button>
                  </div>
                </div>
 
@@ -1763,6 +1815,24 @@
                  </div>
                </div>
 
+            </div>
+
+            {/* CASH-OUTS & PARTNER COMMISSIONS */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: 24, marginBottom: 28 }}>
+              <div style={{ background: "#1A1A1A", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)" }}>
+                <div style={{ padding: "16px 20px", borderBottom: "1px solid #2a2a2a", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+                  <div><h2 style={{ fontSize: 16, fontWeight: 700, color: "#E5E5E5" }}>Cash-outs</h2><div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>Actual USDT → cash conversion, with locked effective rate</div></div>
+                  <button className="btn btn-secondary" onClick={() => setShowCashout(true)}><Icon name="transfer" size={14} /> Cash-out</button>
+                </div>
+                <div style={{ overflowX: "auto" }}><table style={{ width: "100%", minWidth: 520 }}><thead><tr style={{ background: "#222" }}><th style={{ padding: "9px 10px", fontSize: 11, color: "#9a9a9a", textAlign: "left" }}>Wallet → exchanger</th><th style={{ padding: "9px 10px", fontSize: 11, color: "#9a9a9a", textAlign: "right" }}>USDT</th><th style={{ padding: "9px 10px", fontSize: 11, color: "#9a9a9a", textAlign: "right" }}>Cash received</th><th style={{ padding: "9px 10px", fontSize: 11, color: "#9a9a9a", textAlign: "right" }}>Effective rate</th><th></th></tr></thead><tbody>
+                  {cashouts.map(c => { const net = parseNum(c.sentUsdt) - parseNum(c.feeUsdt); const rate = net > 0 ? parseNum(c.cashAmount) / net : 0; return <tr key={c.id} style={{ borderBottom: "1px solid #2a2a2a" }}><td style={{ padding: "9px 10px" }}><div style={{ fontSize: 12, color: "#E5E5E5", fontWeight: 600 }}>{c.fromAcc}</div><div style={{ fontSize: 10, color: "#888" }}>→ {c.exchanger} · {c.date}</div></td><td style={{ padding: "9px 10px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontSize: 12 }}>{parseNum(c.sentUsdt).toFixed(2)}{parseNum(c.feeUsdt) > 0 && <div style={{ color: "#F87171", fontSize: 10 }}>fee {parseNum(c.feeUsdt).toFixed(2)}</div>}</td><td style={{ padding: "9px 10px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontSize: 12, color: "#4ADE80" }}>{parseNum(c.cashAmount).toLocaleString('en-US')} {c.cashCurrency}</td><td style={{ padding: "9px 10px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontSize: 11 }}>{rate ? `${rate.toFixed(2)} ${c.cashCurrency}/USDT` : '—'}</td><td style={{ padding: "9px 6px" }}><button onClick={() => removeCashout(c.id)} style={{ border: "none", background: "none", cursor: "pointer" }}><Icon name="trash" size={14} /></button></td></tr>; })}
+                  {cashouts.length === 0 && <tr><td colSpan={5} style={{ padding: 18, textAlign: "center", color: "#777", fontSize: 12 }}>No cash-outs this month</td></tr>}
+                </tbody></table></div>
+              </div>
+              <div style={{ background: "#1A1A1A", borderRadius: 10, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,.08)" }}>
+                <div style={{ padding: "16px 20px", borderBottom: "1px solid #2a2a2a" }}><h2 style={{ fontSize: 16, fontWeight: 700, color: "#E5E5E5" }}>Partner commissions</h2><div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>Accrued only after the client payment is confirmed</div></div>
+                <div style={{ padding: "4px 20px 12px" }}>{transactions.filter(t => t.partnerName && isReceivedTx(t)).map(t => <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 0", borderBottom: "1px solid #292929" }}><div><div style={{ fontSize: 13, fontWeight: 600, color: "#E5E5E5" }}>{t.partnerName}</div><div style={{ fontSize: 11, color: "#888" }}>{t.client || 'Unnamed client'} · {parseNum(t.partnerRate)}%</div></div><button onClick={() => setPartnerTxId(t.id)} style={{ border: "none", background: t.partnerPaid ? "rgba(74,222,128,.1)" : "rgba(251,191,36,.1)", color: t.partnerPaid ? "#4ADE80" : "#FBBF24", borderRadius: 5, cursor: "pointer", fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, padding: "4px 7px" }}>{fmt(partnerCommission(t))} {t.partnerPaid ? '✓' : 'due'}</button></div>)}{transactions.filter(t => t.partnerName && isReceivedTx(t)).length === 0 && <div style={{ color: "#777", fontSize: 12, padding: "14px 0" }}>Add a partner from the “Deal costs” cell in a transaction.</div>}</div>
+              </div>
             </div>
 
             {/* PERSONAL INVESTMENTS */}
@@ -2158,11 +2228,11 @@
 
                   <Section title="Transactions & the money equation">
                     <div style={sub}>Each client deal splits the client payment into three parts:</div>
-                    <code style={code}>payment = cost/tax + agency REV + Σ(worker salaries)</code>
+                    <code style={code}>payment = deal costs (tax/fees + partner commission) + agency REV + Σ(worker salaries)</code>
                     <ul style={{ marginTop: 10, paddingLeft: 18 }}>
                       <li style={li}><b>payment</b> — gross amount the client paid.</li>
                       <li style={li}><b>agency REV</b> — what the agency actually earns (the real revenue metric).</li>
-                      <li style={li}><b>cost/tax</b> — fees/taxes that leave on this deal.</li>
+                      <li style={li}><b>Deal costs</b> — fees/taxes plus a separate partner commission when the deal came from a partner.</li>
                       <li style={li}><b>worker salaries</b> — per-worker amounts assigned in the colored columns.</li>
                     </ul>
                     <div style={{ ...sub, marginTop: 10 }}>The row balance check (left number) must be 0 — if it's red, the split doesn't add up.</div>
@@ -2194,7 +2264,11 @@
                   </Section>
 
                   <Section title="Salaries">
-                    <div style={sub}>Salaries are assigned per transaction in each worker's column. Each cell supports an <b>advance</b> deduction (net = amount − advance) and a paid checkbox. The floating reminder lists workers with unpaid salary for the month; which workers it watches is customizable in Settings.</div>
+                    <div style={sub}>Salaries are assigned per transaction in each worker's column, or as a fixed monthly salary in Expenses. Fixed salaries start as <b>planned</b>; copying them to the next month resets that state, and only <b>paid</b> rows count as paid earnings. The floating reminder includes both kinds of unpaid salary.</div>
+                  </Section>
+
+                  <Section title="Cash-outs & partner commissions">
+                    <div style={sub}>A cash-out is recorded separately from an internal transfer: USDT sent, exchanger fee, cash received and currency. The portal calculates the effective rate on that row and never overwrites historical conversions. Partner commission belongs to the originating deal, is included in deal costs, and has its own paid status — partners never appear as workers.</div>
                   </Section>
 
                   <Section title="Carryover & journal">
@@ -2272,6 +2346,9 @@
                 {workers.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
             </label>
+            {newExpense.workerLink && <label>Salary status
+              <select value={newExpense.salaryStatus || "planned"} onChange={e => setNewExpense({ ...newExpense, salaryStatus: e.target.value })} style={{ marginTop: 4 }}><option value="planned">Planned — include in salary due</option><option value="paid">Paid</option></select>
+            </label>}
             <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => { setShowAddExpense(false); setEditExpense(null); }}>Cancel</button><button className="btn btn-primary" onClick={addExpense}>{editExpense ? "Save" : "Add"}</button></div>
           </div></div>)}
 
@@ -2285,6 +2362,39 @@
             <label>Date<input value={newTransfer.date} onChange={e => setNewTransfer({ ...newTransfer, date: e.target.value })} placeholder="DD.MM" /></label>
             <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowTransfer(false)}>Cancel</button><button className="btn btn-primary" onClick={addTransfer}>Add</button></div>
           </div></div>)}
+
+          {/* MODAL: Cash-out — the historic effective rate belongs to this operation, never to global settings */}
+          {showCashout && (<div className="modal-overlay" onClick={() => setShowCashout(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>Record cash-out</h3>
+            <p style={{ fontSize: 12, color: "#9a9a9a", marginBottom: 16, lineHeight: 1.45 }}>This records the actual conversion. The effective rate is locked on this row, so future market-rate changes cannot alter the history.</p>
+            <label>USDT wallet<input list="accounts-list" value={newCashout.fromAcc} onChange={e => setNewCashout({ ...newCashout, fromAcc: e.target.value })} placeholder="Wallet / account" autoFocus /></label>
+            <label>Exchanger<input value={newCashout.exchanger} onChange={e => setNewCashout({ ...newCashout, exchanger: e.target.value })} placeholder="Local exchanger" /></label>
+            <label>Sent (USDT)<input type="number" value={newCashout.sentUsdt} onChange={e => setNewCashout({ ...newCashout, sentUsdt: parseFloat(e.target.value) || 0 })} /></label>
+            <label>Exchanger fee (USDT)<input type="number" value={newCashout.feeUsdt} onChange={e => setNewCashout({ ...newCashout, feeUsdt: parseFloat(e.target.value) || 0 })} /></label>
+            <label>Cash received<input type="number" value={newCashout.cashAmount} onChange={e => setNewCashout({ ...newCashout, cashAmount: parseFloat(e.target.value) || 0 })} /></label>
+            <label>Cash currency<select value={newCashout.cashCurrency} onChange={e => setNewCashout({ ...newCashout, cashCurrency: e.target.value })}><option>UAH</option><option>USD</option><option>EUR</option><option>PLN</option></select></label>
+            {parseNum(newCashout.sentUsdt) > parseNum(newCashout.feeUsdt) && parseNum(newCashout.cashAmount) > 0 && <div style={{ background: "#222", borderRadius: 7, padding: "9px 11px", marginBottom: 12, fontSize: 12, color: "#9a9a9a" }}>Effective rate: <b style={{ color: "#4ADE80", fontFamily: "'JetBrains Mono',monospace" }}>{(parseNum(newCashout.cashAmount) / (parseNum(newCashout.sentUsdt) - parseNum(newCashout.feeUsdt))).toFixed(2)} {newCashout.cashCurrency}/USDT</b></div>}
+            <label>Date<input value={newCashout.date} onChange={e => setNewCashout({ ...newCashout, date: e.target.value })} placeholder="DD.MM" /></label>
+            <label>Note (optional)<textarea value={newCashout.note} onChange={e => setNewCashout({ ...newCashout, note: e.target.value })} placeholder="Receipt number or a comment" style={{ resize: "vertical", minHeight: 48 }} /></label>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowCashout(false)}>Cancel</button><button className="btn btn-primary" onClick={addCashout}>Save cash-out</button></div>
+          </div></div>)}
+
+          {/* MODAL: partner attribution stays on a deal, not in the employee list */}
+          {partnerTxId && (() => {
+            const tx = transactions.find(t => t.id === partnerTxId);
+            if (!tx) return null;
+            const rate = parseNum(tx.partnerRate);
+            const amount = partnerCommission(tx);
+            return <div className="modal-overlay" onClick={() => setPartnerTxId(null)}><div className="modal" onClick={e => e.stopPropagation()}>
+              <h3>Partner commission</h3>
+              <p style={{ fontSize: 12, color: "#9a9a9a", marginBottom: 16 }}>Commission is calculated from this deal’s received payment and is included in Deal costs without creating a team member.</p>
+              <label>Partner name<input value={tx.partnerName || ""} onChange={e => updateTx(tx.id, "partnerName", e.target.value)} placeholder="Partner or leadgen" autoFocus /></label>
+              <label>Commission rate (%)<input type="number" value={tx.partnerRate || ""} onChange={e => updateTx(tx.id, "partnerRate", parseFloat(e.target.value) || 0)} placeholder="10" /></label>
+              <div style={{ background: "#222", borderRadius: 7, padding: "10px 12px", marginBottom: 14, display: "flex", justifyContent: "space-between", fontSize: 13 }}><span style={{ color: "#9a9a9a" }}>Accrued from {fmt(parseNum(tx.payment))}</span><b style={{ fontFamily: "'JetBrains Mono',monospace", color: "#FBBF24" }}>{fmt(amount)}</b></div>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}><input type="checkbox" checked={!!tx.partnerPaid} onChange={e => { updateTx(tx.id, "partnerPaid", e.target.checked); logAction(e.target.checked ? 'Partner commission paid' : 'Partner commission unpaid', `${tx.partnerName || 'Partner'} · ${fmt(amount)}`); }} style={{ width: 15, height: 15, marginTop: 0 }} /> Commission paid</label>
+              <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-primary" onClick={() => setPartnerTxId(null)}>Done</button></div>
+            </div></div>;
+          })()}
 
           {/* MODAL: Reconcile account */}
           {reconcileAccount && (() => {
@@ -2327,7 +2437,7 @@
           {/* SALARY REMINDER — floating bottom-right */}
           {(() => {
             const watchedWorkers = salaryNotifyWorkerIds !== null ? workers.filter(w => salaryNotifyWorkerIds.includes(w.id)) : workers;
-            const unpaid = watchedWorkers.filter(w => transactions.some(t => { const wp = t.workerPay?.[w.id]; return wp && parseNum(wp.amount) > 0 && !wp.paid; }));
+            const unpaid = watchedWorkers.filter(w => transactions.some(t => { const wp = t.workerPay?.[w.id]; return wp && parseNum(wp.amount) > 0 && !wp.paid; }) || expenses.some(e => e.workerLink === w.id && parseNum(e.cost) > 0 && !isPaidSalaryExpense(e)));
             const allPaid = unpaid.length === 0;
             const dismissed = salaryDismissed === monthKey;
             if (allPaid || dismissed) return null;
