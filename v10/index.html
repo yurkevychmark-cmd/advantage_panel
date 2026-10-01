@@ -1548,7 +1548,7 @@
                   </colgroup>
                   <thead>
                     <tr style={{ background: "#444", color: "#fff" }}>
-                      <th className="scol" style={{ padding: 0, background: "#131313" }}></th>
+                      <th className="scol" style={{ padding: 0, background: "#444" }}></th>
                       <th colSpan={6} style={{ padding: 0 }}></th>
                       <th style={{ padding: "6px 4px", fontSize: 11, fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", verticalAlign: "top" }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,.7)", fontSize: 11, letterSpacing: .5 }}>Total Revenue Per Person:<button onClick={toggleWorkerPay} title={showWorkerPay ? "Hide salaries" : "Show salaries"} style={{ background: "rgba(255,255,255,.1)", border: "none", color: showWorkerPay ? "#4ADE80" : "#888", borderRadius: 4, padding: "1px 7px", cursor: "pointer", fontSize: 12, marginLeft: 2, display: "inline-flex", alignItems: "center" }}><Icon name={showWorkerPay ? "eye" : "eye-off"} size={13} /></button><button onClick={() => setShowAddWorker(true)} style={{ background: "rgba(255,255,255,.15)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600, marginLeft: 2 }}><Icon name="plus" size={15} /></button></span>
@@ -1634,6 +1634,11 @@
                               }
                               return <button onClick={() => { if (net > 0) updateTx(t.id, "agencyRev", Math.round(net * AGENCY_PCT)); }} title={`Set ${Math.round(AGENCY_PCT * 100)}% of net (payment − cost/tax) as agency budget`} style={{ display: "block", width: "100%", marginTop: 1, border: "none", background: "none", cursor: "pointer", color: "#4A90D9", fontSize: 9, fontFamily: "'JetBrains Mono',monospace", opacity: .45 }} onMouseEnter={e => e.currentTarget.style.opacity = 1} onMouseLeave={e => e.currentTarget.style.opacity = .45}>⇒{Math.round(AGENCY_PCT * 100)}%</button>;
                             })()}
+                            {/* Exchange rate — reporting only, does not affect any totals (e.g. USD→PLN for cash salaries) */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 3, marginTop: 2 }}>
+                              <span style={{ fontSize: 8, color: "#9A8C5E", opacity: .8, whiteSpace: "nowrap" }}>fx:</span>
+                              <input value={t.exchangeRate || ""} onChange={e => updateTx(t.id, "exchangeRate", e.target.value)} placeholder="rate" title="Exchange rate for this deal — reporting only, does not affect any totals" style={{ width: 50, boxSizing: "border-box", padding: "1px 4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'JetBrains Mono',monospace", fontSize: 9, textAlign: "right", outline: "none", background: "transparent", color: t.exchangeRate ? "#C9B678" : "#555" }} onFocus={e => e.target.style.border = "1px solid #4A90D9"} onBlur={e => e.target.style.border = "1px solid transparent"} />
+                            </div>
                           </td>
                           <td style={{ padding: "2px 4px", textAlign: "center" }}>
                             {t.invoice ? (<div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "center" }}><button className="invoice-btn" onClick={() => downloadInvoice(t.invoice)} title={t.invoice.name} style={{ color: "#16A34A", display: "inline-flex" }}><Icon name="download" size={14} /></button><button className="invoice-btn" onClick={() => updateTx(t.id, "invoice", null)} style={{ color: "#DC2626", display: "inline-flex" }}><Icon name="trash" size={13} /></button></div>) : (<button className="invoice-btn" onClick={() => triggerInvoiceUpload(t.id)} style={{ color: "#999", display: "inline-flex" }}><Icon name="attach" size={14} /></button>)}
