@@ -131,6 +131,21 @@
     // --- ADvantage comp policy (v1): founders = Marko + Stepan; monthly floor $1,500 each; default agency budget 18% ---
     const FOUNDER_FLOOR = 1500;
     const AGENCY_PCT = 0.18;
+
+    // Fixed rate (ставка) schedules agreed with Марко 01.10.2026 — seeded ONLY into workers whose rateSchedule
+    // was never set (undefined); afterwards fully editable in Team. Amount in $, d1–d2 = pay window (day of month).
+    const DEFAULT_RATE_SCHEDULES = [
+      { re: /^(bohdan|богдан)/i, sched: [{ amount: 100, d1: 1, d2: 3 }, { amount: 100, d1: 13, d2: 16 }] },
+      { re: /^(lilia|liliia|lilya|лілія|лилия)/i, sched: [{ amount: 100, d1: 13, d2: 16 }] },
+      { re: /^(andrii|andriy|andrey|андрій|андрей)/i, sched: [{ amount: 340, d1: 13, d2: 16 }] },
+    ];
+    const RATE_STATUS = {
+      paid: { label: '✓ paid', c: '#4ADE80', bg: 'rgba(74,222,128,.1)' },
+      due: { label: 'due', c: '#FBBF24', bg: 'rgba(251,191,36,.12)' },
+      overdue: { label: 'overdue', c: '#F87171', bg: 'rgba(248,113,113,.12)' },
+      unpaid: { label: 'not paid', c: '#F87171', bg: 'rgba(248,113,113,.08)' },
+      upcoming: { label: 'upcoming', c: '#888', bg: 'rgba(255,255,255,.05)' },
+    };
     const isFounderName = (name) => { const fn = (name || "").trim().toLowerCase().split(/\s+/)[0]; return fn === "marko" || fn === "stepan"; };
 
     const resolveAccount = (raw) => {
@@ -413,6 +428,9 @@
       const [expandedRec, setExpandedRec] = useState(null);
       const [showChecksPanel, setShowChecksPanel] = useState(false);
       const [showWorkerPay, setShowWorkerPay] = useState(false);
+      const [payRate, setPayRate] = useState(null); // { workerId, rateId, wallet, payFrom, amount, date }
+      const [walletDraft, setWalletDraft] = useState({});
+      const [rateDraft, setRateDraft] = useState({});
       const workerPayTimerRef = useRef(null);
       const [newTransfer, setNewTransfer] = useState({ fromAcc: "", toAcc: "", amount: 0, fee: 0, date: "" });
       const [newCashout, setNewCashout] = useState({ fromAcc: "", exchanger: "", sentUsdt: 0, feeUsdt: 0, cashAmount: 0, cashCurrency: "UAH", date: "", note: "" });
@@ -1019,6 +1037,60 @@
 
       const removeWorker = (wId) => { setWorkers(p => p.filter(w => w.id !== wId)); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => { const wp = { ...t.workerPay }; delete wp[wId]; return { ...t, workerPay: wp }; }) }; }); return n; }); };
       const updateWorkerField = (wId, field, val) => setWorkers(p => p.map(w => w.id === wId ? { ...w, [field]: val } : w));
+
+      // --- Fixed rate (ставка) payouts from Team ---
+      // A payout is recorded on the existing rails: a salary Expense with workerLink + salaryStatus 'paid' in the viewed month,
+      // tagged with rateId (which instalment) and toWallet (worker's wallet). `persona` stays the AGENCY account the money
+      // leaves from — it drives account balances, so the worker's wallet must never go there.
+      const realNow = new Date();
+      const realYM = realNow.getFullYear() * 12 + realNow.getMonth();
+      const rateStatus = (w, inst) => {
+        if (expenses.some(e => e.workerLink === w.id && e.rateId === inst.id && isPaidSalaryExpense(e))) return 'paid';
+        if (viewedYM < realYM) return 'unpaid';
+        if (viewedYM > realYM) return 'upcoming';
+        const day = realNow.getDate();
+        if (day > inst.d2) return 'overdue';
+        if (day >= inst.d1) return 'due';
+        return 'upcoming';
+      };
+      const openPayRate = (w, inst) => {
+        const lastFrom = [...expenses].reverse().find(e => e.workerLink === w.id && e.persona)?.persona || '';
+        const dd = viewedYM === realYM ? realNow.getDate() : inst.d1;
+        setPayRate({ workerId: w.id, rateId: inst.id, wallet: (w.wallets || [])[0] || '', payFrom: lastFrom, amount: inst.amount, date: String(dd).padStart(2, '0') + monthSuffix });
+      };
+      const confirmPayRate = () => {
+        if (!payRate) return;
+        const w = workers.find(x => x.id === payRate.workerId);
+        const amount = parseNum(payRate.amount);
+        if (!w || amount <= 0) return;
+        const wallet = (payRate.wallet || '').trim();
+        setExpenses(p => [...p, { id: uid(), service: `Salary — ${w.name}${wallet ? ' · ' + wallet : ''}`, persona: payRate.payFrom || '', method: 'USDT', date: autoDate(payRate.date), cost: amount, recurring: false, workerLink: w.id, costType: '', clientName: '', salaryStatus: 'paid', rateId: payRate.rateId, toWallet: wallet }]);
+        logAction('Rate paid', [w.name, fmt(amount), wallet ? '→ ' + wallet : '', payRate.payFrom ? 'from ' + payRate.payFrom : ''].filter(Boolean).join(' · '));
+        setPayRate(null);
+      };
+      const addRateInst = (w) => {
+        const d = rateDraft[w.id] || {};
+        const amount = parseNum(d.amount);
+        const d1 = Math.min(31, Math.max(1, parseInt(d.d1, 10) || 1));
+        const d2 = Math.min(31, Math.max(d1, parseInt(d.d2, 10) || d1));
+        if (amount <= 0) return;
+        updateWorkerField(w.id, 'rateSchedule', [...(w.rateSchedule || []), { id: uid(), amount, d1, d2 }]);
+        setRateDraft(r => ({ ...r, [w.id]: {} }));
+      };
+      // Worker payment history = every salary Expense linked to the worker, across all months (newest month first)
+      const workerSalaryHistory = (wId) => {
+        const out = [];
+        Object.entries(monthData).forEach(([mk, md]) => (md.expenses || []).forEach(e => { if (e.workerLink === wId) out.push({ ...e, mk }); }));
+        const ym = (mk) => { const [y, m] = mk.split('-').map(Number); return y * 12 + m; };
+        return out.sort((a, b) => ym(b.mk) - ym(a.mk));
+      };
+      // One-time seed of the agreed schedules for workers that never had one (undefined, not an emptied list)
+      useEffect(() => {
+        if (isInitialLoad || !hasLoadedRef.current || !workers.length) return;
+        const match = (w) => DEFAULT_RATE_SCHEDULES.find(d => d.re.test((w.name || '').trim()));
+        if (!workers.some(w => w.rateSchedule === undefined && match(w))) return;
+        setWorkers(p => p.map(w => { if (w.rateSchedule !== undefined) return w; const d = match(w); return d ? { ...w, rateSchedule: d.sched.map(s => ({ id: uid(), ...s })) } : w; }));
+      }, [workers, isInitialLoad]);
 
       const addExpense = () => {
         if (!newExpense.service.trim()) return;
@@ -2002,6 +2074,52 @@
                             <div style={{ fontSize: 11, color: "#999", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}><Icon name="note" size={14} /> Notes</div>
                             <textarea value={w.notes || ""} onChange={e => updateWorkerField(w.id, 'notes', e.target.value)} placeholder="Any additional info..." style={{ width: "100%", boxSizing: "border-box", minHeight: 50, resize: "vertical", border: "1px solid #2a2a2a", borderRadius: 6, padding: "6px 8px", fontSize: 12, fontFamily: "'DM Sans',sans-serif", outline: "none" }} onFocus={e => e.target.style.borderColor = "#4A90D9"} onBlur={e => e.target.style.borderColor = "#2a2a2a"} />
                           </div>
+                          {/* Wallets — the worker's own payout destinations (not agency accounts) */}
+                          <div style={{ paddingTop: 12, marginTop: 10, borderTop: "1px solid #262626" }}>
+                            <div style={{ fontSize: 11, color: "#999", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Icon name="card" size={14} /> Wallets</div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                              {(w.wallets || []).map((wl, wi) => (
+                                <span key={wi} style={{ fontSize: 11, color: "#E5E5E5", background: "#222", border: "1px solid #333", borderRadius: 5, padding: "2px 4px 2px 8px", display: "inline-flex", alignItems: "center", gap: 4 }}>{wl}<button onClick={() => updateWorkerField(w.id, 'wallets', (w.wallets || []).filter((_, j) => j !== wi))} title="Remove wallet" style={{ background: "none", border: "none", color: "#777", cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1 }}>×</button></span>
+                              ))}
+                              <input value={walletDraft[w.id] || ''} onChange={e => setWalletDraft(d => ({ ...d, [w.id]: e.target.value }))} onKeyDown={e => { const v = (walletDraft[w.id] || '').trim(); if (e.key === 'Enter' && v) { updateWorkerField(w.id, 'wallets', [...(w.wallets || []), v]); setWalletDraft(d => ({ ...d, [w.id]: '' })); } }} placeholder="+ wallet (Enter)" style={{ width: 130, border: "1px solid #2a2a2a", borderRadius: 5, padding: "3px 8px", fontSize: 11, outline: "none" }} />
+                            </div>
+                          </div>
+                          {/* Rate schedule — fixed-rate instalments with pay windows; status is for the month selected in the top bar */}
+                          <div style={{ paddingTop: 12, marginTop: 10, borderTop: "1px solid #262626" }}>
+                            <div style={{ fontSize: 11, color: "#999", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Icon name="currency" size={14} /> Rate schedule <span style={{ color: "#666" }}>· {MONTHS_UA[currentMonth]} {currentYear}</span></div>
+                            {!(w.rateSchedule || []).length && <div style={{ fontSize: 11, color: "#555", marginBottom: 4 }}>No fixed rate</div>}
+                            {(w.rateSchedule || []).map(inst => { const st = rateStatus(w, inst); const sc = RATE_STATUS[st]; return (
+                              <div key={inst.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
+                                <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: "#E5E5E5", minWidth: 66 }}>{fmt(parseNum(inst.amount))}</span>
+                                <span style={{ fontSize: 11, color: "#888", whiteSpace: "nowrap" }}>days {inst.d1}–{inst.d2}</span>
+                                <span style={{ fontSize: 10, fontWeight: 600, color: sc.c, background: sc.bg, borderRadius: 4, padding: "1px 7px", whiteSpace: "nowrap" }}>{sc.label}</span>
+                                <div style={{ flex: 1 }} />
+                                {st !== 'paid' && <button className="btn btn-primary" onClick={() => openPayRate(w, inst)} style={{ padding: "3px 10px", fontSize: 11 }}>Pay</button>}
+                                <button onClick={() => updateWorkerField(w.id, 'rateSchedule', (w.rateSchedule || []).filter(x => x.id !== inst.id))} title="Remove instalment" style={{ background: "none", border: "none", color: "#555", cursor: "pointer", padding: 2, display: "flex" }}><Icon name="x" size={12} /></button>
+                              </div>
+                            ); })}
+                            <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6, fontSize: 11, color: "#777" }}>
+                              $<input type="number" value={rateDraft[w.id]?.amount ?? ''} onChange={e => setRateDraft(r => ({ ...r, [w.id]: { ...(r[w.id] || {}), amount: e.target.value } }))} placeholder="amount" style={{ width: 70, border: "1px solid #2a2a2a", borderRadius: 5, padding: "3px 6px", fontSize: 11, outline: "none" }} />
+                              days<input type="number" min="1" max="31" value={rateDraft[w.id]?.d1 ?? ''} onChange={e => setRateDraft(r => ({ ...r, [w.id]: { ...(r[w.id] || {}), d1: e.target.value } }))} placeholder="1" style={{ width: 42, border: "1px solid #2a2a2a", borderRadius: 5, padding: "3px 6px", fontSize: 11, outline: "none" }} />–<input type="number" min="1" max="31" value={rateDraft[w.id]?.d2 ?? ''} onChange={e => setRateDraft(r => ({ ...r, [w.id]: { ...(r[w.id] || {}), d2: e.target.value } }))} placeholder="3" style={{ width: 42, border: "1px solid #2a2a2a", borderRadius: 5, padding: "3px 6px", fontSize: 11, outline: "none" }} />
+                              <button onClick={() => addRateInst(w)} style={{ background: "none", border: "1px solid #333", color: "#4A90D9", borderRadius: 5, padding: "2px 8px", fontSize: 11, cursor: "pointer" }}>+ Add</button>
+                            </div>
+                          </div>
+                          {/* Payment history — all salary expenses linked to this worker, across months */}
+                          {(() => { const hist = workerSalaryHistory(w.id); if (!hist.length) return null; return (
+                            <div style={{ paddingTop: 12, marginTop: 10, borderTop: "1px solid #262626" }}>
+                              <div style={{ fontSize: 11, color: "#999", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}><Icon name="receipt" size={14} /> Payment history</div>
+                              <div style={{ maxHeight: 140, overflowY: "auto" }}>
+                                {hist.slice(0, 24).map(e => { const [y, m] = e.mk.split('-').map(Number); const paid = isPaidSalaryExpense(e); return (
+                                  <div key={e.mk + e.id} style={{ display: "flex", gap: 8, fontSize: 11, padding: "3px 0", color: "#bbb" }}>
+                                    <span style={{ color: "#666", minWidth: 58 }}>{(MONTHS_UA[m] || '').slice(0, 3)} {y}</span>
+                                    <span style={{ color: "#888", minWidth: 38 }}>{e.date || ''}</span>
+                                    <span style={{ fontFamily: "'JetBrains Mono',monospace", color: paid ? "#E5E5E5" : "#FBBF24", minWidth: 66 }}>{fmt(parseNum(e.cost))}</span>
+                                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#777" }}>{e.toWallet || e.persona || ''}{paid ? '' : ' · planned'}</span>
+                                  </div>
+                                ); })}
+                              </div>
+                            </div>
+                          ); })()}
                           {/* Membership status — mark as left (kept in roster; drops off per-person columns for months after the exit month) */}
                           <div style={{ paddingTop: 12, marginTop: 10, borderTop: "1px solid #262626", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                             <span style={{ width: 20, display: "flex", justifyContent: "center", flexShrink: 0, color: "#aaa" }}><Icon name="team" size={15} /></span>
@@ -2390,6 +2508,21 @@
           </div></div>)}
 
           {/* MODAL: Add Transfer */}
+          {/* MODAL: Pay fixed rate — writes a paid salary Expense in the viewed month (same rails as manual salary expenses) */}
+          {payRate && (() => { const pw = workers.find(x => x.id === payRate.workerId); if (!pw) return null; const wallets = pw.wallets || []; return (
+            <div className="modal-overlay" onClick={() => setPayRate(null)}><div className="modal" onClick={e => e.stopPropagation()}>
+              <h3>Pay rate — {pw.name}</h3>
+              <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>Recorded as a paid salary expense in {MONTHS_UA[currentMonth]} {currentYear}</div>
+              <label>Wallet{wallets.length
+                ? <select value={payRate.wallet} onChange={e => setPayRate({ ...payRate, wallet: e.target.value })} style={{ marginTop: 4 }}>{wallets.map(wl => <option key={wl} value={wl}>{wl}</option>)}</select>
+                : <input value={payRate.wallet} onChange={e => setPayRate({ ...payRate, wallet: e.target.value })} placeholder="No saved wallets — type one" />}</label>
+              <label>Pay from (agency account)<input list="accounts-list" value={payRate.payFrom} onChange={e => setPayRate({ ...payRate, payFrom: e.target.value })} placeholder="Select or type..." /></label>
+              <label>Amount ($)<input type="number" value={payRate.amount} onChange={e => setPayRate({ ...payRate, amount: parseFloat(e.target.value) || 0 })} /></label>
+              <label>Date<input value={payRate.date} onChange={e => setPayRate({ ...payRate, date: e.target.value })} placeholder="DD.MM" /></label>
+              <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setPayRate(null)}>Cancel</button><button className="btn btn-primary" onClick={confirmPayRate}>Confirm payment</button></div>
+            </div></div>
+          ); })()}
+
           {showTransfer && (<div className="modal-overlay" onClick={() => setShowTransfer(false)}><div className="modal" onClick={e => e.stopPropagation()}>
             <h3>Transfer between accounts</h3>
             <label>Sender (From)<input list="accounts-list" value={newTransfer.fromAcc} onChange={e => setNewTransfer({ ...newTransfer, fromAcc: e.target.value })} placeholder="Select or type..." autoFocus /></label>
