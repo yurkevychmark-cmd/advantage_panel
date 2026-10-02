@@ -802,6 +802,16 @@
 
       const reconciledCount = useMemo(() => accountUsage.filter(a => (a.reconciliations || []).length > 0).length, [accountUsage]);
 
+      // Agency balance = sum of the latest VERIFIED balance of reconciled accounts only (no system-estimate fallback).
+      // Unreconciled accounts (e.g. SafePal-1) are excluded and surfaced separately so the number is "money I actually verified".
+      const agencyBalance = useMemo(() => {
+        const reconciled = accountUsage.filter(a => (a.reconciliations || []).length > 0);
+        const uncounted = accountUsage.filter(a => !(a.reconciliations || []).length);
+        const total = reconciled.reduce((s, a) => { const r = a.reconciliations; return s + parseNum(r[r.length - 1].actual); }, 0);
+        const lastTs = reconciled.reduce((mx, a) => { const r = a.reconciliations; const ts = r[r.length - 1].ts || 0; return ts > mx ? ts : mx; }, 0);
+        return { total, lastTs, reconciledCount: reconciled.length, uncounted };
+      }, [accountUsage]);
+
       const rowDiff = useCallback((t) => {
         const wp = workers.reduce((s, w) => s + parseNum(t.workerPay?.[w.id]?.amount), 0);
         return parseNum(t.payment) - wp - dealCosts(t) - parseNum(t.agencyRev);
@@ -1486,22 +1496,19 @@
                 <div style={{ background: "#1A1A1A", borderRadius: 10, padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 8 }}>
                     <div>
-                      <h2 style={{ fontSize: 18, fontWeight: 700, color: "#E5E5E5", marginBottom: 4 }}>Real Accounts Balance</h2>
+                      <h2 style={{ fontSize: 18, fontWeight: 700, color: "#E5E5E5", marginBottom: 4 }}>Agency balance</h2>
                       <div style={{ fontSize: 12, color: "#888" }}>
-                        {reconciledCount === 0
-                          ? "No accounts reconciled yet — values below are system estimates"
-                          : `${reconciledCount} of ${accountUsage.length} account${accountUsage.length > 1 ? "s" : ""} reconciled · unreconciled show system estimate`}
+                        {agencyBalance.reconciledCount === 0
+                          ? "No accounts reconciled yet — reconcile accounts to see the verified agency balance"
+                          : `Sum of verified balances · ${agencyBalance.reconciledCount} of ${accountUsage.length} account${accountUsage.length > 1 ? "s" : ""} reconciled`}
+                        {agencyBalance.uncounted.length > 0 && <span style={{ color: "#F59E0B" }}> · not counted: {agencyBalance.uncounted.map(a => a.name).join(", ")}</span>}
                       </div>
                     </div>
-                    {verifiedBudget !== null && (
+                    {agencyBalance.reconciledCount > 0 && (
                       <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase", letterSpacing: .5, marginBottom: 3 }}>Total verified</div>
-                        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 28, fontWeight: 700, color: verifiedBudget >= 0 ? "#4ADE80" : "#F87171" }}>{fmt(verifiedBudget)}</div>
-                        {Math.abs(verifiedBudget - agencyBudget) > 0.5 && (
-                          <div style={{ fontSize: 11, color: "#F59E0B", marginTop: 3 }}>
-                            Δ {fmt(verifiedBudget - agencyBudget)} vs P&L budget
-                          </div>
-                        )}
+                        <div style={{ fontSize: 11, color: "#666", textTransform: "uppercase", letterSpacing: .5, marginBottom: 3 }}>Verified balance</div>
+                        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 28, fontWeight: 700, color: agencyBalance.total >= 0 ? "#4ADE80" : "#F87171" }}>{fmt(agencyBalance.total)}</div>
+                        {agencyBalance.lastTs > 0 && <div style={{ fontSize: 11, color: "#888", marginTop: 3 }}>as of {new Date(agencyBalance.lastTs).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })}</div>}
                       </div>
                     )}
                   </div>
@@ -1509,24 +1516,25 @@
                     {accountUsage.map(a => {
                       const recs = a.reconciliations || [];
                       const last = recs.length ? recs[recs.length - 1] : null;
-                      const displayBal = last ? last.actual : a.accountBudget;
                       const drift = last ? last.delta : 0;
                       return (
-                        <div key={a.id} style={{ background: "#141414", borderRadius: 9, padding: "14px 16px", border: last && Math.abs(drift) > 1 ? "1px solid rgba(245,158,11,.3)" : "1px solid #222" }}>
+                        <div key={a.id} style={{ background: "#141414", borderRadius: 9, padding: "14px 16px", border: last && Math.abs(drift) > 1 ? "1px solid rgba(245,158,11,.3)" : "1px solid #222", opacity: last ? 1 : .6 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
                             <span style={{ fontSize: 13, fontWeight: 700, color: "#E5E5E5" }}>{a.name}</span>
                             {last
-                              ? <span style={{ fontSize: 10, color: "#4ADE80", letterSpacing: .3 }}>✓ verified</span>
-                              : <span style={{ fontSize: 10, color: "#555" }}>estimated</span>}
+                              ? <span style={{ fontSize: 10, color: "#4ADE80", letterSpacing: .3 }}>✓ counted</span>
+                              : <span style={{ fontSize: 10, color: "#F59E0B", letterSpacing: .3 }}>not counted</span>}
                           </div>
-                          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 20, fontWeight: 700, color: displayBal >= 0 ? "#fff" : "#F87171", marginBottom: 4 }}>{fmt(displayBal)}</div>
-                          {last && (
+                          {last ? (<>
+                            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 20, fontWeight: 700, color: parseNum(last.actual) >= 0 ? "#fff" : "#F87171", marginBottom: 4 }}>{fmt(parseNum(last.actual))}</div>
                             <div style={{ fontSize: 10, color: "#666" }}>
                               <span>verified {new Date(last.ts).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                               {Math.abs(drift) > 0.01 && <span style={{ color: drift < 0 ? "#F87171" : "#FBBF24", marginLeft: 6 }}>Δ {fmt(drift)}</span>}
                             </div>
-                          )}
-                          {!last && <div style={{ fontSize: 10, color: "#555" }}>system estimate</div>}
+                          </>) : (<>
+                            <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 20, fontWeight: 700, color: "#555", marginBottom: 4 }}>—</div>
+                            <div style={{ fontSize: 10, color: "#666" }}>not reconciled · system est. {fmt(a.accountBudget)}</div>
+                          </>)}
                         </div>
                       );
                     })}
