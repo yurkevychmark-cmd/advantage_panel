@@ -2127,11 +2127,11 @@
                             <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                               {w.leftAt ? (<>
                                 <span style={{ fontSize: 11, fontWeight: 600, color: "#F59E0B", background: "rgba(245,158,11,.12)", borderRadius: 5, padding: "2px 8px" }}>Left</span>
-                                <label style={{ fontSize: 10, color: "#777", display: "inline-flex", alignItems: "center", gap: 4 }}>after<input type="month" value={w.leftAt} onChange={e => updateWorkerField(w.id, 'leftAt', e.target.value)} style={{ background: "#222", color: "#E5E5E5", border: "1px solid #333", borderRadius: 5, padding: "2px 6px", fontSize: 11, fontFamily: "'DM Sans',sans-serif" }} /></label>
+                                <label style={{ fontSize: 10, color: "#777", display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", flexShrink: 0 }}>after<input type="month" value={w.leftAt} onChange={e => updateWorkerField(w.id, 'leftAt', e.target.value)} style={{ background: "#222", color: "#E5E5E5", border: "1px solid #333", borderRadius: 5, padding: "2px 6px", fontSize: 11, fontFamily: "'DM Sans',sans-serif" }} /></label>
                                 <button onClick={() => updateWorkerField(w.id, 'leftAt', '')} style={{ background: "none", border: "1px solid #333", color: "#4ADE80", borderRadius: 5, padding: "2px 8px", fontSize: 11, cursor: "pointer" }}>Reactivate</button>
                               </>) : (<>
                                 <span style={{ fontSize: 11, fontWeight: 600, color: "#4ADE80", background: "rgba(74,222,128,.1)", borderRadius: 5, padding: "2px 8px" }}>Active</span>
-                                <label style={{ fontSize: 10, color: "#777", display: "inline-flex", alignItems: "center", gap: 4 }}>mark left after<input type="month" value="" onChange={e => { if (e.target.value) updateWorkerField(w.id, 'leftAt', e.target.value); }} style={{ background: "#222", color: "#E5E5E5", border: "1px solid #333", borderRadius: 5, padding: "2px 6px", fontSize: 11, fontFamily: "'DM Sans',sans-serif" }} /></label>
+                                <label style={{ fontSize: 10, color: "#777", display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", flexShrink: 0 }}>mark left after<input type="month" value="" onChange={e => { if (e.target.value) updateWorkerField(w.id, 'leftAt', e.target.value); }} style={{ background: "#222", color: "#E5E5E5", border: "1px solid #333", borderRadius: 5, padding: "2px 6px", fontSize: 11, fontFamily: "'DM Sans',sans-serif" }} /></label>
                               </>)}
                             </div>
                           </div>
