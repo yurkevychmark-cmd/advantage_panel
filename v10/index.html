@@ -429,6 +429,7 @@
       const [showChecksPanel, setShowChecksPanel] = useState(false);
       const [showWorkerPay, setShowWorkerPay] = useState(false);
       const [payRate, setPayRate] = useState(null); // { workerId, rateId, wallet, payFrom, amount, date }
+      const [backupState, setBackupState] = useState(''); // '' | 'loading' | 'ok:<months>' | 'error:<msg>'
       const [walletDraft, setWalletDraft] = useState({});
       const [rateDraft, setRateDraft] = useState({});
       const workerPayTimerRef = useRef(null);
@@ -963,6 +964,36 @@
         a.download = `advantage-backup-${monthKey}.json`;
         a.click();
         URL.revokeObjectURL(url);
+      };
+
+      // Full backup straight from the database: every row of both tables + this browser's local safety copies.
+      // Read-only — nothing is written anywhere. Use before risky changes and as a restore point.
+      const downloadFullBackup = async () => {
+        setBackupState('loading');
+        try {
+          const [gs, md] = await Promise.all([
+            supabase.from('global_settings').select('*'),
+            supabase.from('monthly_data').select('*'),
+          ]);
+          if (gs.error) throw gs.error;
+          if (md.error) throw md.error;
+          const local = {};
+          ['adv_workers', 'adv_accounts', 'adv_products', 'adv_reconciliations', 'adv_action_log'].forEach(k => { try { const v = localStorage.getItem(k); if (v) local[k] = JSON.parse(v); } catch (e) {} });
+          const months = md.data || [];
+          const payload = { kind: 'advantage-finportal-full-backup', exportedAt: new Date().toISOString(), exportedBy: userEmail || '', counts: { global_settings: (gs.data || []).length, monthly_data: months.length }, global_settings: gs.data || [], monthly_data: months, localStorage: local };
+          const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `finportal-full-backup-${stamp}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          setBackupState(`ok:${months.length}`);
+          logAction('Full backup downloaded', `${months.length} months`);
+        } catch (e) {
+          setBackupState('error:' + (e?.message || String(e)));
+        }
       };
 
       const importInputRef = useRef(null);
@@ -2297,6 +2328,18 @@
             {/* ============ SETTINGS SECTION ============ */}
             {activeSection === 'settings' && (
               <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                {/* Full backup — read-only export of the whole database */}
+                <div style={{ background: "#1A1A1A", borderRadius: 12, padding: "20px 24px", boxShadow: "0 2px 12px rgba(0,0,0,.08)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                    <div>
+                      <h2 style={{ fontSize: 15, fontWeight: 700, color: "#E5E5E5", marginBottom: 4 }}>Full backup</h2>
+                      <div style={{ fontSize: 12, color: "#888" }}>Downloads every month and all settings straight from the database as one JSON file. Read-only — nothing is changed.</div>
+                    </div>
+                    <button className="btn btn-primary" onClick={downloadFullBackup} disabled={backupState === 'loading'}><Icon name="download" size={14} /> {backupState === 'loading' ? 'Exporting…' : 'Download full backup'}</button>
+                  </div>
+                  {backupState.startsWith('ok:') && <div style={{ marginTop: 10, fontSize: 12, color: "#4ADE80" }}>✓ Downloaded · {backupState.slice(3)} months</div>}
+                  {backupState.startsWith('error:') && <div style={{ marginTop: 10, fontSize: 12, color: "#F87171" }}>Export failed: {backupState.slice(6)}</div>}
+                </div>
                 {/* Currency */}
                 <div style={{ background: "#1A1A1A", borderRadius: 12, padding: "20px 24px", boxShadow: "0 2px 12px rgba(0,0,0,.08)" }}>
                   <h2 style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 14 }}>Currency converter</h2>
