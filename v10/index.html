@@ -139,6 +139,14 @@
       { re: /^(lilia|liliia|lilya|лілія|лилия)/i, sched: [{ amount: 100, d1: 13, d2: 16 }] },
       { re: /^(andrii|andriy|andrey|андрій|андрей)/i, sched: [{ amount: 340, d1: 13, d2: 16 }] },
     ];
+    // Canonical JSON (object keys sorted, recursively). Postgres jsonb reorders keys, so a plain JSON.stringify
+    // can't tell "same data" from "changed data" when comparing the local copy with the database copy.
+    const canon = (v) => JSON.stringify(v === undefined ? null : v, (k, val) => (val && typeof val === 'object' && !Array.isArray(val)) ? Object.keys(val).sort().reduce((o, key) => { o[key] = val[key]; return o; }, {}) : val);
+    // Month rows carry a revision counter (data._rev) for an atomic "write only if still revision N" save.
+    // State never holds _rev — it lives in revRef — so all comparisons are on the clean month data.
+    const splitRev = (d) => { if (!d || typeof d !== 'object' || Array.isArray(d)) return [d, null]; const { _rev, ...rest } = d; return [rest, _rev ?? null]; };
+    const hashStr = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36) + ':' + s.length; };
+
     const RATE_STATUS = {
       paid: { label: '✓ paid', c: '#4ADE80', bg: 'rgba(74,222,128,.1)' },
       due: { label: 'due', c: '#FBBF24', bg: 'rgba(251,191,36,.12)' },
@@ -451,6 +459,27 @@
       const MAX_HISTORY = 30;
       const hasLoadedRef = useRef(false); // true once initial fetch completes — prevents premature saves
 
+      // ---- Save engine state ----
+      // "saved" is shown only after the database confirmed the write. Each month / settings field is compared with
+      // the copy last seen in the DB (savedMonthRef / savedSettingsRef, canonical JSON): only changed parts are
+      // written, and a part that someone else changed in the meantime is NOT overwritten — it becomes a conflict.
+      const [saveStatus, setSaveStatus] = useState('loading'); // loading | saved | pending | saving | error | conflict
+      const [saveError, setSaveError] = useState('');
+      const [loadError, setLoadError] = useState('');
+      const [conflicts, setConflicts] = useState([]); // { id, kind: 'month'|'settings', key, source: 'remote'|'unsaved', other }
+      const savedMonthRef = useRef({}); // month_key -> canonical JSON of the month as last seen in the DB (key present = row exists)
+      const revRef = useRef({}); // month_key -> data._rev of that DB copy (null for rows saved before revisions existed)
+      const savedSettingsRef = useRef({});
+      const canonCacheRef = useRef(new WeakMap());
+      const latestRef = useRef({});
+      const savingRef = useRef(false);
+      const rerunRef = useRef(false);
+      const retryTimerRef = useRef(null);
+      const retryDelayRef = useRef(3000);
+      const conflictIdsRef = useRef(new Set());
+      const runSaveRef = useRef(() => {});
+      const refreshRef = useRef(() => {});
+
       // Reconciliation backup helpers — dedicated localStorage key, updated immediately on every reconcile
       const backupReconciliations = (accs) => {
         try {
@@ -473,9 +502,205 @@
         } catch(e) { return accs; }
       };
 
+      const canonOf = (v) => {
+        if (v && typeof v === 'object') { const c = canonCacheRef.current.get(v); if (c !== undefined) return c; const s = canon(v); canonCacheRef.current.set(v, s); return s; }
+        return canon(v);
+      };
+      // Which months / settings fields differ from the copy last seen in the database
+      const computeDirty = () => {
+        const { workers = [], accounts = [], products = [], monthData = {} } = latestRef.current;
+        const months = Object.keys(monthData).filter(k => monthData[k] && canonOf(monthData[k]) !== savedMonthRef.current[k]);
+        const local = { workers, accounts: accounts.length > 0 ? mergeReconciliations(accounts) : accounts, products };
+        // never push an EMPTY list over the DB (guards the old products-disappear bug)
+        const fields = ['workers', 'accounts', 'products'].filter(f => local[f].length > 0 && canonOf(local[f]) !== savedSettingsRef.current[f]);
+        return { months, fields, local, monthData };
+      };
+      // Keep unsaved edits in this browser so a reload / closed tab / dead network doesn't lose them
+      const persistUnsaved = () => {
+        try {
+          const { months, fields, local, monthData } = computeDirty();
+          if (!months.length && !fields.length) { localStorage.removeItem('adv_unsaved'); return; }
+          const pend = { ts: Date.now(), months: {}, settings: {} };
+          months.forEach(k => { pend.months[k] = { data: monthData[k], baseHash: hashStr(savedMonthRef.current[k] || '') }; });
+          fields.forEach(f => { pend.settings[f] = { value: local[f], baseHash: hashStr(savedSettingsRef.current[f] || '') }; });
+          localStorage.setItem('adv_unsaved', JSON.stringify(pend));
+        } catch (e) {}
+      };
+      const stashDiscarded = (what, value) => {
+        try { const arr = JSON.parse(localStorage.getItem('adv_discarded_versions') || '[]'); arr.unshift({ ts: Date.now(), what, value }); localStorage.setItem('adv_discarded_versions', JSON.stringify(arr.slice(0, 5))); } catch (e) {}
+      };
+      const settingSetters = { workers: setWorkers, accounts: setAccounts, products: setProducts };
+      const conflictLabel = (c) => c.kind === 'month' ? (() => { const [y, m] = c.key.split('-').map(Number); return `${MONTHS_UA[m]} ${y}`; })() : ({ workers: 'Team', accounts: 'Accounts', products: 'Products' })[c.key];
+
+      latestRef.current = { workers, accounts, products, monthData };
+
+      const runSave = async () => {
+        if (!hasLoadedRef.current) return;
+        if (savingRef.current) { rerunRef.current = true; return; }
+        clearTimeout(retryTimerRef.current);
+        const { months, fields, local, monthData: snapMonths } = computeDirty();
+        const blocked = conflictIdsRef.current;
+        const monthsToSave = months.filter(k => !blocked.has('m:' + k));
+        const fieldsToSave = fields.filter(f => !blocked.has('s:' + f));
+        if (!monthsToSave.length && !fieldsToSave.length) {
+          persistUnsaved();
+          setSaveStatus(blocked.size ? 'conflict' : 'saved');
+          return;
+        }
+        savingRef.current = true;
+        setSaveStatus('saving');
+        let failed = false;
+        const found = [];
+        try {
+          if (fieldsToSave.length) {
+            const ex = await supabase.from('global_settings').select('workers,accounts,products').eq('id', 1).single();
+            if (ex.error) throw ex.error;
+            const patch = {};
+            fieldsToSave.forEach(f => {
+              const remote = canon(ex.data ? ex.data[f] : null);
+              if (remote === savedSettingsRef.current[f] || remote === canonOf(local[f])) patch[f] = local[f];
+              else found.push({ id: 's:' + f, kind: 'settings', key: f, source: 'remote', other: (ex.data && ex.data[f]) || [] });
+            });
+            if (Object.keys(patch).length) {
+              const up = await supabase.from('global_settings').update(patch).eq('id', 1).select('id');
+              if (up.error) throw up.error;
+              if (!up.data || !up.data.length) throw new Error('the database accepted 0 rows — session expired or no write access');
+              Object.keys(patch).forEach(f => { savedSettingsRef.current[f] = canonOf(patch[f]); try { localStorage.setItem('adv_' + f, JSON.stringify(patch[f])); } catch (e) {} });
+            }
+          }
+          for (const k of monthsToSave) {
+            // Atomic compare-and-set: the DB applies the write only if the month is still at the revision we loaded.
+            const data = snapMonths[k];
+            const exists = k in savedMonthRef.current;
+            const base = revRef.current[k] ?? null;
+            const next = (typeof base === 'number' ? base : 0) + 1;
+            const payload = { ...data, _rev: next };
+            let res;
+            if (exists) {
+              const q = supabase.from('monthly_data').update({ data: payload }).eq('month_key', k);
+              res = await (base === null ? q.is('data->>_rev', null) : q.eq('data->>_rev', String(base))).select('month_key');
+            } else {
+              res = await supabase.from('monthly_data').insert({ month_key: k, data: payload }).select('month_key');
+              if (res.error && (res.error.code === '23505' || /duplicate/i.test(res.error.message || ''))) res = { data: [], error: null }; // created meanwhile by someone else
+            }
+            if (res.error) throw res.error;
+            if (res.data && res.data.length === 1) { savedMonthRef.current[k] = canonOf(data); revRef.current[k] = next; continue; }
+            // Nothing written: someone else saved this month since we loaded it (or we lost write access)
+            const cur = await supabase.from('monthly_data').select('month_key,data').eq('month_key', k);
+            if (cur.error) throw cur.error;
+            const row = (cur.data || [])[0];
+            if (!row) throw new Error('the database accepted 0 rows — session expired or no write access');
+            const [clean, rrev] = splitRev(row.data);
+            if (canon(clean) === canonOf(data)) { savedMonthRef.current[k] = canon(clean); revRef.current[k] = rrev; continue; }
+            found.push({ id: 'm:' + k, kind: 'month', key: k, source: 'remote', other: clean, otherRev: rrev });
+          }
+          retryDelayRef.current = 3000;
+          setSaveError('');
+          setLastSaved(Date.now());
+          if (found.length) {
+            found.forEach(c => conflictIdsRef.current.add(c.id));
+            setConflicts(p => [...p.filter(c => !found.some(f => f.id === c.id)), ...found]);
+          }
+        } catch (e) {
+          failed = true;
+          setSaveError(e?.message || String(e));
+          setSaveStatus('error');
+          retryTimerRef.current = setTimeout(() => runSaveRef.current(), retryDelayRef.current);
+          retryDelayRef.current = Math.min(retryDelayRef.current * 2, 30000);
+        } finally {
+          savingRef.current = false;
+          persistUnsaved();
+          if (rerunRef.current) { rerunRef.current = false; setTimeout(() => runSaveRef.current(), 0); }
+          else if (!failed) {
+            const d = computeDirty();
+            const open = d.months.some(k => !conflictIdsRef.current.has('m:' + k)) || d.fields.some(f => !conflictIdsRef.current.has('s:' + f));
+            setSaveStatus(conflictIdsRef.current.size ? 'conflict' : open ? 'pending' : 'saved');
+          }
+        }
+      };
+      runSaveRef.current = runSave;
+
+      // Pull changes other people / windows made, for every part that has no unsaved local edits.
+      const refreshFromServer = async () => {
+        if (!hasLoadedRef.current || savingRef.current) return;
+        try {
+          const [sRes, mRes] = await Promise.all([
+            supabase.from('global_settings').select('workers,accounts,products').eq('id', 1).single(),
+            supabase.from('monthly_data').select('month_key,data'),
+          ]);
+          if (sRes.error || mRes.error || savingRef.current) return;
+          const { months: dirtyMonths, fields: dirtyFields } = computeDirty();
+          const blocked = conflictIdsRef.current;
+          const applied = {};
+          (mRes.data || []).forEach(r => {
+            const k = r.month_key; const [clean, rev] = splitRev(r.data); const c = canon(clean);
+            if (c !== savedMonthRef.current[k] && !dirtyMonths.includes(k) && !blocked.has('m:' + k)) applied[k] = { data: clean, c, rev, base: savedMonthRef.current[k] };
+            else if (c === savedMonthRef.current[k]) revRef.current[k] = rev;
+          });
+          if (Object.keys(applied).length) {
+            setMonthData(p => {
+              const n = { ...p };
+              Object.entries(applied).forEach(([k, v]) => {
+                if (p[k] === undefined || canonOf(p[k]) === v.base) { n[k] = v.data; savedMonthRef.current[k] = v.c; revRef.current[k] = v.rev; }
+              });
+              return n;
+            });
+            // Undo must not resurrect an older copy of a month someone else has changed since
+            historyRef.current = historyRef.current.map(s => { const n = { ...s }; Object.entries(applied).forEach(([k, v]) => { n[k] = JSON.parse(JSON.stringify(v.data)); }); return n; });
+          }
+          ['workers', 'accounts', 'products'].forEach(f => {
+            const val = sRes.data ? sRes.data[f] : null;
+            const c = canon(val);
+            if (!val || !val.length || c === savedSettingsRef.current[f] || dirtyFields.includes(f) || blocked.has('s:' + f)) return;
+            const base = savedSettingsRef.current[f];
+            settingSetters[f](p => {
+              const curLocal = f === 'accounts' && p.length ? mergeReconciliations(p) : p;
+              if (canonOf(curLocal) !== base && canonOf(p) !== base) return p;
+              savedSettingsRef.current[f] = c;
+              return f === 'accounts' ? mergeReconciliations(val) : val;
+            });
+          });
+        } catch (e) {}
+      };
+      refreshRef.current = refreshFromServer;
+
+      const resolveConflict = (c, choice) => {
+        const cur = c.kind === 'month' ? latestRef.current.monthData[c.key] : latestRef.current[c.key];
+        const applyToState = (val) => {
+          if (c.kind === 'month') setMonthData(p => ({ ...p, [c.key]: val }));
+          else settingSetters[c.key](val);
+        };
+        const setBase = (val) => { if (c.kind === 'month') { savedMonthRef.current[c.key] = canon(val); revRef.current[c.key] = c.otherRev ?? null; } else savedSettingsRef.current[c.key] = canon(val); };
+        if (c.source === 'remote') {
+          if (choice === 'theirs') {
+            stashDiscarded(c.id + ' (mine)', cur); setBase(c.other); applyToState(c.other);
+            if (c.kind === 'month') historyRef.current = historyRef.current.map(s => ({ ...s, [c.key]: JSON.parse(JSON.stringify(c.other)) }));
+          } else { stashDiscarded(c.id + ' (theirs)', c.other); setBase(c.other); }
+        } else {
+          if (choice === 'mine') applyToState(c.other);
+          else stashDiscarded(c.id + ' (unsaved)', c.other);
+        }
+        conflictIdsRef.current.delete(c.id);
+        setConflicts(p => p.filter(x => x.id !== c.id));
+        logAction('Save conflict resolved', `${conflictLabel(c)} · ${choice === 'mine' ? (c.source === 'remote' ? 'kept mine' : 'restored unsaved') : (c.source === 'remote' ? 'loaded theirs' : 'discarded unsaved')}`);
+        setTimeout(() => runSaveRef.current(), 0);
+      };
+
       useEffect(() => {
         async function fetchData() {
-          const { data: settings } = await supabase.from('global_settings').select('*').eq('id', 1).single();
+          const sRes = await supabase.from('global_settings').select('*').eq('id', 1).single();
+          const mRes = sRes.error ? null : await supabase.from('monthly_data').select('*');
+          const err = sRes.error ? (sRes.error.code === 'PGRST116' ? 'the database returned no settings — session expired or no access, sign in again' : sRes.error.message) : (mRes.error ? mRes.error.message : '');
+          if (err || !sRes.data) {
+            // Don't mark as loaded: an empty/failed load must never be saved over the real data
+            setLoadError(err || 'no settings returned');
+            setSaveStatus('error');
+            setTimeout(fetchData, 10000);
+            return;
+          }
+          setLoadError('');
+          const settings = sRes.data;
+          savedSettingsRef.current = { workers: canon(settings.workers ?? null), accounts: canon(settings.accounts ?? null), products: canon(settings.products ?? null) };
           if (settings) {
             if (settings.workers && settings.workers.length > 0) {
               setWorkers(settings.workers);
@@ -512,47 +737,65 @@
             }
           }
 
-          const { data: months } = await supabase.from('monthly_data').select('*');
-          if (months && months.length > 0) {
-            const md = {};
-            months.forEach(m => { md[m.month_key] = m.data; });
-            setMonthData(md);
-          } else {
-             setMonthData({ "2026-2": { transactions: [], expenses: [], transfers: [], cashouts: [], carryover: 0 } });
-          }
+          const md = {};
+          const snaps = {};
+          const revs = {};
+          (mRes.data || []).forEach(m => { const [clean, rev] = splitRev(m.data); md[m.month_key] = clean; snaps[m.month_key] = canon(clean); revs[m.month_key] = rev; });
+          savedMonthRef.current = snaps;
+          revRef.current = revs;
+          // Unsaved edits left by a previous session: re-apply them if the DB copy they were based on is unchanged,
+          // otherwise ask (never overwrite silently in either direction).
+          const restore = [];
+          try {
+            const pend = JSON.parse(localStorage.getItem('adv_unsaved') || 'null');
+            if (pend) {
+              Object.entries(pend.months || {}).forEach(([k, p]) => {
+                if (hashStr(snaps[k] || '') === p.baseHash) md[k] = p.data;
+                else restore.push({ id: 'm:' + k, kind: 'month', key: k, source: 'unsaved', other: p.data });
+              });
+              Object.entries(pend.settings || {}).forEach(([f, p]) => {
+                if (!settingSetters[f]) return;
+                if (hashStr(savedSettingsRef.current[f] || '') === p.baseHash) settingSetters[f](p.value);
+                else restore.push({ id: 's:' + f, kind: 'settings', key: f, source: 'unsaved', other: p.value });
+              });
+            }
+          } catch (e) {}
+          setMonthData(md);
+          if (restore.length) { restore.forEach(c => conflictIdsRef.current.add(c.id)); setConflicts(restore); }
           setIsInitialLoad(false);
           hasLoadedRef.current = true;
+          setSaveStatus(restore.length ? 'conflict' : 'saved');
         }
         fetchData();
       }, []);
 
+      // Autosave: 1.5 s after the last change, write only what differs from the DB copy
       useEffect(() => {
         if (isInitialLoad || !hasLoadedRef.current) return;
-        const timer = setTimeout(async () => {
-          // Merge reconciliation backup before saving to Supabase — ensures we never lose reconciliations
-          const accountsToSave = accounts.length > 0 ? mergeReconciliations(accounts) : accounts;
-          // Non-destructive save: never overwrite DB workers/accounts/products with an EMPTY local array.
-          // Guards the products-disappear bug — a failed/partial load leaves state [] and the next autosave
-          // would otherwise wipe the DB. If local state is non-empty it wins; if empty, keep what's in DB.
-          const { data: __existing } = await supabase.from('global_settings').select('workers,accounts,products').eq('id', 1).single();
-          await supabase.from('global_settings').upsert({
-            id: 1,
-            workers: workers.length ? workers : (__existing?.workers || workers),
-            accounts: accountsToSave.length ? accountsToSave : (__existing?.accounts || accountsToSave),
-            products: products.length ? products : (__existing?.products || products),
-          });
-          if (workers.length > 0) localStorage.setItem('adv_workers', JSON.stringify(workers));
-          if (products.length > 0) localStorage.setItem('adv_products', JSON.stringify(products));
-          if (accountsToSave.length > 0) localStorage.setItem('adv_accounts', JSON.stringify(accountsToSave));
-
-          const updates = Object.keys(monthData).map(key => ({ month_key: key, data: monthData[key] }));
-          if (updates.length > 0) {
-             await supabase.from('monthly_data').upsert(updates);
-          }
-          setLastSaved(Date.now());
-        }, 1500); 
+        const d = computeDirty();
+        if (d.months.length || d.fields.length) setSaveStatus(s => (s === 'error' || s === 'conflict' || s === 'saving') ? s : 'pending');
+        const timer = setTimeout(() => runSaveRef.current(), 1500);
         return () => clearTimeout(timer);
       }, [workers, accounts, products, monthData, isInitialLoad]);
+
+      // Retry as soon as the network is back; pull others' changes when the tab gets focus and every 30 s;
+      // warn before closing the tab with anything not yet in the database.
+      useEffect(() => {
+        const onOnline = () => runSaveRef.current();
+        const onFocus = () => refreshRef.current();
+        const onVisible = () => { if (document.visibilityState === 'visible') refreshRef.current(); };
+        const onBeforeUnload = (e) => {
+          if (!hasLoadedRef.current) return;
+          const d = computeDirty();
+          if (savingRef.current || d.months.length || d.fields.length) { e.preventDefault(); e.returnValue = ''; }
+        };
+        const iv = setInterval(() => refreshRef.current(), 30000);
+        window.addEventListener('online', onOnline);
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        window.addEventListener('beforeunload', onBeforeUnload);
+        return () => { clearInterval(iv); window.removeEventListener('online', onOnline); window.removeEventListener('focus', onFocus); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('beforeunload', onBeforeUnload); };
+      }, []);
 
       const pushHistory = useCallback(() => {
         historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), JSON.parse(JSON.stringify(monthData))];
@@ -978,7 +1221,7 @@
           if (gs.error) throw gs.error;
           if (md.error) throw md.error;
           const local = {};
-          ['adv_workers', 'adv_accounts', 'adv_products', 'adv_reconciliations', 'adv_action_log'].forEach(k => { try { const v = localStorage.getItem(k); if (v) local[k] = JSON.parse(v); } catch (e) {} });
+          ['adv_workers', 'adv_accounts', 'adv_products', 'adv_reconciliations', 'adv_action_log', 'adv_unsaved', 'adv_discarded_versions'].forEach(k => { try { const v = localStorage.getItem(k); if (v) local[k] = JSON.parse(v); } catch (e) {} });
           const months = md.data || [];
           const payload = { kind: 'advantage-finportal-full-backup', exportedAt: new Date().toISOString(), exportedBy: userEmail || '', counts: { global_settings: (gs.data || []).length, monthly_data: months.length }, global_settings: gs.data || [], monthly_data: months, localStorage: local };
           const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
@@ -1120,7 +1363,7 @@
         if (isInitialLoad || !hasLoadedRef.current || !workers.length) return;
         const match = (w) => DEFAULT_RATE_SCHEDULES.find(d => d.re.test((w.name || '').trim()));
         if (!workers.some(w => w.rateSchedule === undefined && match(w))) return;
-        setWorkers(p => p.map(w => { if (w.rateSchedule !== undefined) return w; const d = match(w); return d ? { ...w, rateSchedule: d.sched.map(s => ({ id: uid(), ...s })) } : w; }));
+        setWorkers(p => p.map(w => { if (w.rateSchedule !== undefined) return w; const d = match(w); return d ? { ...w, rateSchedule: d.sched.map((s, i) => ({ id: `rate-${w.id}-${i}`, ...s })) } : w; })); // deterministic ids: two windows seeding at once produce identical data, not a conflict
       }, [workers, isInitialLoad]);
 
       const addExpense = () => {
@@ -1225,8 +1468,10 @@
 
       if (isInitialLoad) {
         return (
-          <div style={{ minHeight: "100vh", background: "#1A1A1A", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "'DM Sans', sans-serif" }}>
-            <h2>Loading data from cloud...</h2>
+          <div style={{ minHeight: "100vh", background: "#1A1A1A", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#fff", fontFamily: "'DM Sans', sans-serif", padding: 24, textAlign: "center" }}>
+            <h2>{loadError ? "Can't reach the database" : "Loading data from cloud..."}</h2>
+            {loadError && <div data-load-error style={{ color: "#F87171", fontSize: 14, maxWidth: 560 }}>{loadError}</div>}
+            {loadError && <div style={{ color: "#888", fontSize: 13, maxWidth: 560 }}>Retrying automatically every 10 seconds. Nothing is written to the database until your data has loaded, and unsaved changes from your last session are kept in this browser.</div>}
           </div>
         );
       }
@@ -1375,7 +1620,16 @@
                 </select>
                 <button onClick={nextMonth} className="btn" style={{ background: "rgba(255,255,255,.1)", color: "#fff", padding: "8px 12px" }}><Icon name="chevronRight" size={16} /></button>
               </>}
-              {lastSaved && <span style={{ fontSize: 11, color: "#4ADE80", opacity: .7, marginLeft: 4 }} title={`Last saved ${new Date(lastSaved).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' })}`}>✓ saved</span>}
+              {(() => {
+                const st = loadError ? { t: '⚠ offline — data not loaded', c: '#F87171', tip: loadError }
+                  : saveStatus === 'error' ? { t: '⚠ not saved — retrying', c: '#F87171', tip: `${saveError} · click to retry now`, click: () => runSaveRef.current() }
+                  : saveStatus === 'conflict' ? { t: '⚠ conflict — choose a version', c: '#FBBF24', tip: 'Some changes were not saved because the same data was changed elsewhere — see the yellow bar' }
+                  : saveStatus === 'saving' ? { t: 'saving…', c: '#9CA3AF' }
+                  : saveStatus === 'pending' ? { t: '● unsaved changes', c: '#FBBF24' }
+                  : saveStatus === 'loading' ? { t: 'loading…', c: '#9CA3AF' }
+                  : { t: '✓ saved', c: '#4ADE80', tip: lastSaved ? `Last saved ${new Date(lastSaved).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Everything is in the database' };
+                return <span data-save-status={loadError ? 'load-error' : saveStatus} onClick={st.click} title={st.tip} style={{ fontSize: 11, color: st.c, opacity: st.c === '#4ADE80' ? .7 : 1, marginLeft: 4, whiteSpace: "nowrap", cursor: st.click ? "pointer" : "default" }}>{st.t}</span>;
+              })()}
               {/* System checks bell */}
               <div style={{ position: "relative", display: "inline-flex" }}>
                 <button onClick={() => setShowChecksPanel(v => !v)} title="System checks" style={{ background: showChecksPanel ? "rgba(255,255,255,.12)" : checksBadgeColor ? `${checksBadgeColor}18` : "rgba(255,255,255,.05)", border: checksBadgeColor ? `1px solid ${checksBadgeColor}55` : "1px solid transparent", borderRadius: 6, padding: "8px 10px", cursor: "pointer", display: "inline-flex", alignItems: "center" }}>
@@ -1389,6 +1643,30 @@
               <button onClick={undo} className="btn" title="Undo action" style={{ background: historyRef.current.length > 0 ? "rgba(255,200,50,.2)" : "rgba(255,255,255,.05)", border: historyRef.current.length > 0 ? "1px solid rgba(255,200,50,.3)" : "1px solid transparent", color: historyRef.current.length > 0 ? "#FBBF24" : "#a5a5a5", padding: "8px 12px", marginLeft: 6 }}><Icon name="undo" size={15} /> Undo</button>
             </div>
           </div>
+
+          {/* Save problems — load failure and conflicts that need a decision */}
+          {(loadError || conflicts.length > 0) && (
+            <div data-save-banner style={{ background: "#2a2009", borderBottom: "1px solid rgba(251,191,36,.35)", padding: "12px 28px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {loadError && <div style={{ color: "#F87171", fontSize: 13 }}>⚠ Can't load data from the database: {loadError}. Retrying every 10 s — nothing you change now is saved until the data loads.</div>}
+              {conflicts.map(c => (
+                <div key={c.id} data-conflict={c.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 13, color: "#FDE68A" }}>
+                  <span style={{ flex: "1 1 360px" }}>
+                    {c.source === 'remote'
+                      ? <>⚠ <b>{conflictLabel(c)}</b> was changed in another window or by another user while you were editing it. Your changes to it are <b>not saved</b> yet.</>
+                      : <>⚠ Unsaved changes to <b>{conflictLabel(c)}</b> from your previous session were found, but the database copy has changed since.</>}
+                  </span>
+                  {c.source === 'remote' ? (<>
+                    <button className="btn btn-secondary" onClick={() => resolveConflict(c, 'theirs')}>Load their version</button>
+                    <button className="btn btn-primary" onClick={() => resolveConflict(c, 'mine')}>Keep mine (overwrite)</button>
+                  </>) : (<>
+                    <button className="btn btn-primary" onClick={() => resolveConflict(c, 'mine')}>Restore my unsaved version</button>
+                    <button className="btn btn-secondary" onClick={() => resolveConflict(c, 'theirs')}>Discard it</button>
+                  </>)}
+                </div>
+              ))}
+              {conflicts.length > 0 && <div style={{ fontSize: 11, color: "#a8977a" }}>Whichever version you don't keep is stored in this browser (last 5) and included in Settings → Full backup.</div>}
+            </div>
+          )}
 
           {/* KPI */}
           {activeSection === 'operations' && (
