@@ -438,6 +438,7 @@
       const [showWorkerPay, setShowWorkerPay] = useState(false);
       const [payRate, setPayRate] = useState(null); // { workerId, rateId, wallet, payFrom, amount, date }
       const [backupState, setBackupState] = useState(''); // '' | 'loading' | 'ok:<months>' | 'error:<msg>'
+      const [deleteWorker, setDeleteWorker] = useState(null); // { id, leftAt } — confirm dialog for removing a team member
       const [walletDraft, setWalletDraft] = useState({});
       const [rateDraft, setRateDraft] = useState({});
       const workerPayTimerRef = useRef(null);
@@ -816,13 +817,13 @@
           localStorage.setItem('adv_action_log', JSON.stringify([entry, ...prev].slice(0, 500)));
         } catch(e) {}
       };
-      const data = monthData[monthKey] || { transactions: [], expenses: [], transfers: [], cashouts: [], investments: [], carryover: 0 };
+      // A month that has no row yet carries no stored carryover — it's computed from the previous month (see carryInfo)
+      const data = monthData[monthKey] || { transactions: [], expenses: [], transfers: [], cashouts: [], investments: [] };
       const transactions = data.transactions || [];
       const expenses = data.expenses || [];
       const transfers = data.transfers || [];
       const cashouts = data.cashouts || [];
       const investments = data.investments || [];
-      const carryover = data.carryover || 0;
 
       const setTransactions = (txs) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, transactions: typeof txs === "function" ? txs(data.transactions || []) : txs } })); };
       const setExpenses = (exps) => { pushHistory(); setMonthData((p) => ({ ...p, [monthKey]: { ...data, expenses: typeof exps === "function" ? exps(data.expenses || []) : exps } })); };
@@ -842,6 +843,34 @@
       const pendingPayment = useMemo(() => transactions.filter(t => !isReceivedTx(t)).reduce((s, t) => s + parseNum(t.payment), 0), [transactions]);
       const pendingRev = useMemo(() => transactions.filter(t => !isReceivedTx(t)).reduce((s, t) => s + parseNum(t.agencyRev), 0), [transactions]);
       const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + parseNum(e.cost), 0), [expenses]);
+
+      // Carryover = the month's stored value if it has one (existing rows keep their numbers), otherwise the previous
+      // month's closing budget (REV − expenses + its own carryover), computed. Navigation never writes it any more,
+      // so the value no longer depends on whether you moved with the arrow or the dropdown.
+      const carryInfo = useMemo(() => {
+        const target = currentYear * 12 + currentMonth;
+        const keys = Object.keys(monthData).filter(k => /^\d+-\d+$/.test(k));
+        const start = keys.length ? Math.min(target, ...keys.map(k => { const [y, m] = k.split('-').map(Number); return y * 12 + m; })) : target;
+        let closing = 0;
+        for (let ym = start; ym <= target; ym++) {
+          const md = monthData[`${Math.floor(ym / 12)}-${ym % 12}`];
+          const stored = md && md.carryover !== undefined && md.carryover !== null && md.carryover !== '' ? parseNum(md.carryover) : null;
+          const carry = stored !== null ? stored : closing;
+          if (ym === target) return { carry, stored, computed: closing };
+          const rev = ((md && md.transactions) || []).filter(isReceivedTx).reduce((s, t) => s + parseNum(t.agencyRev), 0);
+          const exp = ((md && md.expenses) || []).reduce((s, e) => s + parseNum(e.cost), 0);
+          closing = rev - exp + carry;
+        }
+        return { carry: 0, stored: null, computed: 0 };
+      }, [monthData, currentYear, currentMonth]);
+      const carryover = carryInfo.carry;
+      const carryoverMismatch = carryInfo.stored !== null && Math.abs(carryInfo.stored - carryInfo.computed) > 0.5;
+      const syncCarryover = () => {
+        const prevVal = carryInfo.stored;
+        pushHistory();
+        setMonthData(p => ({ ...p, [monthKey]: { ...(p[monthKey] || data), carryover: carryInfo.computed } }));
+        logAction('Carryover recalculated', `${MONTHS_UA[currentMonth]} ${currentYear}: ${fmt(prevVal)} → ${fmt(carryInfo.computed)} (previous month closing)`);
+      };
       const agencyBudget = totalRev - totalExpenses + carryover;
 
       // Balance of personal accounts (all months): received (transactions) − spent (expenses)
@@ -1020,11 +1049,12 @@
       const monthWorkers = useMemo(() => workers.filter(isWorkerActiveInView), [workers, viewedYM]);
 
       const accountUsage = useMemo(() => {
-        const allTx = []; const allExp = []; const allTransfers = [];
+        const allTx = []; const allExp = []; const allTransfers = []; const allCashouts = [];
         Object.values(monthData).forEach(md => {
           if (md.transactions) allTx.push(...md.transactions);
           if (md.expenses) allExp.push(...md.expenses);
           if (md.transfers) allTransfers.push(...md.transfers);
+          if (md.cashouts) allCashouts.push(...md.cashouts);
         });
         
         return accounts.map(acc => {
@@ -1038,17 +1068,19 @@
           const expTotalAcc = expListGlobal.reduce((s, ex) => s + parseNum(ex.cost), 0);
           const trOutTotal = transfersOutGlobal.reduce((s, tr) => s + parseNum(tr.amount) + parseNum(tr.fee), 0);
           const trInTotal = transfersInGlobal.reduce((s, tr) => s + parseNum(tr.amount), 0);
-          
-          const used = txTotal + expTotalAcc + trOutTotal - trInTotal;
+          // Cash-outs: the USDT sent to the exchanger leaves this account (the fee is part of sentUsdt)
+          const cashOutTotal = allCashouts.filter(c => (c.fromAcc || '').trim() === acc.name).reduce((s, c) => s + parseNum(c.sentUsdt), 0);
+
+          const used = txTotal + expTotalAcc + trOutTotal - trInTotal; // turnover for limits — unchanged
           const pct = acc.limit > 0 ? (used / acc.limit) * 100 : 0;
-          const accountBudget = agencyRevTotal - expTotalAcc - trOutTotal + trInTotal;
+          const accountBudget = agencyRevTotal - expTotalAcc - trOutTotal + trInTotal - cashOutTotal;
           
           const txList = transactions.filter(tx => resolveAccount(tx.platforma) === acc.name);
           const expList = expenses.filter(ex => ex.persona === acc.name);
           const trOutList = transfers.filter(tr => tr.fromAcc === acc.name);
           const trInList = transfers.filter(tr => tr.toAcc === acc.name);
           
-          return { ...acc, used, remaining: acc.limit - used, pct, accountBudget, txList, expList, trOutList, trInList };
+          return { ...acc, used, remaining: acc.limit - used, pct, accountBudget, cashOutTotal, txList, expList, trOutList, trInList };
         });
       }, [accounts, monthData, transactions, expenses, transfers]);
 
@@ -1116,11 +1148,10 @@
       }, [transactions, expenses, transfers, accountUsage, rowDiff]);
 
       const prevMonth = () => { if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); } else setCurrentMonth(m => m - 1); };
-      const nextMonth = () => { 
-        const nm = currentMonth === 11 ? 0 : currentMonth + 1; 
-        const ny = currentMonth === 11 ? currentYear + 1 : currentYear; 
-        const nk = `${ny}-${nm}`; 
-        setMonthData(p => ({ ...p, [nk]: { transactions: p[nk]?.transactions || [], expenses: p[nk]?.expenses || [], transfers: p[nk]?.transfers || [], cashouts: p[nk]?.cashouts || [], carryover: agencyBudget } }));
+      // Navigation only — it used to rebuild the next month (dropping its investments and overwriting carryover)
+      const nextMonth = () => {
+        const nm = currentMonth === 11 ? 0 : currentMonth + 1;
+        const ny = currentMonth === 11 ? currentYear + 1 : currentYear;
         setCurrentMonth(nm); 
         setCurrentYear(ny); 
       };
@@ -1165,7 +1196,7 @@
         
         setMonthData(prev => {
            const nextState = {...prev};
-           if (!nextState[bulkTargetMonth]) nextState[bulkTargetMonth] = { transactions: [], expenses: [], transfers: [], cashouts: [], carryover: 0 };
+           if (!nextState[bulkTargetMonth]) nextState[bulkTargetMonth] = { transactions: [], expenses: [], transfers: [], cashouts: [], investments: [] };
            
            const newTxs = txsToProcess.map(t => ({
              ...t, 
@@ -1249,7 +1280,7 @@
             const imported = JSON.parse(reader.result);
             pushHistory();
             setMonthData(p => {
-              const cur = p[monthKey] || { transactions: [], expenses: [], transfers: [], cashouts: [], carryover: 0 };
+              const cur = p[monthKey] || { transactions: [], expenses: [], transfers: [], cashouts: [], investments: [] };
               const updated = { ...cur };
               if (imported.transactions && Array.isArray(imported.transactions)) {
                 updated.transactions = [...(cur.transactions || []), ...imported.transactions.map(t => ({ ...t, id: uid() }))];
@@ -1311,6 +1342,8 @@
 
       const removeWorker = (wId) => { setWorkers(p => p.filter(w => w.id !== wId)); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => { const wp = { ...t.workerPay }; delete wp[wId]; return { ...t, workerPay: wp }; }) }; }); return n; }); };
       const updateWorkerField = (wId, field, val) => setWorkers(p => p.map(w => w.id === wId ? { ...w, [field]: val } : w));
+      // Removing a member always goes through a dialog that offers "Left" first: deleting wipes their pay from every month
+      const askRemoveWorker = (w) => { const n = new Date(); setDeleteWorker({ id: w.id, leftAt: w.leftAt || `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}` }); };
 
       // --- Fixed rate (ставка) payouts from Team ---
       // A payout is recorded on the existing rails: a salary Expense with workerLink + salaryStatus 'paid' in the viewed month,
@@ -1405,7 +1438,7 @@
         if (kind === 'transactions') copied.workerPay = Object.fromEntries(Object.entries(copied.workerPay || {}).map(([id, pay]) => [id, { ...pay, paid: false }]));
         pushHistory();
         setMonthData(prev => {
-          const target = prev[nextKey] || { transactions: [], expenses: [], transfers: [], cashouts: [], carryover: 0 };
+          const target = prev[nextKey] || { transactions: [], expenses: [], transfers: [], cashouts: [], investments: [] };
           return { ...prev, [nextKey]: { ...target, [kind]: [...(target[kind] || []), copied] } };
         });
         logAction('Copied to next month', `${kind === 'expenses' ? item.service : item.client} · ${MONTHS_UA[nextM]} ${nextY}`);
@@ -1680,11 +1713,13 @@
                   { label: "Agency Turnover", value: totalPayment },
                   { label: "Revenue (REV)", value: totalRev, color: "#4ADE80" },
                   { label: budgetLabel, value: budgetVal, color: budgetColor },
-                  { label: "Carryover (previous)", value: carryover, color: "#FBBF24" },
+                  { label: "Carryover (previous)", value: carryover, color: "#FBBF24", extra: carryoverMismatch ? (
+                    <button data-carry-sync onClick={syncCarryover} title={`Stored for this month: ${fmt(carryInfo.stored)}. Previous month closed at ${fmt(carryInfo.computed)}.`} style={{ display: "block", marginTop: 4, border: "none", background: "none", padding: 0, cursor: "pointer", color: "#F59E0B", fontSize: 10, textAlign: "left" }}>≠ previous month {fmt(carryInfo.computed)} · ↻ use it</button>
+                  ) : null },
                   { label: "REV Fees / Costs", value: totalCosts, color: "#FB923C" },
                   { label: "Total Expenses", value: totalExpenses, color: "#F87171" },
                 ].map((k, i) => (
-                  <div key={i} className="kpi-card"><div className="kpi-label">{k.label}</div><div className="kpi-value" style={k.color ? { color: k.color } : {}}>{fmt(k.value)}</div></div>
+                  <div key={i} className="kpi-card"><div className="kpi-label">{k.label}</div><div className="kpi-value" style={k.color ? { color: k.color } : {}}>{fmt(k.value)}</div>{k.extra}</div>
                 ));
               })()}
             </div>
@@ -1953,7 +1988,7 @@
                       </th>
                       {monthWorkers.map((w) => { const wIdx = workers.indexOf(w); const c = wc(w); const t = workerTotals[w.id] || { paid: 0, pending: 0 }; return (
                         <th key={w.id} className="worker-th" draggable onDragStart={e => onWorkerDragStart(e, wIdx)} onDragOver={onWorkerDragOver} onDrop={e => onWorkerDrop(e, wIdx)} onDragEnd={() => setDragWorkerIdx(null)} style={{ padding: "6px 6px 5px", background: c.bg, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}`, textAlign: "center", position: "relative", verticalAlign: "middle", opacity: dragWorkerIdx === wIdx ? 0.4 : 1, outline: dragWorkerIdx !== null && dragWorkerIdx !== wIdx ? `2px dashed ${c.border}` : 'none', transition: 'opacity .2s' }}>
-                          <button onClick={() => removeWorker(w.id)} style={{ position: "absolute", top: 2, right: 3, background: "none", border: "none", cursor: "pointer", color: c.text, opacity: .3 }}><Icon name="trash" size={12} /></button>
+                          <button onClick={() => askRemoveWorker(w)} title={`Remove ${w.name}`} style={{ position: "absolute", top: 2, right: 3, background: "none", border: "none", cursor: "pointer", color: c.text, opacity: .3 }}><Icon name="trash" size={12} /></button>
                           <div style={{ fontWeight: 700, fontSize: 13, fontStyle: "italic", color: c.text }}>{w.name}</div>
                           <div style={{ fontSize: 9, color: c.text, opacity: .6, fontWeight: 400, lineHeight: 1.2, marginBottom: 3 }}>{w.role}</div>
                           <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 15, color: c.text, filter: showWorkerPay ? 'none' : 'blur(5px)', transition: 'filter .3s', userSelect: showWorkerPay ? 'auto' : 'none' }}>{fmt(t.paid)}</div>
@@ -2367,7 +2402,7 @@
                               {w.leftAt && <div style={{ fontSize: 9, fontWeight: 700, color: c.bg, background: c.text, borderRadius: 4, padding: "1px 6px", marginTop: 3, display: "inline-block", letterSpacing: .5 }}>INACTIVE · {w.leftAt}</div>}
                             </div>
                           </div>
-                          <button onClick={() => { if(window.confirm(`Delete ${w.name}?`)) removeWorker(w.id); }} style={{ background: "rgba(0,0,0,.1)", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, padding: "4px 8px", color: c.text }}><Icon name="trash" size={14} /></button>
+                          <button onClick={() => askRemoveWorker(w)} title={`Remove ${w.name}`} style={{ background: "rgba(0,0,0,.1)", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, padding: "4px 8px", color: c.text }}><Icon name="trash" size={14} /></button>
                         </div>
                         <div style={{ padding: "14px 18px" }}>
                           {fields.map(f => (
@@ -2488,6 +2523,7 @@
                           <span style={{ color: "rgba(255,255,255,.5)" }}>System balance:</span>
                           <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, color: a.accountBudget >= 0 ? "#4ADE80" : "#F87171" }}>{fmt(a.accountBudget)}</span>
                         </div>
+                        {a.cashOutTotal > 0 && <div data-cashout-note style={{ fontSize: 10, color: "rgba(255,255,255,.4)", textAlign: "right", marginTop: 2 }}>incl. cash-outs −{fmt(a.cashOutTotal)}</div>}
                         {/* Reconciliation */}
                         {(() => {
                           const recs = a.reconciliations || [];
@@ -2829,6 +2865,24 @@
           </div></div>)}
 
           {/* MODAL: Add Transfer */}
+          {/* MODAL: Remove team member — "Left" first, permanent delete only as an explicit second choice */}
+          {deleteWorker && (() => { const dw = workers.find(x => x.id === deleteWorker.id); if (!dw) return null;
+            const monthsWithPay = Object.values(monthData).filter(md => (md.transactions || []).some(t => parseNum(t.workerPay?.[dw.id]?.amount) > 0) || (md.expenses || []).some(e => e.workerLink === dw.id)).length;
+            return (
+            <div className="modal-overlay" onClick={() => setDeleteWorker(null)}><div className="modal" data-delete-worker onClick={e => e.stopPropagation()}>
+              <h3>Remove {dw.name}?</h3>
+              <div style={{ fontSize: 13, color: "#bbb", lineHeight: 1.5 }}>If {dw.name} left the team, mark them as <b style={{ color: "#F59E0B" }}>Left</b> — they stay in past months with their salary and disappear from the months after.</div>
+              {!dw.leftAt && <label>Left after (last active month)<input type="month" value={deleteWorker.leftAt} onChange={e => setDeleteWorker({ ...deleteWorker, leftAt: e.target.value })} /></label>}
+              {dw.leftAt && <div style={{ fontSize: 12, color: "#888", marginTop: 8 }}>Already marked Left after {dw.leftAt}.</div>}
+              <div style={{ marginTop: 14, fontSize: 12, color: "#F87171", lineHeight: 1.5 }}>Delete permanently wipes {dw.name}'s salary from every month{monthsWithPay ? ` (${monthsWithPay} month${monthsWithPay > 1 ? 's have' : ' has'} it)` : ''} — past totals change and Undo can't bring it back.</div>
+              <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <button className="btn btn-secondary" onClick={() => setDeleteWorker(null)}>Cancel</button>
+                <button className="btn btn-secondary" style={{ color: "#F87171", borderColor: "rgba(248,113,113,.4)" }} onClick={() => { removeWorker(dw.id); logAction('Team member deleted', `${dw.name}${monthsWithPay ? ` · pay wiped from ${monthsWithPay} month(s)` : ''}`); setDeleteWorker(null); }}>Delete permanently</button>
+                {!dw.leftAt && <button className="btn btn-primary" disabled={!deleteWorker.leftAt} onClick={() => { updateWorkerField(dw.id, 'leftAt', deleteWorker.leftAt); logAction('Team member marked left', `${dw.name} · after ${deleteWorker.leftAt}`); setDeleteWorker(null); }}>Mark as left</button>}
+              </div>
+            </div></div>
+          ); })()}
+
           {/* MODAL: Pay fixed rate — writes a paid salary Expense in the viewed month (same rails as manual salary expenses) */}
           {payRate && (() => { const pw = workers.find(x => x.id === payRate.workerId); if (!pw) return null; const wallets = pw.wallets || []; return (
             <div className="modal-overlay" onClick={() => setPayRate(null)}><div className="modal" onClick={e => e.stopPropagation()}>
