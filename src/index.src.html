@@ -1425,9 +1425,68 @@
 
       const invoiceInputRef = useRef(null);
       const [invoiceTxId, setInvoiceTxId] = useState(null);
-      const handleInvoiceUpload = (e) => { const file = e.target.files?.[0]; if (!file || !invoiceTxId) return; const r = new FileReader(); r.onload = () => { updateTx(invoiceTxId, "invoice", { name: file.name, data: r.result }); setInvoiceTxId(null); }; r.readAsDataURL(file); e.target.value = ""; };
+      // Invoices are files in the private Storage bucket "invoices"; the month only keeps a reference {name, path, size, type}.
+      // Older invoices that still carry inline base64 (`data`) keep opening as before until moved (Settings → Invoices).
+      const INVOICE_BUCKET = 'invoices';
+      const [invoiceBusy, setInvoiceBusy] = useState(null); // txId while uploading
+      const [invoiceMigration, setInvoiceMigration] = useState(''); // '' | 'running' | 'done:N' | 'error:msg'
+      const safeFileName = (n) => String(n || 'invoice').replace(/[^\w.\-]+/g, '_').slice(-120);
+      // Write the reference into the exact month + deal the file was chosen for (upload is async: never use a stale month copy)
+      const setTxInvoice = (mk, txId, inv) => setMonthData(p => {
+        const md = p[mk]; if (!md) return p;
+        return { ...p, [mk]: { ...md, transactions: (md.transactions || []).map(t => t.id === txId ? { ...t, invoice: inv } : t) } };
+      });
+      const handleInvoiceUpload = async (e) => {
+        const file = e.target.files?.[0]; e.target.value = "";
+        if (!file || !invoiceTxId) return;
+        const txId = invoiceTxId, mk = monthKey; setInvoiceTxId(null);
+        const path = `${mk}/${txId}-${Date.now()}-${safeFileName(file.name)}`;
+        setInvoiceBusy(txId);
+        const { error } = await supabase.storage.from(INVOICE_BUCKET).upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+        setInvoiceBusy(null);
+        if (error) { window.alert(`Invoice was not uploaded: ${error.message}`); return; }
+        pushHistory();
+        setTxInvoice(mk, txId, { name: file.name, path, size: file.size, type: file.type || '' });
+        logAction('Invoice attached', `${file.name} · ${Math.round(file.size / 1024)} KB`);
+      };
       const triggerInvoiceUpload = (txId) => { setInvoiceTxId(txId); setTimeout(() => invoiceInputRef.current?.click(), 50); };
-      const downloadInvoice = (inv) => { const a = document.createElement("a"); a.href = inv.data; a.download = inv.name; a.click(); };
+      const downloadInvoice = async (inv) => {
+        if (inv && inv.data) { const a = document.createElement("a"); a.href = inv.data; a.download = inv.name; a.click(); return; } // legacy inline invoice
+        if (!inv || !inv.path) return;
+        const { data, error } = await supabase.storage.from(INVOICE_BUCKET).createSignedUrl(inv.path, 120, { download: inv.name || true });
+        if (error || !data) { window.alert(`Invoice could not be opened: ${error ? error.message : 'no link'}`); return; }
+        const a = document.createElement("a"); a.href = data.signedUrl; a.rel = "noopener"; a.click();
+      };
+      // One-off: move invoices still stored inline (base64 inside month data) into the bucket, keep only the reference
+      const legacyInvoiceCount = useMemo(() => Object.values(monthData).reduce((n, md) => n + ((md && md.transactions) || []).filter(t => t.invoice && t.invoice.data).length, 0), [monthData]);
+      const migrateLegacyInvoices = async () => {
+        setInvoiceMigration('running');
+        const moved = {}; // monthKey -> { txId: reference }
+        let count = 0;
+        try {
+          for (const [mk, md] of Object.entries(latestRef.current.monthData || {})) {
+            for (const t of (md && md.transactions) || []) {
+              if (!t.invoice || !t.invoice.data) continue;
+              const blob = await (await fetch(t.invoice.data)).blob();
+              const path = `${mk}/${t.id}-legacy-${safeFileName(t.invoice.name)}`;
+              const { error } = await supabase.storage.from(INVOICE_BUCKET).upload(path, blob, { contentType: blob.type || 'application/octet-stream', upsert: true });
+              if (error) throw new Error(`${t.invoice.name}: ${error.message}`);
+              (moved[mk] = moved[mk] || {})[t.id] = { name: t.invoice.name, path, size: blob.size, type: blob.type || '' };
+              count++;
+            }
+          }
+          if (count) {
+            pushHistory();
+            setMonthData(p => {
+              const n = { ...p };
+              Object.entries(moved).forEach(([mk, refs]) => { if (!n[mk]) return; n[mk] = { ...n[mk], transactions: (n[mk].transactions || []).map(t => refs[t.id] && t.invoice && t.invoice.data ? { ...t, invoice: refs[t.id] } : t) }; });
+              return n;
+            });
+            logAction('Invoices moved to storage', `${count} file${count === 1 ? '' : 's'}`);
+          }
+          setInvoiceMigration(`done:${count}`);
+        } catch (err) { setInvoiceMigration('error:' + (err.message || String(err))); }
+      };
 
       const addWorker = () => { if (!newWorker.name.trim()) return; pushHistory(); const w = { id: uid(), name: newWorker.name.trim(), role: newWorker.role.trim(), colorIdx: newWorker.colorIdx % WORKER_COLORS.length }; setWorkers(p => [...p, w]); setMonthData(p => { const n = { ...p }; Object.keys(n).forEach(k => { n[k] = { ...n[k], transactions: (n[k].transactions || []).map(t => ({ ...t, workerPay: { ...t.workerPay, [w.id]: { amount: 0, paid: false } } })) }; }); return n; }); setNewWorker({ name: "", role: "", colorIdx: (newWorker.colorIdx + 1) % WORKER_COLORS.length }); setShowAddWorker(false); };
       const toggleWorkerPay = () => {
@@ -2301,7 +2360,7 @@
                             <input value={t.exchangeRate || ""} onChange={e => updateTx(t.id, "exchangeRate", e.target.value)} placeholder="—" title="Exchange rate for this deal — reporting only, does not affect any totals (e.g. USD→PLN for cash salaries)" style={{ width: "100%", boxSizing: "border-box", padding: "4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'JetBrains Mono',monospace", fontSize: 12, textAlign: "right", outline: "none", background: "transparent", color: t.exchangeRate ? "#E5E5E5" : "#555", transition: "border .2s" }} onFocus={e => e.target.style.border = "1px solid #4A90D9"} onBlur={e => e.target.style.border = "1px solid transparent"} />
                           </td>
                           <td style={{ padding: "2px 4px", textAlign: "center" }}>
-                            {t.invoice ? (<div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "center" }}><button className="invoice-btn" onClick={() => downloadInvoice(t.invoice)} title={t.invoice.name} style={{ color: "#16A34A", display: "inline-flex" }}><Icon name="download" size={14} /></button><button className="invoice-btn" onClick={() => updateTx(t.id, "invoice", null)} style={{ color: "#DC2626", display: "inline-flex" }}><Icon name="trash" size={13} /></button></div>) : (<button className="invoice-btn" onClick={() => triggerInvoiceUpload(t.id)} style={{ color: "#999", display: "inline-flex" }}><Icon name="attach" size={14} /></button>)}
+                            {invoiceBusy === t.id ? <span title="Uploading invoice…" style={{ fontSize: 10, color: "#888" }}>…</span> : t.invoice ? (<div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "center" }}><button className="invoice-btn" onClick={() => downloadInvoice(t.invoice)} title={t.invoice.name + (t.invoice.data ? ' (stored inside the month — move it in Settings → Invoices)' : '')} style={{ color: t.invoice.data ? "#F59E0B" : "#16A34A", display: "inline-flex" }}><Icon name="download" size={14} /></button><button className="invoice-btn" onClick={() => updateTx(t.id, "invoice", null)} style={{ color: "#DC2626", display: "inline-flex" }}><Icon name="trash" size={13} /></button></div>) : (<button className="invoice-btn" onClick={() => triggerInvoiceUpload(t.id)} style={{ color: "#999", display: "inline-flex" }}><Icon name="attach" size={14} /></button>)}
                           </td>
                           {monthWorkers.map(w => { const c = wc(w); const wp = t.workerPay?.[w.id] || { amount: 0, paid: false, comment: "", advance: 0 }; const adv = parseNum(wp.advance); const net = parseNum(wp.amount) - adv; const payBlur = { filter: showWorkerPay ? 'none' : 'blur(5px)', transition: 'filter .3s', userSelect: showWorkerPay ? 'auto' : 'none', pointerEvents: showWorkerPay ? 'auto' : 'none' }; return (
                             <td key={w.id} style={{ padding: "2px 4px", background: c.bgLight, borderLeft: `2px solid ${c.border}`, borderRight: `1px solid ${c.border}` }}>
@@ -2926,6 +2985,22 @@
                   </div>
                   {backupState.startsWith('ok:') && <div style={{ marginTop: 10, fontSize: 12, color: "#4ADE80" }}>✓ Downloaded · {backupState.slice(3)} months</div>}
                   {backupState.startsWith('error:') && <div style={{ marginTop: 10, fontSize: 12, color: "#F87171" }}>Export failed: {backupState.slice(6)}</div>}
+                </div>
+                {/* Invoices — files live in the private storage bucket; months keep only a reference */}
+                <div data-invoices-card style={{ background: "#1A1A1A", borderRadius: 12, padding: "20px 24px", boxShadow: "0 2px 12px rgba(0,0,0,.08)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                    <div>
+                      <h2 style={{ fontSize: 15, fontWeight: 700, color: "#E5E5E5", marginBottom: 4 }}>Invoices</h2>
+                      <div style={{ fontSize: 12, color: "#888" }}>
+                        New invoices are stored as separate files (private storage, visible only to signed-in users). {legacyInvoiceCount > 0
+                          ? <span style={{ color: "#F59E0B" }}>{legacyInvoiceCount} older invoice{legacyInvoiceCount === 1 ? ' is' : 's are'} still stored inside month data — they open as before; moving them makes months small again.</span>
+                          : 'All invoices are stored as files.'}
+                      </div>
+                    </div>
+                    {legacyInvoiceCount > 0 && <button className="btn btn-primary" onClick={migrateLegacyInvoices} disabled={invoiceMigration === 'running'}>{invoiceMigration === 'running' ? 'Moving…' : `Move ${legacyInvoiceCount} to storage`}</button>}
+                  </div>
+                  {invoiceMigration.startsWith('done:') && <div style={{ marginTop: 10, fontSize: 12, color: "#4ADE80" }}>✓ Moved {invoiceMigration.slice(5)} invoice(s) to storage</div>}
+                  {invoiceMigration.startsWith('error:') && <div style={{ marginTop: 10, fontSize: 12, color: "#F87171" }}>Not moved: {invoiceMigration.slice(6)} — nothing was changed in the months.</div>}
                 </div>
                 {/* Currency */}
                 <div style={{ background: "#1A1A1A", borderRadius: 12, padding: "20px 24px", boxShadow: "0 2px 12px rgba(0,0,0,.08)" }}>
