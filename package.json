@@ -1,0 +1,12 @@
+{
+  "name": "advantage-finance-portal",
+  "private": true,
+  "description": "ADvantage finance portal — source in src/, built static site in v10/ (Netlify publish dir).",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "node tests/verify.test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

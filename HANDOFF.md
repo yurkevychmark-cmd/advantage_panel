@@ -16,7 +16,7 @@
 
 ## 2. Фінансовий портал — реалізація
 
-- **Стек:** один файл `index.html`, React 18 через CDN, **без збірки** — JSX компілюється в браузері через `@babel/standalone`. Стилі інлайн. Темна тема.
+- **Стек (з 07.10.2026):** вихідний код — один файл `src/index.src.html` (React 18, JSX). `./build.sh` компілює його заздалегідь у `v10/` — це те, що віддає Netlify: `index.html` + `app.<hash>.js` + закріплені `vendor/` (React 18.3.1, supabase-js 2.117.2). Ні CDN-скриптів, ні Babel у браузері. Перевірка — `./verify.sh`. Деталі — `README.md`.
 - **CDN (закріплені):** `react@18`, `react-dom@18`, **`@babel/standalone@7`** (критично: v8 генерує ES-модулі й ламає додаток — не знімати пін), `@supabase/supabase-js@2`.
 - **Хостинг:** **Vercel → https://advantage-panel.vercel.app/**. Деплой автоматичний: `git push origin main` у `advantage_panel` → Vercel сам оновлює сайт (~1 хв).
 - **Розділи (нав):** `dashboard`, `operations` (Transactions), `team`, `accounts`, `journal`, `settings`, `mechanics`.
@@ -52,7 +52,7 @@ payment (надходження від клієнта) = costTax (комісії
 
 ## 6. Доступи для редагування проєкту
 
-- **Код:** локально `Finance portal/v10/index.html`; правки → `git commit` → `git push origin main` (repo `advantage_panel`) → Vercel автодеплой.
+- **Код:** правити **лише** `src/index.src.html` → `./build.sh` → `./verify.sh` (має бути GREEN) → `git commit` (разом із `v10/`) → `git push origin main` (repo `advantage_panel`) → Netlify (admin-panel9.netlify.app, publish dir `v10`) автодеплой. `v10/index.html` згенерований — руками не правити.
 - **Ключ Supabase** у коді — **publishable/anon** (`sb_publishable_…`), не секретний; безпечно жити в клієнті.
 - **Dev Standard:** `Finance portal/CLAUDE.md` (v1.4, канон — нода `guide-dev-standard`). Ключове: **П1** доводь до кінця й перевіряй сам; **П2** не ламай робоче, дані не зникають ніколи; **П3** лікуй причину; **A1** точний скоуп; **A4** коміть і пуш кожну завершену зміну (автодеплой).
 
