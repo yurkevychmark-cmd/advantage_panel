@@ -64,10 +64,29 @@
       const parts = dateStr.split('.');
       let day = parseInt(parts[0]) || 1;
       let month = parseInt(parts[1]) || 1;
+      let year = parts[2] ? parseInt(parts[2]) : null;
       month += 1;
-      if (month > 12) { month = 1; }
-      return String(day).padStart(2, '0') + '.' + String(month).padStart(2, '0');
+      if (month > 12) { month = 1; if (year) year += 1; }
+      return String(day).padStart(2, '0') + '.' + String(month).padStart(2, '0') + (year ? '.' + year : '');
     };
+
+    // Dates are stored as DD.MM.YYYY. Older records hold DD.MM — their year is the one that puts the date closest to the
+    // month row the record lives in (a "28.12" entry in January 2027 is 28.12.2026), so period reports work across years.
+    const closestYear = (mm, year, monthIdx) => { let best = year, bd = Infinity; [year - 1, year, year + 1].forEach(y => { const d = Math.abs((y * 12 + mm - 1) - (year * 12 + monthIdx)); if (d < bd) { bd = d; best = y; } }); return best; };
+    const withYear = (val, monthIdx, year) => {
+      if (val == null) return val;
+      const s = String(val).trim();
+      if (!s) return '';
+      let m;
+      if ((m = s.match(/^(\d{1,2})$/))) return `${m[1].padStart(2, '0')}.${String(monthIdx + 1).padStart(2, '0')}.${year}`;
+      if ((m = s.match(/^(\d{1,2})[./](\d{1,2})$/))) { const mm = +m[2]; if (mm < 1 || mm > 12) return s; return `${m[1].padStart(2, '0')}.${m[2].padStart(2, '0')}.${closestYear(mm, year, monthIdx)}`; }
+      if ((m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2}|\d{4})$/))) return `${m[1].padStart(2, '0')}.${m[2].padStart(2, '0')}.${m[3].length === 2 ? '20' + m[3] : m[3]}`;
+      return s;
+    };
+    // Full date of a record that lives in month row "YYYY-M" → "YYYY-MM-DD" ('' when the record has no usable date)
+    const recordISO = (dateStr, monthKey) => { const [y, mi] = monthKey.split('-').map(Number); const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(withYear(dateStr, mi, y) || ''); return m ? `${m[3]}-${m[2]}-${m[1]}` : ''; };
+    // Compact display: DD.MM when the year is the viewed one, DD.MM.YY otherwise
+    const shortDate = (val, year) => { const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(val || '')); if (!m) return val || ''; return +m[3] === year ? `${m[1]}.${m[2]}` : `${m[1]}.${m[2]}.${m[3].slice(2)}`; };
 
     const arrayMove = (arr, from, to) => {
       const next = [...arr];
@@ -132,6 +151,12 @@
     const FOUNDER_FLOOR = 1500;
     const AGENCY_PCT = 0.18;
 
+    // Expenses: `cost` is always the USD value that every total uses. A foreign-currency expense also keeps what was
+    // actually paid (origAmount + currency) and the rate used (fxRate, $ per 1 unit). Records without `currency` are USD.
+    const CURRENCIES = ['USD', 'USDT', 'EUR', 'PLN', 'UAH'];
+    const EMPTY_EXPENSE = { service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "", salaryStatus: "planned", currency: "USD", origAmount: 0, fxRate: 1 };
+    const expenseCurrency = (e) => (e && e.currency) || 'USD';
+
     // Fixed rate (ставка) schedules agreed with Марко 01.10.2026 — seeded ONLY into workers whose rateSchedule
     // was never set (undefined); afterwards fully editable in Team. Amount in $, d1–d2 = pay window (day of month).
     const DEFAULT_RATE_SCHEDULES = [
@@ -162,7 +187,7 @@
       return raw.trim();
     };
 
-    const EditableCell = ({ value, onChange, type = "text", className = "", style = {}, mono = false, isDate = false, activeMonthIdx = 0, multiline = false }) => {
+    const EditableCell = ({ value, onChange, type = "text", className = "", style = {}, mono = false, isDate = false, activeMonthIdx = 0, activeYear = new Date().getFullYear(), multiline = false }) => {
       const [editing, setEditing] = useState(false);
       const [draft, setDraft] = useState(value === 0 && type === "number" ? "" : String(value ?? ""));
       const inputRef = useRef(null);
@@ -172,9 +197,7 @@
       
       const commit = () => { 
         let finalVal = draft;
-        if (isDate && /^\d{1,2}$/.test(finalVal.trim())) {
-          finalVal = `${finalVal.trim().padStart(2, '0')}.${String(activeMonthIdx + 1).padStart(2, '0')}`;
-        }
+        if (isDate) finalVal = withYear(finalVal, activeMonthIdx, activeYear);
         onChange(type === "number" ? parseNum(finalVal) : finalVal); 
         setEditing(false); 
       };
@@ -187,7 +210,7 @@
         }
         return (<input ref={inputRef} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") cancel(); }} onBlur={commit} style={{ width: "100%", boxSizing: "border-box", padding: "4px 6px", border: "2px solid #4A90D9", borderRadius: 3, fontFamily: mono ? "'JetBrains Mono',monospace" : "'DM Sans',sans-serif", fontSize: 13, outline: "none", background: "#1A1A1A", ...style }} className={className} />);
       }
-      return (<div onClick={() => setEditing(true)} style={{ cursor: "text", padding: "4px 6px", minHeight: 22, borderRadius: 3, fontFamily: mono ? "'JetBrains Mono',monospace" : "'DM Sans',sans-serif", fontSize: 13, transition: "background .15s", ...style }} className={`editable-cell ${className}`} title={type !== "number" ? value : undefined}>{type === "number" ? fmt(value) : (value || "")}</div>);
+      return (<div onClick={() => setEditing(true)} style={{ cursor: "text", padding: "4px 6px", minHeight: 22, borderRadius: 3, fontFamily: mono ? "'JetBrains Mono',monospace" : "'DM Sans',sans-serif", fontSize: 13, transition: "background .15s", ...style }} className={`editable-cell ${className}`} title={type !== "number" ? value : undefined}>{type === "number" ? fmt(value) : isDate ? shortDate(value, activeYear) : (value || "")}</div>);
     };
 
     const CommentCell = ({ value, onChange }) => {
@@ -246,6 +269,27 @@
             </div>
           )}
         </div>
+      );
+    };
+
+    // Account field: pick from the directory only (no free typing → no typo accounts). A value written before the
+    // directory existed stays visible as "⚠ name" until it is picked again or fixed in Accounts → Names not in the list.
+    const AccountSelect = ({ value, onChange, accounts, onAddNew, placeholder = '— account —', style = {} }) => {
+      const v = (value || '').trim();
+      const agency = accounts.filter(a => a.kind !== 'personal');
+      const personal = accounts.filter(a => a.kind === 'personal');
+      const legacy = !!v && !accounts.some(a => a.name === v);
+      return (
+        <select data-account-select value={legacy ? '__legacy__' : v}
+          onChange={e => { const nv = e.target.value; if (nv === '__legacy__') return; if (nv === '__new__') { if (onAddNew) onAddNew(onChange); return; } onChange(nv); }}
+          title={legacy ? `"${v}" is not in the account list — pick an account, or fix it in Accounts → Names not in the list` : (v || 'Choose an account')}
+          style={{ width: "100%", boxSizing: "border-box", padding: "4px", border: "1px solid #2a2a2a", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", background: "transparent", color: legacy ? "#F59E0B" : v ? "#E5E5E5" : "#777", cursor: "pointer", ...style }}>
+          <option value="" style={{ color: "#000" }}>{placeholder}</option>
+          {legacy && <option value="__legacy__" style={{ color: "#000" }}>⚠ {v} (not in list)</option>}
+          {agency.length > 0 && <optgroup label="Agency accounts">{agency.map(a => <option key={a.id} value={a.name} style={{ color: "#000" }}>{a.name}</option>)}</optgroup>}
+          {personal.length > 0 && <optgroup label="Personal accounts">{personal.map(a => <option key={a.id} value={a.name} style={{ color: "#000" }}>{a.name}</option>)}</optgroup>}
+          {onAddNew && <option value="__new__" style={{ color: "#000" }}>+ New account…</option>}
+        </select>
       );
     };
 
@@ -420,7 +464,8 @@
       const [editAccount, setEditAccount] = useState(null);
       
       const [newWorker, setNewWorker] = useState({ name: "", role: "", colorIdx: 5 });
-      const [newExpense, setNewExpense] = useState({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "", salaryStatus: "planned" });
+      const [newExpense, setNewExpense] = useState({ ...EMPTY_EXPENSE });
+      const [expenseFormError, setExpenseFormError] = useState('');
       const [salaryDismissed, setSalaryDismissed] = useState(() => localStorage.getItem('salary_dismissed') || "");
       const [activeSection, setActiveSection] = useState('operations');
       const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === '1');
@@ -430,7 +475,9 @@
         try { const v = localStorage.getItem('salary_notify_workers'); return v ? JSON.parse(v) : null; } catch(e) { return null; }
       });
       const [showSalarySettings, setShowSalarySettings] = useState(false);
-      const [newAccountForm, setNewAccountForm] = useState({ name: "", owner: "", limit: 10000 });
+      const [newAccountForm, setNewAccountForm] = useState({ name: "", owner: "", limit: 10000, kind: "agency" });
+      const [accountFormError, setAccountFormError] = useState('');
+      const accountPickCbRef = useRef(null); // set when "+ New account…" is chosen inside an account field
       const [reconcileAccount, setReconcileAccount] = useState(null);
       const [reconcileForm, setReconcileForm] = useState({ actual: 0, note: "" });
       const [expandedRec, setExpandedRec] = useState(null);
@@ -438,7 +485,9 @@
       const [showWorkerPay, setShowWorkerPay] = useState(false);
       const [payRate, setPayRate] = useState(null); // { workerId, rateId, wallet, payFrom, amount, date }
       const [backupState, setBackupState] = useState(''); // '' | 'loading' | 'ok:<months>' | 'error:<msg>'
-      const [deleteWorker, setDeleteWorker] = useState(null); // { id, leftAt } — confirm dialog for removing a team member
+      const [deleteWorker, setDeleteWorker] = useState(null);
+      const [periodFrom, setPeriodFrom] = useState(() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-01`; });
+      const [periodTo, setPeriodTo] = useState(() => { const n = new Date(); const last = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${last}`; }); // { id, leftAt } — confirm dialog for removing a team member
       const [walletDraft, setWalletDraft] = useState({});
       const [rateDraft, setRateDraft] = useState({});
       const workerPayTimerRef = useRef(null);
@@ -880,7 +929,7 @@
       // but salaries (paid out to workers) and cost/tax leave the account too — only the
       // agency-budget portion (agencyRev) should remain on the balance, minus direct expenses.
       const personalAccountStats = useMemo(() => {
-        const agencyNames = new Set(accounts.map(a => a.name.toLowerCase().trim()));
+        const agencyNames = new Set(accounts.filter(a => a.kind !== 'personal').map(a => a.name.toLowerCase().trim())); // personal-kind accounts stay "personal" here
         const workerNames = new Set(workers.map(w => w.name.toLowerCase().trim()));
         const excluded = new Set([...agencyNames, ...workerNames]);
         const stats = {};
@@ -909,7 +958,7 @@
 
       // Expenses paid from personal (non-agency, non-worker) accounts → auto-show in investments
       const personalExpInvestments = useMemo(() => {
-        const agencyNames = new Set(accounts.map(a => a.name.toLowerCase().trim()));
+        const agencyNames = new Set(accounts.filter(a => a.kind !== 'personal').map(a => a.name.toLowerCase().trim())); // personal-kind accounts stay "personal" here
         const workerNames = new Set(workers.map(w => w.name.toLowerCase().trim()));
         const excluded = new Set([...agencyNames, ...workerNames]);
         return expenses
@@ -1057,7 +1106,8 @@
           if (md.cashouts) allCashouts.push(...md.cashouts);
         });
         
-        return accounts.map(acc => {
+        // Agency accounts only — personal accounts never enter balances, limits, reconciliation or Agency balance
+        return accounts.filter(a => a.kind !== 'personal').map(acc => {
           const txListGlobal = allTx.filter(tx => resolveAccount(tx.platforma) === acc.name && tx.status === 'received');
           const expListGlobal = allExp.filter(ex => ex.persona === acc.name);
           const transfersOutGlobal = allTransfers.filter(tr => tr.fromAcc === acc.name);
@@ -1084,16 +1134,6 @@
         });
       }, [accounts, monthData, transactions, expenses, transfers]);
 
-      // Sum of latest verified (reconciled) balances, falling back to system balance for unreconciled accounts
-      const verifiedBudget = useMemo(() => {
-        if (!accountUsage.length) return null;
-        return accountUsage.reduce((sum, a) => {
-          const recs = a.reconciliations || [];
-          const last = recs.length ? recs[recs.length - 1] : null;
-          return sum + (last ? last.actual : a.accountBudget);
-        }, 0);
-      }, [accountUsage]);
-
       const reconciledCount = useMemo(() => accountUsage.filter(a => (a.reconciliations || []).length > 0).length, [accountUsage]);
 
       // Agency balance = sum of the latest VERIFIED balance of reconciled accounts only (no system-estimate fallback).
@@ -1105,6 +1145,23 @@
         const lastTs = reconciled.reduce((mx, a) => { const r = a.reconciliations; const ts = r[r.length - 1].ts || 0; return ts > mx ? ts : mx; }, 0);
         return { total, lastTs, reconciledCount: reconciled.length, uncounted };
       }, [accountUsage]);
+
+      // Period report: received deals and expenses counted by their own full date (year included), across any months/years.
+      // A record without a date counts on the 1st of the month it belongs to.
+      const periodReport = useMemo(() => {
+        if (!periodFrom || !periodTo || periodFrom > periodTo) return null;
+        const r = { turnover: 0, revenue: 0, costs: 0, deals: 0, expenses: 0, undated: 0 };
+        Object.entries(monthData).forEach(([k, md]) => {
+          if (!/^\d+-\d+$/.test(k) || !md) return;
+          const [y, mi] = k.split('-').map(Number);
+          const fallback = `${y}-${String(mi + 1).padStart(2, '0')}-01`;
+          const pick = (date) => { const iso = recordISO(date, k); const d = iso || fallback; return d >= periodFrom && d <= periodTo ? (iso ? 1 : 2) : 0; };
+          (md.transactions || []).forEach(t => { if (t.status !== 'received') return; const w = pick(t.date); if (!w) return; r.turnover += parseNum(t.payment); r.revenue += parseNum(t.agencyRev); r.costs += dealCosts(t); r.deals++; if (w === 2) r.undated++; });
+          (md.expenses || []).forEach(e => { const w = pick(e.date); if (!w) return; r.expenses += parseNum(e.cost); if (w === 2) r.undated++; });
+        });
+        r.net = r.revenue - r.expenses;
+        return r;
+      }, [monthData, periodFrom, periodTo]);
 
       const rowDiff = useCallback((t) => {
         const wp = workers.reduce((s, w) => s + parseNum(t.workerPay?.[w.id]?.amount), 0);
@@ -1157,11 +1214,10 @@
       };
 
       const monthSuffix = '.' + String(currentMonth + 1).padStart(2, '0');
+      // Every date written from now on carries its year (DD.MM.YYYY); "5" or "5.10" are completed for the viewed month
       const autoDate = (val) => {
         if (!val) return val;
-        const clean = String(val).trim();
-        if (/^\d{1,2}$/.test(clean)) return clean.padStart(2, '0') + monthSuffix;
-        return clean;
+        return withYear(val, currentMonth, currentYear);
       };
 
       const updateTx = (txId, field, val) => setTransactions(p => p.map(t => t.id === txId ? { ...t, [field]: field === 'date' ? autoDate(val) : val } : t));
@@ -1401,14 +1457,20 @@
 
       const addExpense = () => {
         if (!newExpense.service.trim()) return;
-        const expData = { ...newExpense, salaryStatus: newExpense.workerLink ? newExpense.salaryStatus : '', date: autoDate(newExpense.date) };
+        const cur = newExpense.currency || 'USD';
+        const amount = parseNum(newExpense.origAmount);
+        const rate = cur === 'USD' ? 1 : parseNum(newExpense.fxRate);
+        if (cur !== 'USD' && !(rate > 0)) { setExpenseFormError(`Enter the rate: how many $ is 1 ${cur}`); return; }
+        setExpenseFormError('');
+        const cost = Math.round(amount * rate * 100) / 100;
+        const expData = { ...newExpense, cost, currency: cur, origAmount: amount, fxRate: rate, salaryStatus: newExpense.workerLink ? newExpense.salaryStatus : '', date: autoDate(newExpense.date) };
         const detail = [newExpense.service, parseNum(newExpense.cost) > 0 ? fmt(parseNum(newExpense.cost)) : '', newExpense.persona || '', newExpense.costType || ''].filter(Boolean).join(' · ');
         if (editExpense) { setExpenses(p => p.map(e => e.id === editExpense.id ? { ...editExpense, ...expData } : e)); logAction('Updated expense', detail); }
         else { setExpenses(p => [...p, { id: uid(), ...expData }]); logAction('Added expense', detail); }
-        setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "", salaryStatus: "planned" }); setShowAddExpense(false); setEditExpense(null);
+        setNewExpense({ ...EMPTY_EXPENSE }); setShowAddExpense(false); setEditExpense(null);
       };
       const removeExpense = (id) => { const ex = expenses.find(e => e.id === id); setExpenses(p => p.filter(e => e.id !== id)); logAction('Deleted expense', [ex?.service, parseNum(ex?.cost) > 0 ? fmt(parseNum(ex?.cost)) : '', ex?.persona || ''].filter(Boolean).join(' · ')); };
-      const startEditExpense = (e) => { setEditExpense(e); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost, recurring: e.recurring || false, workerLink: e.workerLink || "", costType: e.costType || "", clientName: e.clientName || "", salaryStatus: e.salaryStatus || "paid" }); setShowAddExpense(true); };
+      const startEditExpense = (e) => { setEditExpense(e); setExpenseFormError(''); setNewExpense({ service: e.service, persona: e.persona, method: e.method, date: e.date, cost: e.cost, currency: expenseCurrency(e), origAmount: e.origAmount != null && expenseCurrency(e) !== 'USD' ? e.origAmount : e.cost, fxRate: expenseCurrency(e) === 'USD' ? 1 : e.fxRate, recurring: e.recurring || false, workerLink: e.workerLink || "", costType: e.costType || "", clientName: e.clientName || "", salaryStatus: e.salaryStatus || "paid" }); setShowAddExpense(true); };
 
       const addTransfer = () => {
         if (!newTransfer.fromAcc || !newTransfer.toAcc) return;
@@ -1449,22 +1511,96 @@
       const addInvestment = () => { if (!newInvestment.person.trim() || !newInvestment.amount) return; setInvestments(p => [...p, { id: uid(), ...newInvestment, date: autoDate(newInvestment.date) }]); setNewInvestment({ person: "", amount: 0, method: "USD", date: "", comment: "" }); setShowAddInvestment(false); };
       const removeInvestment = (id) => setInvestments(p => p.filter(i => i.id !== id));
 
-      const submitAccountForm = () => { 
-        if (!newAccountForm.name.trim()) return; 
-        if (editAccount) {
-          setAccounts(p => p.map(a => a.id === editAccount.id ? { ...a, name: newAccountForm.name.trim(), owner: newAccountForm.owner.trim(), limit: parseNum(newAccountForm.limit) } : a));
-        } else {
-          setAccounts(p => [...p, { id: uid(), name: newAccountForm.name.trim(), owner: newAccountForm.owner.trim(), limit: parseNum(newAccountForm.limit), isActive: true }]); 
-        }
-        setNewAccountForm({ name: "", owner: "", limit: 10000 }); 
-        setShowAddAccount(false); 
-        setEditAccount(null);
+      // ---- Account directory ----
+      const normAccName = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      // Rewrite an account name in every record (deals, expenses, transfers, cash-outs). Only months that contain it change.
+      const renameAccountInRecords = (from, to, label) => {
+        const hit = (v) => (v || '').trim() === from;
+        let count = 0;
+        Object.values(monthData).forEach(md => {
+          (md.transactions || []).forEach(t => { if (hit(t.platforma)) count++; });
+          (md.expenses || []).forEach(e => { if (hit(e.persona)) count++; });
+          (md.transfers || []).forEach(t => { if (hit(t.fromAcc)) count++; if (hit(t.toAcc)) count++; });
+          (md.cashouts || []).forEach(c => { if (hit(c.fromAcc)) count++; });
+        });
+        if (!count) return 0;
+        pushHistory();
+        setMonthData(p => {
+          const out = { ...p };
+          Object.entries(p).forEach(([k, md]) => {
+            const touches = (md.transactions || []).some(t => hit(t.platforma)) || (md.expenses || []).some(e => hit(e.persona)) || (md.transfers || []).some(t => hit(t.fromAcc) || hit(t.toAcc)) || (md.cashouts || []).some(c => hit(c.fromAcc));
+            if (!touches) return;
+            out[k] = { ...md,
+              transactions: (md.transactions || []).map(t => hit(t.platforma) ? { ...t, platforma: to } : t),
+              expenses: (md.expenses || []).map(e => hit(e.persona) ? { ...e, persona: to } : e),
+              transfers: (md.transfers || []).map(t => (hit(t.fromAcc) || hit(t.toAcc)) ? { ...t, fromAcc: hit(t.fromAcc) ? to : t.fromAcc, toAcc: hit(t.toAcc) ? to : t.toAcc } : t),
+              cashouts: (md.cashouts || []).map(c => hit(c.fromAcc) ? { ...c, fromAcc: to } : c) };
+          });
+          return out;
+        });
+        logAction(label, `"${from}" → "${to}" · ${count} record${count === 1 ? '' : 's'}`);
+        return count;
       };
-      
+      // "+ New account…" from any account field: open the form, then put the new account into that field
+      const requestNewAccount = (onPicked) => {
+        accountPickCbRef.current = onPicked;
+        setEditAccount(null); setAccountFormError('');
+        setNewAccountForm({ name: "", owner: "", limit: 10000, kind: "agency" });
+        setShowAddAccount(true);
+      };
+      const closeAccountForm = () => { accountPickCbRef.current = null; setAccountFormError(''); setShowAddAccount(false); setEditAccount(null); };
+
+      const submitAccountForm = () => {
+        const name = newAccountForm.name.replace(/\s+/g, ' ').trim();
+        if (!name) return;
+        const clash = accounts.find(a => (!editAccount || a.id !== editAccount.id) && normAccName(a.name) === normAccName(name));
+        if (clash) { setAccountFormError(`"${clash.name}" already exists — pick it from the list instead`); return; }
+        const kind = newAccountForm.kind === 'personal' ? 'personal' : 'agency';
+        if (editAccount) {
+          const oldName = editAccount.name;
+          setAccounts(p => p.map(a => a.id === editAccount.id ? { ...a, name, owner: (newAccountForm.owner || '').trim(), limit: parseNum(newAccountForm.limit), kind } : a));
+          if (oldName !== name) renameAccountInRecords(oldName, name, 'Account renamed');
+        } else {
+          const acc = { id: uid(), name, owner: (newAccountForm.owner || '').trim(), limit: kind === 'personal' ? 0 : parseNum(newAccountForm.limit), isActive: true, kind };
+          // agency accounts stay ahead of personal ones, so card drag indices keep matching the directory order
+          setAccounts(p => { if (kind === 'personal') return [...p, acc]; const i = p.findIndex(a => a.kind === 'personal'); return i < 0 ? [...p, acc] : [...p.slice(0, i), acc, ...p.slice(i)]; });
+          logAction('Account added', `${name} · ${kind}`);
+          if (accountPickCbRef.current) { const cb = accountPickCbRef.current; accountPickCbRef.current = null; cb(name); }
+        }
+        setNewAccountForm({ name: "", owner: "", limit: 10000, kind: "agency" });
+        closeAccountForm();
+      };
+
       const startEditAccount = (acc) => {
+         accountPickCbRef.current = null; setAccountFormError('');
          setEditAccount(acc);
-         setNewAccountForm({ name: acc.name, owner: acc.owner, limit: acc.limit });
+         setNewAccountForm({ name: acc.name, owner: acc.owner || '', limit: acc.limit, kind: acc.kind === 'personal' ? 'personal' : 'agency' });
          setShowAddAccount(true);
+      };
+
+      // Names used in records that are not in the directory (old free-typed values, typos, personal wallets)
+      const unknownAccountNames = useMemo(() => {
+        const known = new Set(accounts.map(a => a.name));
+        const map = {};
+        const add = (v, where) => { const s = (v || '').trim(); if (!s || known.has(s)) return; if (!map[s]) map[s] = { name: s, count: 0, where: new Set() }; map[s].count++; map[s].where.add(where); };
+        Object.values(monthData).forEach(md => {
+          (md.transactions || []).forEach(t => add(t.platforma, 'deals'));
+          (md.expenses || []).forEach(e => add(e.persona, 'expenses'));
+          (md.transfers || []).forEach(t => { add(t.fromAcc, 'transfers'); add(t.toAcc, 'transfers'); });
+          (md.cashouts || []).forEach(c => add(c.fromAcc, 'cash-outs'));
+        });
+        return Object.values(map).sort((a, b) => b.count - a.count);
+      }, [accounts, monthData]);
+      const addNameAsPersonal = (name) => {
+        if (accounts.some(a => a.name === name)) return;
+        setAccounts(p => [...p, { id: uid(), name, owner: '', limit: 0, isActive: true, kind: 'personal' }]);
+        logAction('Account added', `${name} · personal (from records)`);
+      };
+      const mergeAccountName = (from, to) => {
+        if (!to || from === to) return;
+        const u = unknownAccountNames.find(x => x.name === from);
+        if (!window.confirm(`Rename "${from}" to "${to}" in ${u ? u.count : 'all'} record(s)?\n\nThose deals/expenses will then count toward "${to}" (its balance changes accordingly). Undo is available right after.`)) return;
+        renameAccountInRecords(from, to, 'Account names merged');
       };
       
       const confirmRemoveAccount = (id) => {
@@ -1706,20 +1842,26 @@
           <div style={{ background: "#1A1A1A", padding: "20px 28px 16px" }}>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
               {(() => {
-                const budgetVal = verifiedBudget !== null ? verifiedBudget : agencyBudget;
-                const budgetLabel = verifiedBudget !== null ? "Accounts Balance ✓" : "Agency Budget";
-                const budgetColor = budgetVal >= 0 ? "#4ADE80" : "#F87171";
+                // ✓ = only what was verified by reconciliation; unreconciled accounts are shown apart, labelled as an estimate
+                const hasVerified = agencyBalance.reconciledCount > 0;
+                const estimate = agencyBalance.uncounted.reduce((sum, a) => sum + a.accountBudget, 0);
+                const budgetItems = hasVerified ? [
+                  { label: "Accounts balance ✓", value: agencyBalance.total, color: agencyBalance.total >= 0 ? "#4ADE80" : "#F87171", kpi: 'verified',
+                    extra: <div style={{ fontSize: 10, color: "#888", marginTop: 4 }}>verified · {agencyBalance.reconciledCount} of {accountUsage.length} accounts</div> },
+                  ...(agencyBalance.uncounted.length ? [{ label: "Unreconciled · estimate", value: estimate, color: "#9CA3AF", kpi: 'estimate',
+                    extra: <div title={agencyBalance.uncounted.map(a => a.name).join(', ')} style={{ fontSize: 10, color: "#888", marginTop: 4 }}>estimate · {agencyBalance.uncounted.length} account{agencyBalance.uncounted.length === 1 ? '' : 's'} not reconciled</div> }] : []),
+                ] : [{ label: "Agency Budget", value: agencyBudget, color: agencyBudget >= 0 ? "#4ADE80" : "#F87171" }];
                 return [
                   { label: "Agency Turnover", value: totalPayment },
                   { label: "Revenue (REV)", value: totalRev, color: "#4ADE80" },
-                  { label: budgetLabel, value: budgetVal, color: budgetColor },
+                  ...budgetItems,
                   { label: "Carryover (previous)", value: carryover, color: "#FBBF24", extra: carryoverMismatch ? (
                     <button data-carry-sync onClick={syncCarryover} title={`Stored for this month: ${fmt(carryInfo.stored)}. Previous month closed at ${fmt(carryInfo.computed)}.`} style={{ display: "block", marginTop: 4, border: "none", background: "none", padding: 0, cursor: "pointer", color: "#F59E0B", fontSize: 10, textAlign: "left" }}>≠ previous month {fmt(carryInfo.computed)} · ↻ use it</button>
                   ) : null },
                   { label: "REV Fees / Costs", value: totalCosts, color: "#FB923C" },
                   { label: "Total Expenses", value: totalExpenses, color: "#F87171" },
                 ].map((k, i) => (
-                  <div key={i} className="kpi-card"><div className="kpi-label">{k.label}</div><div className="kpi-value" style={k.color ? { color: k.color } : {}}>{fmt(k.value)}</div>{k.extra}</div>
+                  <div key={i} className="kpi-card" data-kpi={k.kpi || undefined}><div className="kpi-label">{k.label}</div><div className="kpi-value" style={k.color ? { color: k.color } : {}}>{fmt(k.value)}</div>{k.extra}</div>
                 ));
               })()}
             </div>
@@ -1863,7 +2005,10 @@
                     { label: "Agency turnover", value: monthPL.turnover },
                     { label: "Client-billed costs", value: monthPL.clientCosts, color: "#9333EA" },
                     { label: "Carryover", value: monthPL.carryover, color: "#F59E0B" },
-                    { label: verifiedBudget !== null ? "Accounts balance ✓" : "Agency budget (cumulative)", value: verifiedBudget !== null ? verifiedBudget : monthPL.budget, color: (verifiedBudget !== null ? verifiedBudget : monthPL.budget) >= 0 ? "#16A34A" : "#DC2626" },
+                    ...(agencyBalance.reconciledCount > 0 ? [
+                      { label: "Accounts balance ✓ (verified)", value: agencyBalance.total, color: agencyBalance.total >= 0 ? "#16A34A" : "#DC2626" },
+                      ...(agencyBalance.uncounted.length ? [{ label: "Unreconciled (estimate)", value: agencyBalance.uncounted.reduce((sum, a) => sum + a.accountBudget, 0), color: "#9CA3AF" }] : []),
+                    ] : [{ label: "Agency budget (cumulative)", value: monthPL.budget, color: monthPL.budget >= 0 ? "#16A34A" : "#DC2626" }]),
                   ].map((c, i) => (
                     <div key={i}>
                       <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{c.label}</div>
@@ -1905,6 +2050,41 @@
                 <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid #2a2a2a", fontSize: 11, color: "#777", lineHeight: 1.7 }}>
                   <b style={{ color: "#999" }}>Money flow:</b> turnover (client payment) = deal costs (tax/fees + partner commission) + agencyRev (agency margin — the "REV"/"budget" number, not sales) + workerPay (everyone incl. founders). <b style={{ color: "#999" }}>Accrued</b> = allocated regardless of the paid checkbox; <b style={{ color: "#999" }}>paid</b> = paid checkbox on. Reserve = &Sigma; agencyRev &minus; expenses, carried monthly.
                 </div>
+              </div>
+
+              {/* Period report — by record dates, works across months and years */}
+              <div data-period-report style={{ background: "#1A1A1A", borderRadius: 10, padding: "24px 28px", boxShadow: "0 2px 12px rgba(0,0,0,.08)", marginBottom: 28 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+                  <div>
+                    <h2 style={{ fontSize: 18, fontWeight: 700, color: "#E5E5E5", marginBottom: 4 }}>Period report</h2>
+                    <div style={{ fontSize: 12, color: "#888" }}>Confirmed deals and expenses by their own date — any range, across months and years</div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#888", flexWrap: "wrap" }}>
+                    from <input data-period-from type="date" value={periodFrom} onChange={e => setPeriodFrom(e.target.value)} style={{ background: "#222", color: "#E5E5E5", border: "1px solid #333", borderRadius: 6, padding: "4px 8px" }} />
+                    to <input data-period-to type="date" value={periodTo} onChange={e => setPeriodTo(e.target.value)} style={{ background: "#222", color: "#E5E5E5", border: "1px solid #333", borderRadius: 6, padding: "4px 8px" }} />
+                  </div>
+                </div>
+                {!periodReport ? <div style={{ fontSize: 12, color: "#F87171" }}>Choose a start date that is not after the end date.</div> : (<>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+                    {[
+                      { label: "Turnover", value: periodReport.turnover },
+                      { label: "Revenue (REV)", value: periodReport.revenue, color: "#4ADE80" },
+                      { label: "Deal costs", value: periodReport.costs, color: "#FB923C" },
+                      { label: "Expenses", value: periodReport.expenses, color: "#F87171" },
+                      { label: "Net (REV − expenses)", value: periodReport.net, color: periodReport.net >= 0 ? "#4ADE80" : "#F87171" },
+                    ].map((c, i) => (
+                      <div key={i} data-period-kpi={c.label}>
+                        <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{c.label}</div>
+                        <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 16, fontWeight: 600, color: c.color || "#E5E5E5" }}>{fmt(c.value)}</div>
+                      </div>
+                    ))}
+                    <div>
+                      <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>Deals</div>
+                      <div data-period-deals style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 16, fontWeight: 600, color: "#E5E5E5" }}>{periodReport.deals}</div>
+                    </div>
+                  </div>
+                  {periodReport.undated > 0 && <div style={{ fontSize: 11, color: "#888", marginTop: 10 }}>{periodReport.undated} record{periodReport.undated === 1 ? '' : 's'} without a date counted on the 1st of their month.</div>}
+                </>)}
               </div>
 
               {/* Real Accounts Balance */}
@@ -2047,10 +2227,10 @@
                             <input list="products-list" value={t.service || ""} onChange={e => updateTx(t.id, "service", e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", transition: "border .2s", background: "transparent" }} onFocus={e => e.target.style.border="1px solid #4A90D9"} onBlur={e => e.target.style.border="1px solid transparent"} placeholder="Service" />
                           </td>
                           <td style={{ padding: "2px" }}>
-                             <input list="accounts-list" value={t.platforma || ""} onChange={e => updateTx(t.id, "platforma", e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", transition: "border .2s", background: "transparent" }} onFocus={e => e.target.style.border="1px solid #4A90D9"} onBlur={e => e.target.style.border="1px solid transparent"} placeholder="Account" />
+                             <AccountSelect value={t.platforma} onChange={v => updateTx(t.id, "platforma", v)} accounts={accounts} onAddNew={requestNewAccount} placeholder="Account" style={{ border: "1px solid transparent" }} />
                           </td>
                           <td style={{ padding: "2px" }}><EditableCell value={t.payment} onChange={v => updateTx(t.id, "payment", v)} type="number" mono style={{ textAlign: "right" }} /></td>
-                          <td style={{ padding: "2px" }}><EditableCell value={t.date} onChange={v => updateTx(t.id, "date", v)} isDate={true} activeMonthIdx={currentMonth} style={{ textAlign: "center" }} /></td>
+                          <td style={{ padding: "2px" }}><EditableCell value={t.date} onChange={v => updateTx(t.id, "date", v)} isDate={true} activeMonthIdx={currentMonth} activeYear={currentYear} style={{ textAlign: "center" }} /></td>
                           <td style={{ padding: "2px" }}>
                             <EditableCell value={t.costTax} onChange={v => updateTx(t.id, "costTax", v)} type="number" mono style={{ textAlign: "right" }} />
                             <button onClick={() => setPartnerTxId(t.id)} title="Partner commission" style={{ display: "block", marginLeft: "auto", border: "none", background: "none", cursor: "pointer", color: t.partnerName ? (t.partnerPaid ? "#4ADE80" : "#FBBF24") : "#666", fontSize: 9, fontFamily: "'JetBrains Mono',monospace", padding: "1px 0" }}>
@@ -2168,7 +2348,7 @@
                            </td>
                            <td style={{ padding: "8px 6px", fontSize: 13 }}><EditableCell value={e.service} onChange={v => { const x = [...expenses]; x[i].service = v; setExpenses(x); }} /></td>
                            <td style={{ padding: "8px 6px", fontSize: 13 }}>
-                              <input list="accounts-list" value={e.persona || ""} onChange={ev => { const x = [...expenses]; x[i].persona = ev.target.value; setExpenses(x); }} style={{ width: "100%", boxSizing: "border-box", padding: "2px 4px", border: "1px solid transparent", borderRadius: 3, fontFamily: "'DM Sans',sans-serif", fontSize: 13, outline: "none", background: "transparent" }} onFocus={ev => ev.target.style.border="1px solid #4A90D9"} onBlur={ev => ev.target.style.border="1px solid transparent"} />
+                              <AccountSelect value={e.persona} onChange={v => { const x = [...expenses]; x[i] = { ...x[i], persona: v }; setExpenses(x); }} accounts={accounts} onAddNew={requestNewAccount} style={{ border: "1px solid transparent", padding: "2px 4px" }} />
                            </td>
                            <td style={{ padding: "8px 6px", fontSize: 12, textAlign: "center", fontFamily: "'JetBrains Mono',monospace" }}><EditableCell value={e.method} onChange={v => { const x = [...expenses]; x[i].method = v; setExpenses(x); }} /></td>
                            <td style={{ padding: "8px 6px", fontSize: 12, textAlign: "center" }}>
@@ -2176,9 +2356,13 @@
                                 const newExps = [...expenses];
                                 newExps[i].date = v;
                                 setExpenses(newExps);
-                             }} isDate={true} activeMonthIdx={currentMonth} />
+                             }} isDate={true} activeMonthIdx={currentMonth} activeYear={currentYear} />
                            </td>
-                           <td style={{ padding: "8px 6px", fontSize: 13, textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, color: "#DC2626" }}><EditableCell value={e.cost} onChange={v => { const x = [...expenses]; x[i].cost = v; setExpenses(x); }} type="number" mono style={{textAlign: "right"}} /></td>
+                           <td style={{ padding: "8px 6px", fontSize: 13, textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, color: "#DC2626" }}>
+                             {expenseCurrency(e) === 'USD'
+                               ? <EditableCell value={e.cost} onChange={v => { const x = [...expenses]; x[i] = { ...x[i], cost: v, ...(x[i].origAmount != null ? { origAmount: v } : {}) }; setExpenses(x); }} type="number" mono style={{textAlign: "right"}} />
+                               : <div onClick={() => startEditExpense(e)} title="Foreign-currency expense — click to edit amount, currency or rate" style={{ cursor: "pointer", padding: "4px 6px" }}>{fmt(parseNum(e.cost))}<div data-exp-orig style={{ fontSize: 10, color: "#9a9a9a", fontWeight: 400 }}>{parseNum(e.origAmount).toLocaleString('en-US', { maximumFractionDigits: 2 })} {expenseCurrency(e)} @{parseNum(e.fxRate)}</div></div>}
+                           </td>
                            <td style={{ padding: "4px 6px", textAlign: "center" }}>
                              <button onClick={() => { const x=[...expenses]; x[i].recurring=!e.recurring; setExpenses(x); }} title={e.recurring ? "Monthly (click to remove)" : "One-time (click to make monthly)"} style={{ border: "none", background: e.recurring ? "rgba(74,144,217,.12)" : "none", borderRadius: 4, cursor: "pointer", padding: "4px 6px", color: e.recurring ? "#4A90D9" : "#ccc", display: "inline-flex" }}><Icon name="repeat" size={14} /></button>
                            </td>
@@ -2208,7 +2392,7 @@
                    </table>
                  </div>
                  <div style={{ padding: "12px 16px", borderTop: "1px solid #2a2a2a" }}>
-                   <button className="btn btn-primary" onClick={() => { setEditExpense(null); setNewExpense({ service: "", persona: "", method: "USDT", date: "", cost: 0, recurring: false, workerLink: "", costType: "", clientName: "", salaryStatus: "planned" }); setShowAddExpense(true); }}><Icon name="plus" size={14} /> Add expense</button>
+                   <button className="btn btn-primary" onClick={() => { setEditExpense(null); setExpenseFormError(''); setNewExpense({ ...EMPTY_EXPENSE }); setShowAddExpense(true); }}><Icon name="plus" size={14} /> Add expense</button>
                  </div>
                </div>
 
@@ -2324,7 +2508,7 @@
                                 <EditableCell value={inv.method} onChange={v => upd("method", v)} style={{ textAlign: "center", fontSize: 12 }} />
                               </td>
                               <td style={{ padding: "7px 10px", textAlign: "center" }}>
-                                <EditableCell value={inv.date} onChange={v => upd("date", v)} isDate={true} activeMonthIdx={currentMonth} style={{ textAlign: "center" }} />
+                                <EditableCell value={inv.date} onChange={v => upd("date", v)} isDate={true} activeMonthIdx={currentMonth} activeYear={currentYear} style={{ textAlign: "center" }} />
                               </td>
                               <td style={{ padding: "7px 10px" }}>
                                 <EditableCell value={inv.comment || ""} onChange={v => upd("service", v)} style={{ fontSize: 12, color: "#9a9a9a" }} />
@@ -2339,7 +2523,7 @@
                             <td style={{ padding: "7px 10px" }}><EditableCell value={inv.person} onChange={v => { const x=[...investments]; x[ii].person=v; setInvestments(x); }} /></td>
                             <td style={{ padding: "7px 10px", textAlign: "right", fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, color: "#4A90D9" }}><EditableCell value={inv.amount} onChange={v => { const x=[...investments]; x[ii].amount=v; setInvestments(x); }} type="number" mono style={{ textAlign:"right" }} /></td>
                             <td style={{ padding: "7px 10px", textAlign: "center" }}><EditableCell value={inv.method} onChange={v => { const x=[...investments]; x[ii].method=v; setInvestments(x); }} style={{ textAlign:"center", fontSize:12 }} /></td>
-                            <td style={{ padding: "7px 10px", textAlign: "center" }}><EditableCell value={inv.date} onChange={v => { const x=[...investments]; x[ii].date=v; setInvestments(x); }} isDate={true} activeMonthIdx={currentMonth} style={{ textAlign:"center" }} /></td>
+                            <td style={{ padding: "7px 10px", textAlign: "center" }}><EditableCell value={inv.date} onChange={v => { const x=[...investments]; x[ii].date=v; setInvestments(x); }} isDate={true} activeMonthIdx={currentMonth} activeYear={currentYear} style={{ textAlign:"center" }} /></td>
                             <td style={{ padding: "7px 10px" }}><EditableCell value={inv.comment || ""} onChange={v => { const x=[...investments]; x[ii].comment=v; setInvestments(x); }} style={{ fontSize:12, color:"#9a9a9a" }} /></td>
                             <td style={{ padding: "7px 10px", textAlign: "center" }}><button onClick={() => removeInvestment(inv.id)} style={{ border:"none", background:"none", cursor:"pointer", fontSize:14 }}><Icon name="trash" size={14} /></button></td>
                           </tr>
@@ -2493,7 +2677,7 @@
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                   <div style={{ fontSize: 13, color: "#9a9a9a" }}>Agency payment accounts · turnover across all months · reconcile to match real balances</div>
-                  <button className="btn btn-primary" onClick={() => { setEditAccount(null); setNewAccountForm({name:"", owner:"", limit:10000}); setShowAddAccount(true); }}><Icon name="plus" size={14} /> Add account</button>
+                  <button className="btn btn-primary" onClick={() => requestNewAccount(null)}><Icon name="plus" size={14} /> Add account</button>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16, marginBottom: 36 }}>
                   {accountUsage.map(a => {
@@ -2567,6 +2751,47 @@
                   })}
                   {accounts.length === 0 && <div style={{ color: "#999", padding: 24 }}>No accounts.</div>}
                 </div>
+
+                {/* Personal accounts — selectable in records, never part of agency balances */}
+                <div data-personal-accounts style={{ background: "#1A1A1A", borderRadius: 12, padding: "16px 20px", marginBottom: 24, border: "1px solid #2a2a2a" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+                    <div>
+                      <h2 style={{ fontSize: 15, fontWeight: 700, color: "#E5E5E5" }}>Personal accounts</h2>
+                      <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Founders' own wallets and cards — can be picked in deals and expenses, but never count in agency balances, limits or reconciliation</div>
+                    </div>
+                    <button className="btn btn-secondary" onClick={() => { requestNewAccount(null); setNewAccountForm(f => ({ ...f, kind: 'personal' })); }}><Icon name="plus" size={14} /> Personal account</button>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {accounts.filter(a => a.kind === 'personal').map(a => (
+                      <span key={a.id} style={{ fontSize: 12, color: "#E5E5E5", background: "#222", border: "1px solid #333", borderRadius: 6, padding: "4px 6px 4px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        {a.name}
+                        <button onClick={() => startEditAccount(a)} title="Rename / change type" style={{ background: "none", border: "none", color: "#888", cursor: "pointer", padding: 0, display: "flex" }}><Icon name="edit" size={12} /></button>
+                      </span>
+                    ))}
+                    {!accounts.some(a => a.kind === 'personal') && <span style={{ fontSize: 12, color: "#666" }}>None yet.</span>}
+                  </div>
+                </div>
+
+                {/* Names used in records that aren't in the directory — fix once, then everything is picked from the list */}
+                {unknownAccountNames.length > 0 && (
+                  <div data-unknown-names style={{ background: "#1f1a0e", borderRadius: 12, padding: "16px 20px", marginBottom: 24, border: "1px solid rgba(245,158,11,.3)" }}>
+                    <h2 style={{ fontSize: 15, fontWeight: 700, color: "#FBBF24" }}>Names not in the list · {unknownAccountNames.length}</h2>
+                    <div style={{ fontSize: 11, color: "#a8977a", marginTop: 2, marginBottom: 12 }}>These were typed by hand before accounts became a list. Nothing is changed until you act: add a name as a personal account (balances stay exactly as they are), or merge a typo into the right account (its records move there).</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {unknownAccountNames.map(u => (
+                        <div key={u.name} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", fontSize: 12, padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,.05)" }}>
+                          <span style={{ minWidth: 200, color: "#E5E5E5", fontWeight: 600, whiteSpace: "pre" }}>{u.name}</span>
+                          <span style={{ color: "#888", minWidth: 150 }}>{u.count} record{u.count === 1 ? '' : 's'} · {[...u.where].join(', ')}</span>
+                          <button className="btn btn-secondary" style={{ padding: "3px 10px", fontSize: 11 }} onClick={() => addNameAsPersonal(u.name)}>Add as personal account</button>
+                          <select value="" onChange={e => mergeAccountName(u.name, e.target.value)} style={{ fontSize: 11, background: "#222", color: "#bbb", border: "1px solid #333", borderRadius: 5, padding: "3px 6px", cursor: "pointer" }}>
+                            <option value="">Merge into…</option>
+                            {accounts.map(a => <option key={a.id} value={a.name}>{a.name}{a.kind === 'personal' ? ' (personal)' : ''}</option>)}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Personal accounts balance */}
                 {Object.keys(personalAccountStats).length > 0 && (
@@ -2830,10 +3055,18 @@
           {showAddExpense && (<div className="modal-overlay" onClick={() => { setShowAddExpense(false); setEditExpense(null); }}><div className="modal" onClick={e => e.stopPropagation()}>
             <h3>{editExpense ? "Edit expense" : "Add expense"}</h3>
             <label>Service<input value={newExpense.service} onChange={e => setNewExpense({ ...newExpense, service: e.target.value })} placeholder="Service name" autoFocus /></label>
-            <label>Account<input list="accounts-list" value={newExpense.persona} onChange={e => setNewExpense({ ...newExpense, persona: e.target.value })} style={{ marginTop: 4 }} placeholder="Pay from" /></label>
+            <label>Account<AccountSelect value={newExpense.persona} onChange={v => setNewExpense(ne => ({ ...ne, persona: v }))} accounts={accounts} onAddNew={requestNewAccount} placeholder="Pay from…" style={{ marginTop: 4, padding: "8px 10px", fontSize: 14, border: "1.5px solid #333", borderRadius: 6 }} /></label>
             <label>Payment method<select value={newExpense.method} onChange={e => setNewExpense({ ...newExpense, method: e.target.value })}><option>USDT</option><option>USD</option><option>EUR</option><option>UAH</option><option>Card</option></select></label>
             <label>Date<input value={newExpense.date} onChange={e => setNewExpense({ ...newExpense, date: e.target.value })} placeholder="DD.MM" /></label>
-            <label>Amount ($)<input type="number" value={newExpense.cost} onChange={e => setNewExpense({ ...newExpense, cost: parseFloat(e.target.value) || 0 })} /></label>
+            {(() => { const cur = newExpense.currency || 'USD'; const usd = Math.round(parseNum(newExpense.origAmount) * (cur === 'USD' ? 1 : parseNum(newExpense.fxRate)) * 100) / 100; return (<>
+              <div style={{ display: "flex", gap: 8 }}>
+                <label style={{ flex: 2 }}>Amount<input data-exp-amount type="number" value={newExpense.origAmount} onChange={e => setNewExpense(ne => ({ ...ne, origAmount: parseFloat(e.target.value) || 0 }))} /></label>
+                <label style={{ flex: 1 }}>Currency<select data-exp-currency value={cur} onChange={e => { const c = e.target.value; setExpenseFormError(''); setNewExpense(ne => ({ ...ne, currency: c, fxRate: c === 'USD' || c === 'USDT' ? 1 : (ne.currency === c ? ne.fxRate : '') })); }} style={{ marginTop: 4 }}>{CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
+                {cur !== 'USD' && <label style={{ flex: 1.4 }}>Rate ($ per 1 {cur})<input data-exp-rate type="number" step="0.0001" value={newExpense.fxRate} onChange={e => { setExpenseFormError(''); setNewExpense(ne => ({ ...ne, fxRate: e.target.value })); }} placeholder={cur === 'EUR' ? 'e.g. 1.08' : 'rate'} /></label>}
+              </div>
+              {cur !== 'USD' && <div data-exp-usd style={{ fontSize: 12, color: "#9a9a9a", marginTop: 6 }}>Counts in totals as <b style={{ color: "#E5E5E5" }}>{fmt(usd)}</b></div>}
+              {expenseFormError && <div data-exp-error style={{ fontSize: 12, color: "#F87171", marginTop: 6 }}>{expenseFormError}</div>}
+            </>); })()}
             <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
               <input type="checkbox" checked={newExpense.recurring} onChange={e => setNewExpense({ ...newExpense, recurring: e.target.checked })} style={{ width: 15, height: 15, marginTop: 0 }} />
               Recurring (monthly)
@@ -2891,7 +3124,7 @@
               <label>Wallet{wallets.length
                 ? <select value={payRate.wallet} onChange={e => setPayRate({ ...payRate, wallet: e.target.value })} style={{ marginTop: 4 }}>{wallets.map(wl => <option key={wl} value={wl}>{wl}</option>)}</select>
                 : <input value={payRate.wallet} onChange={e => setPayRate({ ...payRate, wallet: e.target.value })} placeholder="No saved wallets — type one" />}</label>
-              <label>Pay from (agency account)<input list="accounts-list" value={payRate.payFrom} onChange={e => setPayRate({ ...payRate, payFrom: e.target.value })} placeholder="Select or type..." /></label>
+              <label>Pay from (agency account)<AccountSelect value={payRate.payFrom} onChange={v => setPayRate(pr => pr && ({ ...pr, payFrom: v }))} accounts={accounts} onAddNew={requestNewAccount} placeholder="Select account…" style={{ marginTop: 4, padding: "8px 10px", fontSize: 14, border: "1.5px solid #333", borderRadius: 6 }} /></label>
               <label>Amount ($)<input type="number" value={payRate.amount} onChange={e => setPayRate({ ...payRate, amount: parseFloat(e.target.value) || 0 })} /></label>
               <label>Date<input value={payRate.date} onChange={e => setPayRate({ ...payRate, date: e.target.value })} placeholder="DD.MM" /></label>
               <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setPayRate(null)}>Cancel</button><button className="btn btn-primary" onClick={confirmPayRate}>Confirm payment</button></div>
@@ -2900,8 +3133,8 @@
 
           {showTransfer && (<div className="modal-overlay" onClick={() => setShowTransfer(false)}><div className="modal" onClick={e => e.stopPropagation()}>
             <h3>Transfer between accounts</h3>
-            <label>Sender (From)<input list="accounts-list" value={newTransfer.fromAcc} onChange={e => setNewTransfer({ ...newTransfer, fromAcc: e.target.value })} placeholder="Select or type..." autoFocus /></label>
-            <label>Recipient (To)<input list="accounts-list" value={newTransfer.toAcc} onChange={e => setNewTransfer({ ...newTransfer, toAcc: e.target.value })} placeholder="Select or type..." /></label>
+            <label>Sender (From)<AccountSelect value={newTransfer.fromAcc} onChange={v => setNewTransfer(nt => ({ ...nt, fromAcc: v }))} accounts={accounts} onAddNew={requestNewAccount} placeholder="Select account…" style={{ marginTop: 4, padding: "8px 10px", fontSize: 14, border: "1.5px solid #333", borderRadius: 6 }} /></label>
+            <label>Recipient (To)<AccountSelect value={newTransfer.toAcc} onChange={v => setNewTransfer(nt => ({ ...nt, toAcc: v }))} accounts={accounts} onAddNew={requestNewAccount} placeholder="Select account…" style={{ marginTop: 4, padding: "8px 10px", fontSize: 14, border: "1.5px solid #333", borderRadius: 6 }} /></label>
             <label>Amount ($)<input type="number" value={newTransfer.amount} onChange={e => setNewTransfer({ ...newTransfer, amount: parseFloat(e.target.value) || 0 })} /></label>
             <label>Transfer fee ($)<input type="number" value={newTransfer.fee} onChange={e => setNewTransfer({ ...newTransfer, fee: parseFloat(e.target.value) || 0 })} /></label>
             <label>Date<input value={newTransfer.date} onChange={e => setNewTransfer({ ...newTransfer, date: e.target.value })} placeholder="DD.MM" /></label>
@@ -2912,7 +3145,7 @@
           {showCashout && (<div className="modal-overlay" onClick={() => setShowCashout(false)}><div className="modal" onClick={e => e.stopPropagation()}>
             <h3>Record cash-out</h3>
             <p style={{ fontSize: 12, color: "#9a9a9a", marginBottom: 16, lineHeight: 1.45 }}>This records the actual conversion. The effective rate is locked on this row, so future market-rate changes cannot alter the history.</p>
-            <label>USDT wallet<input list="accounts-list" value={newCashout.fromAcc} onChange={e => setNewCashout({ ...newCashout, fromAcc: e.target.value })} placeholder="Wallet / account" autoFocus /></label>
+            <label>USDT wallet<AccountSelect value={newCashout.fromAcc} onChange={v => setNewCashout(nc => ({ ...nc, fromAcc: v }))} accounts={accounts} onAddNew={requestNewAccount} placeholder="Select account…" style={{ marginTop: 4, padding: "8px 10px", fontSize: 14, border: "1.5px solid #333", borderRadius: 6 }} /></label>
             <label>Exchanger<input value={newCashout.exchanger} onChange={e => setNewCashout({ ...newCashout, exchanger: e.target.value })} placeholder="Local exchanger" /></label>
             <label>Sent (USDT)<input type="number" value={newCashout.sentUsdt} onChange={e => setNewCashout({ ...newCashout, sentUsdt: parseFloat(e.target.value) || 0 })} /></label>
             <label>Exchanger fee (USDT)<input type="number" value={newCashout.feeUsdt} onChange={e => setNewCashout({ ...newCashout, feeUsdt: parseFloat(e.target.value) || 0 })} /></label>
@@ -2962,12 +3195,18 @@
           })()}
 
           {/* MODAL: Add Account */}
-          {showAddAccount && (<div className="modal-overlay" onClick={() => setShowAddAccount(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+          {showAddAccount && (<div className="modal-overlay" onClick={closeAccountForm}><div className="modal" data-account-form onClick={e => e.stopPropagation()}>
             <h3>{editAccount ? "Edit account" : "Add account"}</h3>
-            <label>Name<input value={newAccountForm.name} onChange={e => setNewAccountForm({ ...newAccountForm, name: e.target.value })} placeholder="Account name" autoFocus /></label>
+            <label>Name<input value={newAccountForm.name} onChange={e => { setAccountFormError(''); setNewAccountForm({ ...newAccountForm, name: e.target.value }); }} placeholder="Account name" autoFocus /></label>
+            <label>Type<select value={newAccountForm.kind || 'agency'} onChange={e => setNewAccountForm({ ...newAccountForm, kind: e.target.value })} style={{ marginTop: 4 }}>
+              <option value="agency">Agency account — counts in balances, limits, reconciliation</option>
+              <option value="personal">Personal account / wallet — a founder's own money, kept out of agency balances</option>
+            </select></label>
             <label>Owner<input value={newAccountForm.owner} onChange={e => setNewAccountForm({ ...newAccountForm, owner: e.target.value })} placeholder="Owner" /></label>
-            <label>Turnover limit ($)<input type="number" value={newAccountForm.limit} onChange={e => setNewAccountForm({ ...newAccountForm, limit: parseFloat(e.target.value) || 0 })} /></label>
-            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={() => setShowAddAccount(false)}>Cancel</button><button className="btn btn-primary" onClick={submitAccountForm}>{editAccount ? "Save" : "Add"}</button></div>
+            {(newAccountForm.kind || 'agency') === 'agency' && <label>Turnover limit ($)<input type="number" value={newAccountForm.limit} onChange={e => setNewAccountForm({ ...newAccountForm, limit: parseFloat(e.target.value) || 0 })} /></label>}
+            {editAccount && newAccountForm.name.replace(/\s+/g, ' ').trim() !== editAccount.name && newAccountForm.name.trim() && <div style={{ fontSize: 12, color: "#888", marginTop: 8 }}>Renaming also updates every deal, expense, transfer and cash-out that uses "{editAccount.name}".</div>}
+            {accountFormError && <div data-account-error style={{ fontSize: 12, color: "#F87171", marginTop: 8 }}>{accountFormError}</div>}
+            <div style={{ display: "flex", gap: 10, marginTop: 20, justifyContent: "flex-end" }}><button className="btn btn-secondary" onClick={closeAccountForm}>Cancel</button><button className="btn btn-primary" onClick={submitAccountForm}>{editAccount ? "Save" : "Add"}</button></div>
           </div></div>)}
 
           {/* MODAL: Add Investment */}
