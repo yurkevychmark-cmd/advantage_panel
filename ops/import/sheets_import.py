@@ -23,7 +23,9 @@ The table ends at its "total" row (first row without a name); anything below it 
 
 Decisions (all listed in the payload's `flags` for the report):
   * Amounts typed as text ("507$", "$200") are real money when the row balances with them — imported, flagged.
-  * A text payment with no date and nobody paid from it ("500$", date "???") is an expected payment → status pending.
+  * The sheets also list planned deals. A deal counts as paid only if somebody's pay came out of it — in 2025 with the
+    ✓ "paid" box, in 2024 (no ✓ column) any pay at all; otherwise it is imported as pending (planned / moved to a later
+    month), outside turnover and REV. Rule from Марко, 08.10.2026. Rows with no payment (cost-only) stay as they are.
   * Deals are NOT linked to portal accounts (the account named in the sheet goes to `sheetAccount` and the comment):
     portal account balances and limits are computed over all months, and the import must not move today's numbers.
   * Card numbers in Cost tabs are not carried over; the payer (Steve/Marko…) goes to `sheetPayer`.
@@ -148,7 +150,7 @@ def trace(F, field, shown_cells, cells, portal_value, key, tab):
                      f"\"{c['label']}\" {c['amount']:,.2f} — imported; the sheet's total is low by this amount")
     for c in not_imp:
         FLAGS.append(f"{key} {tab}: {field} total ({where}) includes {get_column_letter(c['col'])}{c['row']} "
-                     f"\"{c['label']}\" {c['amount']:,.2f}, which is not imported (side note / prospects)")
+                     f"\"{c['label']}\" {c['amount']:,.2f}, which is not in the portal total (pending / side note / prospects)")
     return {'field': field, 'shown': round(shown, 2), 'where': where, 'outsideRange': brief(outside), 'notImported': brief(not_imp),
             'textAmounts': brief(text), 'portal': round(portal_value, 2), 'ok': abs(expected - portal_value) < 0.01}
 
@@ -227,7 +229,16 @@ def parse_revenue(R, F, year, mi, src, key):
                 if c['field'] in ('turnover', 'revenue', 'costs'):
                     c['imported'] = False                    # pending deals are outside the portal's month totals
             FLAGS.append(f'{key} {src} row {i + 1} "{client}": payment "{txt(r[c_pay])}" typed as text, no date, nobody paid from it → imported as PENDING (expected, not confirmed)')
-        elif texts:
+        elif pay and pay > 0 and not (any(e['paid'] for e in wp.values()) if layout == 'A' else wp):
+            # Марко, 08.10: the sheets also list planned deals — a deal counts as paid only if somebody's pay came out
+            # of it (2025: with the ✓; 2024 has no ✓ column, so: any pay at all). Otherwise planned / moved → pending.
+            status = 'pending'
+            for c in row_cells:
+                if c['field'] in ('turnover', 'revenue', 'costs'):
+                    c['imported'] = False
+            FLAGS.append(f'{key} {src} row {i + 1} "{client}" ${pay:,.0f}: nobody was paid from it'
+                         f'{" (no ✓)" if layout == "A" and wp else ""} → PENDING (planned, not confirmed as paid)')
+        if status == 'received' and texts:
             FLAGS.append(f'{key} {src} row {i + 1} "{client}": ' + ', '.join(f'{w} "{raw}"' for w, _, raw in texts) +
                          ' typed as text — SUM skips it; imported as the amount')
         if texts:
@@ -376,6 +387,20 @@ def main():
     for (c, p, dt), ks in seen.items():
         if len(ks) > 1:
             FLAGS.append(f'"{c}" ${p:,.0f} dated {dt} appears in months {", ".join(sorted(ks, key=ym))} — the sheets count it in each; imported as in the sheets')
+
+    # pending (planned) deals: say in the comment if the same client shows up paid in one of the next three months
+    for k, md in months.items():
+        for d in md['transactions']:
+            if d['status'] != 'pending':
+                continue
+            later = [(k2, d2) for step in (1, 2, 3) for k2 in [f'{(ym(k)[0] * 12 + ym(k)[1] + step) // 12}-{(ym(k)[0] * 12 + ym(k)[1] + step) % 12}']
+                     for d2 in months.get(k2, {}).get('transactions', []) if d2['status'] == 'received' and d2['payment'] > 0
+                     and d2['client'].strip('?! ').lower() and d2['client'].strip().lower() == d['client'].strip().lower()]
+            note = 'planned — nobody was paid from it in the sheet'
+            if later:
+                k2, d2 = later[0]
+                note += f'; the same client is paid in {ym(k2)[1] + 1:02d}.{ym(k2)[0]} (${d2["payment"]:,.0f})'
+            d['comment'] = ' · '.join(x for x in (note, d['comment']) if x)
 
     # people → portal worker ids; people paid in the sheets who are not in the portal become departed ("Left") members
     workers_add, ids = [], dict(roster)
