@@ -13,7 +13,7 @@ if (!appFile) { console.error('no v10/app.<hash>.js — run ./build.sh'); proces
 // ---- sandbox: just enough browser for the app's top level to run (components are defined, nothing renders) ----
 const noop = () => {};
 const hook = (v) => [v, noop];
-const React = { createElement: () => null, Fragment: 'F', useState: (v) => hook(typeof v === 'function' ? v() : v), useEffect: noop, useRef: (v) => ({ current: v }), useCallback: (f) => f, useMemo: (f) => f() };
+const React = { createElement: (...args) => { React.lastCall = args; return null; }, Fragment: 'F', useState: (v) => hook(typeof v === 'function' ? v() : v), useEffect: noop, useRef: (v) => ({ current: v }), useCallback: (f) => f, useMemo: (f) => f() };
 const store = {};
 const ctx = {
   React, ReactDOM: { createRoot: () => ({ render: noop }) },
@@ -110,6 +110,29 @@ t('save engine helpers: canonical JSON ignores key order; revision split', () =>
 });
 t('parseNum tolerates money strings', () => { eq(T.parseNum('$1,5'), 1.5); eq(T.parseNum(''), 0); eq(T.parseNum('abc'), 0); });
 t('new expenses default to USD', () => { eq([T.EMPTY_EXPENSE.currency, T.EMPTY_EXPENSE.fxRate], ['USD', 1]); });
+
+// ---- interface look (new / classic) ----
+t('new look re-colours: hex (incl. #rgb and #rrggbbaa), accent rgba, fonts, auto-fit grids; status colours stay', () => {
+  eq(T.reTheme('1px solid #2a2a2a'), '1px solid #232A32', 'border');
+  eq(T.reTheme('#333'), '#2A323B', '#rgb');
+  eq(T.reTheme('#4ADE8055'), '#34D39955', 'alpha suffix kept');
+  eq(T.reTheme('rgba(239,68,68,.12)'), 'rgba(16,185,129,.12)', 'red accent → emerald');
+  eq(T.reTheme('#F87171'), '#F87171', 'negative red unchanged');
+  eq(T.reTheme("'DM Sans',sans-serif"), "'Inter',sans-serif", 'font');
+  eq(T.reTheme('repeat(auto-fit, minmax(360px, 1fr))'), 'repeat(auto-fit, minmax(min(360px, 100%), 1fr))', 'grid');
+});
+t('classic look: elements are created exactly as before; new look re-colours and marks cards', () => {
+  const mode = T.UI.mode;
+  const props = { style: { background: '#1A1A1A', borderRadius: 12 } };
+  try {
+    T.UI.mode = 'classic';
+    ctx.React.createElement('div', props, 'x');
+    if (React.lastCall[1] !== props) throw new Error('classic: props were changed');
+    T.UI.mode = 'new';
+    ctx.React.createElement('div', props, 'x');
+    eq([React.lastCall[1].style.background, React.lastCall[1].className, props.style.background], ['#151A20', 'ui-card', '#1A1A1A'], 'new');
+  } finally { T.UI.mode = mode; }
+});
 
 // ---- optional: a real backup ----
 if (process.env.FINPORTAL_BACKUP) {

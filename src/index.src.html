@@ -40,6 +40,118 @@
       { bg: "#111e04", bgLight: "rgba(163,230,53,.09)",   text: "#A3E635", border: "rgba(163,230,53,.38)" },
     ];
 
+    // ===== Interface look: "new" (graphite + emerald, the default since 10.2026) or "classic" (the look before it),
+    // switchable live from the sidebar; the choice is kept in localStorage.adv_ui. Layout, data and logic are the same
+    // in both. Classic is untouched: the new look re-colours inline styles in ONE place — React.createElement below,
+    // only while UI.mode is "new" — and adds the CSS in NEW_UI_CSS, all scoped to html[data-ui="new"].
+    const UI = { mode: (() => { try { return localStorage.getItem('adv_ui') === 'classic' ? 'classic' : 'new'; } catch (e) { return 'new'; } })() };
+    // classic colour → new colour (graphite surfaces and text, emerald instead of the blue/red accents; status reds,
+    // ambers and the team colours stay as they are so money signs read the same)
+    const NEW_PALETTE = {
+      '0F0F0F': '0C0F12', '141414': '101418', '161616': '11161A', '181818': '13181D', '1A1A1A': '151A20', '1E1E1E': '181E24',
+      '1F1F1F': '191F25', '202020': '1A2026', '222222': '1B2128', '262626': '1F262D', '292929': '222930', '2A2A2A': '232A32',
+      '333333': '2A323B', '363636': '2E3740', '3A3A3A': '323B45', '444444': '3B4550', '555555': '4A5561', '666666': '5C6774',
+      '777777': '6C7884', '888888': '7D8994', '999999': '8C97A2', '9A9A9A': '8D98A3', '9CA3AF': '93A0AC', 'A5A5A5': '9AA5B0',
+      'AAAAAA': '9FA9B3', 'BBBBBB': 'B2BBC4', 'BDBDBD': 'B4BDC6', 'CCCCCC': 'C4CCD4', 'E5E5E5': 'E6EBEF',
+      '4A90D9': '12B886', '3A7BC0': '0E9F72', '7DB8F0': '6EE7B7', '4ADE80': '34D399', '22C55E': '10B981', '16A34A': '10B981',
+      '166534': '065F46', '15291B': '0E241D', '1F3D2A': '0F3529', '15241A': '0F221C', '1E1616': '211618',
+    };
+    const NEW_RGB = { '239,68,68': '16,185,129', '74,144,217': '18,184,134', '74,222,128': '52,211,153' };
+    const reThemeCache = new Map();
+    const reTheme = (s) => {
+      let r = reThemeCache.get(s);
+      if (r !== undefined) return r;
+      r = s.replace(/#([0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/g, (all, h) => {
+        const full = h.length === 3 ? h.replace(/./g, c => c + c) : h;
+        const m = NEW_PALETTE[full.slice(0, 6).toUpperCase()];
+        return m ? '#' + m + full.slice(6) : all;
+      }).replace(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g, (all, a, b, c) => { const m = NEW_RGB[`${a},${b},${c}`]; return m ? all.replace(/\d+\s*,\s*\d+\s*,\s*\d+/, m) : all; })
+        .replace(/'DM Sans'/g, "'Inter'").replace(/'JetBrains Mono',\s*monospace/g, "'Inter',system-ui,sans-serif")
+        .replace(/minmax\((\d+)px\s*,/g, 'minmax(min($1px, 100%),');   // auto-fit grids shrink on phones instead of overflowing
+      reThemeCache.set(s, r);
+      return r;
+    };
+    const CARD_BG = new Set(['#1A1A1A', '#141414', '#1a1a1a']);
+    const reThemeProps = (type, props) => {
+      let p = null;
+      const st = props.style;
+      if (st && typeof st === 'object') {
+        let next = null;
+        for (const k in st) { const v = st[k]; if (typeof v === 'string') { const nv = reTheme(v); if (nv !== v) { next = next || { ...st }; next[k] = nv; } } }
+        const bg = st.background || st.backgroundColor;
+        const isCard = typeof bg === 'string' && CARD_BG.has(bg) && parseFloat(st.borderRadius) >= 10;
+        if (next || isCard) { p = { ...props }; if (next) p.style = next; if (isCard) p.className = (props.className ? props.className + ' ' : '') + (st.border || st.borderLeft || st.borderTop ? 'ui-card ui-card--own-border' : 'ui-card'); }
+      }
+      if (typeof type === 'string') for (const k of ['fill', 'stroke', 'color']) {
+        const v = props[k];
+        if (typeof v === 'string') { const nv = reTheme(v); if (nv !== v) { p = p || { ...props }; p[k] = nv; } }
+      }
+      return p;
+    };
+    const baseCreateElement = React.createElement;
+    React.createElement = function (type, props, child) {
+      if (UI.mode !== 'new') return baseCreateElement.apply(this, arguments);
+      const p = props ? reThemeProps(type, props) : null;
+      const css = type === 'style' && typeof child === 'string' ? reTheme(child) : null;
+      if (!p && css === null) return baseCreateElement.apply(this, arguments);
+      const args = Array.prototype.slice.call(arguments);
+      if (p) args[1] = p;
+      if (css !== null) args[2] = css;
+      return baseCreateElement.apply(this, args);
+    };
+    const NEW_UI_CSS = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+      html[data-ui="new"]{color-scheme:dark}
+      html[data-ui="new"] body{background:#0C0F12;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+      html[data-ui="new"] .ui-card:not(.ui-card--own-border){border:1px solid #1F272F!important}
+      html[data-ui="new"] .ui-card{box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 12px 32px -18px rgba(0,0,0,.8)!important;background-image:linear-gradient(180deg,rgba(255,255,255,.022),rgba(255,255,255,0) 120px)!important}
+      html[data-ui="new"] .ui-sidebar{background:linear-gradient(180deg,#0F1317,#0C0F12)!important;border-right:1px solid #1A2128!important}
+      html[data-ui="new"] .ui-sidebar-head{border-bottom-color:#1A2128!important}
+      html[data-ui="new"] .ui-sidebar-foot{border-top-color:#1A2128!important}
+      html[data-ui="new"] .ui-logo-a{color:#34D399!important}
+      html[data-ui="new"] .ui-nav{color:#8D98A3!important;border:1px solid transparent!important;background:transparent!important;position:relative;font-weight:500!important}
+      html[data-ui="new"] .ui-nav:hover{background:rgba(255,255,255,.045)!important;color:#E6EBEF!important}
+      html[data-ui="new"] .ui-nav.is-active{background:linear-gradient(90deg,rgba(16,185,129,.18),rgba(16,185,129,.04))!important;border-color:rgba(16,185,129,.28)!important;color:#6EE7B7!important;font-weight:650!important}
+      html[data-ui="new"] .ui-nav.is-active::before{content:"";position:absolute;left:-1px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:#10B981;box-shadow:0 0 12px rgba(16,185,129,.8)}
+      html[data-ui="new"] .ui-kpibar{background:#101418!important;border-bottom:1px solid #1A2128}
+      html[data-ui="new"] .ui-topbar{background:rgba(12,15,18,.82)!important;backdrop-filter:saturate(150%) blur(14px);-webkit-backdrop-filter:saturate(150%) blur(14px);border-bottom:1px solid #1A2128!important}
+      html[data-ui="new"] .btn{border-radius:9px;letter-spacing:.1px}
+      html[data-ui="new"] .btn-primary{background:linear-gradient(180deg,#16C792,#0EA371)!important;color:#03150F!important;box-shadow:0 1px 0 rgba(255,255,255,.28) inset,0 8px 20px -8px rgba(16,185,129,.6)}
+      html[data-ui="new"] .btn-primary:hover{filter:brightness(1.08)}
+      html[data-ui="new"] .btn-secondary{background:#1C232A!important;border:1px solid #29323B!important}
+      html[data-ui="new"] .btn-secondary:hover{background:#232B33!important}
+      html[data-ui="new"] .btn-action{background:#171D23!important;border:1px solid #29323B!important}
+      html[data-ui="new"] .kpi-card:not([style*="background"]){background:linear-gradient(180deg,#161C22,#12171C)!important;border:1px solid #1F272F!important}
+      html[data-ui="new"] .kpi-card{border-radius:14px!important;box-shadow:0 12px 30px -18px rgba(0,0,0,.85)}
+      html[data-ui="new"] .kpi-label{color:#8692A0!important;letter-spacing:.7px!important;font-weight:600;display:flex;align-items:center;gap:8px}
+      html[data-ui="new"] .kpi-value{letter-spacing:-.4px;font-weight:700!important}
+      html[data-ui="new"] .kpi-ico{width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.06);color:#B2BCC6;flex-shrink:0}
+      html[data-ui="new"] .ui-th-group{background:#12171C!important;border-bottom:1px solid #1F272F}
+      html[data-ui="new"] .tx-row:hover{background:rgba(255,255,255,.025)}
+      html[data-ui="new"] .modal{border-radius:16px!important;box-shadow:0 30px 80px -20px rgba(0,0,0,.85),0 0 0 1px rgba(255,255,255,.03) inset}
+      html[data-ui="new"] .modal-overlay{background:rgba(5,8,10,.72)}
+      html[data-ui="new"] input:not([type=checkbox]):not([type=radio]):not([type=color]):focus,html[data-ui="new"] select:focus,html[data-ui="new"] textarea:focus{outline:none;box-shadow:0 0 0 3px rgba(16,185,129,.22);border-color:#10B981!important}
+      html[data-ui="new"] input[type=checkbox],html[data-ui="new"] input[type=radio]{accent-color:#10B981}
+      .ui-switch{display:flex;gap:2px;padding:3px;border-radius:9px;background:rgba(255,255,255,.05);margin-bottom:10px}
+      .ui-switch button{flex:1;border:none;border-radius:7px;padding:6px 4px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,.55);font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+      .ui-switch button.on{background:rgba(255,255,255,.12);color:#fff}
+      html[data-ui="new"] .ui-switch{background:#151A20;border:1px solid #1F272F}
+      html[data-ui="new"] .ui-switch button.on{background:rgba(16,185,129,.16);color:#6EE7B7}
+      @media (max-width: 860px){
+        html[data-ui="new"] .ui-topbar{height:auto!important;min-height:50px;padding:8px 12px!important;flex-wrap:wrap;gap:8px}
+        html[data-ui="new"] .ui-topbar > div{flex-wrap:wrap;gap:8px!important}
+        html[data-ui="new"] .ui-topbar select{min-width:0!important;max-width:150px}
+        html[data-ui="new"] .ui-main{padding:14px 12px!important}
+        html[data-ui="new"] .kpi-card{min-width:0!important;flex:1 1 128px;padding:12px 13px!important}
+        html[data-ui="new"] .kpi-value{font-size:19px!important}
+        html[data-ui="new"] .kpi-label{font-size:10px!important;letter-spacing:.4px!important;gap:6px}
+        html[data-ui="new"] .kpi-label .kpi-ico{width:20px;height:20px}
+        html[data-ui="new"] .ui-main .ui-card{padding:16px 14px!important}
+        html[data-ui="new"] .ui-main [style*="grid-template-columns"]:not([style*="repeat("]){grid-template-columns:minmax(0,1fr)!important}
+        html[data-ui="new"] :is(.ui-main,.ui-kpibar) div[style*="display: flex"]:not(td div):not(th div){flex-wrap:wrap;row-gap:10px}
+        html[data-ui="new"] .ui-kpibar{padding:14px 12px!important}
+      }`;
+    try { document.documentElement.dataset.ui = UI.mode; const s = document.createElement('style'); s.id = 'ui-new-css'; s.textContent = NEW_UI_CSS; document.head.appendChild(s); } catch (e) { /* tests: no DOM */ }
+
     const MONTHS_UA = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
     const LOGO_SRC = "data:image/webp;base64,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PSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIj4KICAgICAgICAgPGV4aWY6UGl4ZWxZRGltZW5zaW9uPjEyMDwvZXhpZjpQaXhlbFlEaW1lbnNpb24+CiAgICAgICAgIDxleGlmOlBpeGVsWERpbWVuc2lvbj41NTA8L2V4aWY6UGl4ZWxYRGltZW5zaW9uPgogICAgICAgICA8dGlmZjpSZXNvbHV0aW9uVW5pdD4yPC90aWZmOlJlc29sdXRpb25Vbml0PgogICAgICAgICA8dGlmZjpYUmVzb2x1dGlvbj43MjAwMDAvMTAwMDA8L3RpZmY6WFJlc29sdXRpb24+CiAgICAgICAgIDx0aWZmOk9yaWVudGF0aW9uPjE8L3RpZmY6T3JpZW50YXRpb24+CiAgICAgICAgIDx0aWZmOllSZXNvbHV0aW9uPjcyMDAwMC8xMDAwMDwvdGlmZjpZUmVzb2x1dGlvbj4KICAgICAgICAgPHhtcDpNZXRhZGF0YURhdGU+MjAyNS0wNS0wNlQwODo1NjoyMyswMjowMDwveG1wOk1ldGFkYXRhRGF0ZT4KICAgICAgICAgPHhtcDpDcmVhdG9yVG9vbD5QaXhlbG1hdG9yIFBybyAzLjYuMTwveG1wOkNyZWF0b3JUb29sPgogICAgICAgICA8eG1wOkNyZWF0ZURhdGU+MjAyNS0wNS0wNVQxMzoxMDozMiswMjowMDwveG1wOkNyZWF0ZURhdGU+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgo=";
@@ -134,12 +246,30 @@
       receipt: <><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></>,
       book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></>,
       eye: <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></>,
+      trendingUp: <><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></>,
+      trendingDown: <><path d="m22 17-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/></>,
+      coins: <><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></>,
+      wallet: <><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></>,
+      scale: <><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></>,
+      clock: <><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></>,
+      percent: <><path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></>,
+      logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></>,
+      sparkle: <><path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2Z"/></>,
+      history: <><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></>,
       'eye-off': <><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="M2 2l20 20"/></>,
     };
 
     const Icon = ({ name, size = 16, color = "currentColor", strokeWidth = 2, style = {} }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, ...style }}>{ICON_PATHS[name]}</svg>
     );
+
+    // New look: a small icon in front of each KPI label, picked from the label text
+    const KPI_ICONS = [[/unreconciled/i, 'scale'], [/fee|cost/i, 'receipt'], [/turnover/i, 'trendingUp'], [/salar/i, 'team'], [/expense/i, 'wallet'],
+      [/margin/i, 'percent'], [/carryover/i, 'history'], [/balance|budget|reserve/i, 'accounts'], [/rev|revenue/i, 'coins'], [/awaiting|pending/i, 'clock'], [/floor|founder/i, 'role']];
+    const KpiIco = ({ label, small }) => {
+      const hit = KPI_ICONS.find(([re]) => re.test(String(label)));
+      return <span className="kpi-ico" style={small ? { width: 20, height: 20, marginRight: 7, verticalAlign: "middle" } : undefined}><Icon name={hit ? hit[1] : 'sparkle'} size={small ? 12 : 13} /></span>;
+    };
 
     const makeWorkerPay = (workers) => {
       const o = {};
@@ -510,7 +640,7 @@
             input{color:#E5E5E5;background:#1f1f1f}`}</style>
           <div className={shake ? "login-shake" : ""} style={{ background: "#1A1A1A", border: "1px solid #2a2a2a", borderRadius: 16, padding: "48px 40px", width: 400, maxWidth: "90vw", boxShadow: "0 24px 80px rgba(0,0,0,.5)" }}>
             <div style={{ textAlign: "center", marginBottom: 32 }}>
-              <img src={LOGO_SRC} alt="ADvantage" style={{ height: 36 }} />
+              <img src={LOGO_SRC} alt="ADvantage" style={{ height: 36, ...(UI.mode === 'new' ? { filter: "invert(1) brightness(2)" } : {}) }} />
               <div style={{ fontSize: 14, color: "#888", marginTop: 8 }}>Revenue Panel</div>
             </div>
             <label style={{ display: "block", marginBottom: 16 }}>
@@ -561,6 +691,16 @@
       const [salaryDismissed, setSalaryDismissed] = useState(() => localStorage.getItem('salary_dismissed') || "");
       const [activeSection, setActiveSection] = useState('operations');
       const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === '1');
+      // Interface look (see UI at the top): switching re-renders everything with the other look — no reload
+      const [uiMode, setUiMode] = useState(UI.mode);
+      const isNewUI = uiMode === 'new';
+      const switchUi = (m) => { UI.mode = m; try { localStorage.setItem('adv_ui', m); document.documentElement.dataset.ui = m; } catch (e) {} setUiMode(m); };
+      // Phones / narrow windows: the new look folds the sidebar to an icon rail so the content gets the width
+      const narrowQuery = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(max-width: 860px)') : null;
+      const [narrow, setNarrow] = useState(() => !!(narrowQuery && narrowQuery.matches));
+      useEffect(() => { if (!narrowQuery) return; const on = () => setNarrow(narrowQuery.matches); narrowQuery.addEventListener ? narrowQuery.addEventListener('change', on) : narrowQuery.addListener(on); return () => { narrowQuery.removeEventListener ? narrowQuery.removeEventListener('change', on) : narrowQuery.removeListener(on); }; }, []);
+      const railOnly = isNewUI && narrow;
+      const collapsed = sidebarCollapsed || railOnly;
       const [showActionLog, setShowActionLog] = useState(false);
       const [actionLogFilter, setActionLogFilter] = useState('');
       const [salaryNotifyWorkerIds, setSalaryNotifyWorkerIds] = useState(() => {
@@ -1849,31 +1989,38 @@
           <input ref={importInputRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleImport} />
 
           {/* SIDEBAR */}
-          <div style={{ width: sidebarCollapsed ? 68 : 210, flexShrink: 0, background: "#141414", borderRight: "1px solid #2a2a2a", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", zIndex: 200, transition: "width .2s" }}>
-            <div style={{ padding: sidebarCollapsed ? "0" : "0 22px", height: 50, borderBottom: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              {sidebarCollapsed
-                ? <span style={{ color: "#F87171", fontWeight: 800, fontSize: 20, fontFamily: "'DM Sans',sans-serif" }}>A</span>
+          <div className="ui-sidebar" style={{ width: railOnly ? 60 : collapsed ? 68 : 210, flexShrink: 0, background: "#141414", borderRight: "1px solid #2a2a2a", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", zIndex: 200, transition: "width .2s" }}>
+            <div className="ui-sidebar-head" style={{ padding: collapsed ? "0" : "0 22px", height: 50, borderBottom: "1px solid #2a2a2a", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {collapsed
+                ? <span className="ui-logo-a" style={{ color: "#F87171", fontWeight: 800, fontSize: 20, fontFamily: "'DM Sans',sans-serif" }}>A</span>
                 : <img src={LOGO_SRC} alt="ADvantage" style={{ height: 26, filter: "invert(1) brightness(2)" }} />}
             </div>
-            <nav style={{ padding: sidebarCollapsed ? "14px 10px" : "14px 12px", display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+            <nav style={{ padding: railOnly ? "14px 8px" : collapsed ? "14px 10px" : "14px 12px", display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
               {NAV_ITEMS.map(item => {
                 const active = activeSection === item.id;
                 return (
-                  <button key={item.id} onClick={() => setActiveSection(item.id)} title={sidebarCollapsed ? item.label : ""} style={{ display: "flex", alignItems: "center", gap: 12, padding: sidebarCollapsed ? "11px 0" : "11px 14px", justifyContent: sidebarCollapsed ? "center" : "flex-start", borderRadius: 9, border: active ? "1px solid rgba(239,68,68,.4)" : "1px solid transparent", background: active ? "rgba(239,68,68,.12)" : "transparent", color: active ? "#F87171" : "rgba(255,255,255,.6)", fontSize: 14, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", textAlign: "left", transition: "all .15s" }} onMouseEnter={e => { if (!active) e.currentTarget.style.background = "rgba(255,255,255,.05)"; }} onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}>
+                  <button key={item.id} className={'ui-nav' + (active ? ' is-active' : '')} onClick={() => setActiveSection(item.id)} title={collapsed ? item.label : ""} style={{ display: "flex", alignItems: "center", gap: 12, padding: collapsed ? "11px 0" : "11px 14px", justifyContent: collapsed ? "center" : "flex-start", borderRadius: 9, border: active ? "1px solid rgba(239,68,68,.4)" : "1px solid transparent", background: active ? "rgba(239,68,68,.12)" : "transparent", color: active ? "#F87171" : "rgba(255,255,255,.6)", fontSize: 14, fontWeight: active ? 700 : 500, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", textAlign: "left", transition: "all .15s" }} onMouseEnter={e => { if (!active && !isNewUI) e.currentTarget.style.background = "rgba(255,255,255,.05)"; }} onMouseLeave={e => { if (!active && !isNewUI) e.currentTarget.style.background = "transparent"; }}>
                     <Icon name={item.icon} size={19} />
-                    {!sidebarCollapsed && item.label}
+                    {!collapsed && item.label}
                   </button>
                 );
               })}
             </nav>
-            <div style={{ padding: sidebarCollapsed ? "12px 10px" : "14px 18px", borderTop: "1px solid #2a2a2a" }}>
-              <button onClick={() => { const v = !sidebarCollapsed; setSidebarCollapsed(v); localStorage.setItem('sidebar_collapsed', v ? '1' : '0'); }} title={sidebarCollapsed ? "Expand" : "Collapse"} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "8px", background: "rgba(255,255,255,.05)", color: "rgba(255,255,255,.6)", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", marginBottom: sidebarCollapsed ? 0 : 10 }}>
+            <div className="ui-sidebar-foot" style={{ padding: collapsed ? "12px 8px" : "14px 18px", borderTop: "1px solid #2a2a2a" }}>
+              {collapsed
+                ? <button onClick={() => switchUi(isNewUI ? 'classic' : 'new')} title={isNewUI ? "Switch to the classic interface" : "Switch to the new interface"} data-ui-switch style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", background: "rgba(255,255,255,.05)", color: isNewUI ? "#34D399" : "rgba(255,255,255,.6)", border: "none", borderRadius: 6, cursor: "pointer", marginBottom: railOnly ? 0 : 8 }}><Icon name="sparkle" size={16} /></button>
+                : <div className="ui-switch" data-ui-switch title="Interface look — your choice is remembered on this device">
+                    <button className={isNewUI ? 'on' : ''} onClick={() => switchUi('new')}><Icon name="sparkle" size={12} />New</button>
+                    <button className={!isNewUI ? 'on' : ''} onClick={() => switchUi('classic')}>Classic</button>
+                  </div>}
+              {railOnly && <button onClick={onLogout} title={`Sign out (${userEmail})`} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: "8px", marginTop: 8, background: "rgba(255,255,255,.05)", color: "rgba(255,255,255,.6)", border: "none", borderRadius: 6, cursor: "pointer" }}><Icon name="logout" size={16} /></button>}
+              {!railOnly && <button onClick={() => { const v = !sidebarCollapsed; setSidebarCollapsed(v); localStorage.setItem('sidebar_collapsed', v ? '1' : '0'); }} title={sidebarCollapsed ? "Expand" : "Collapse"} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "8px", background: "rgba(255,255,255,.05)", color: "rgba(255,255,255,.6)", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", marginBottom: sidebarCollapsed ? 0 : 10 }}>
                 <Icon name="panel" size={16} />
                 {!sidebarCollapsed && "Collapse"}
-              </button>
-              {!sidebarCollapsed && <>
+              </button>}
+              {!collapsed && <>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,.4)", marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>
-                <button onClick={onLogout} style={{ width: "100%", padding: "7px", background: "rgba(255,255,255,.08)", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>Sign out</button>
+                <button onClick={onLogout} style={{ width: "100%", padding: "7px", background: "rgba(255,255,255,.08)", color: "#fff", border: "none", borderRadius: 6, fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans',sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>{isNewUI && <Icon name="logout" size={13} />}Sign out</button>
               </>}
             </div>
           </div>
@@ -1882,7 +2029,7 @@
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
 
           {/* TOPBAR */}
-          <div style={{ background: "#1A1A1A", padding: "0 28px", height: 50, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, borderBottom: "1px solid #2a2a2a", flexShrink: 0 }}>
+          <div className="ui-topbar" style={{ background: "#1A1A1A", padding: "0 28px", height: 50, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, borderBottom: "1px solid #2a2a2a", flexShrink: 0 }}>
             <span style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>{NAV_ITEMS.find(n => n.id === activeSection)?.label}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               {(activeSection === 'dashboard' || activeSection === 'operations') && <>
@@ -1946,7 +2093,7 @@
 
           {/* KPI */}
           {activeSection === 'operations' && (
-          <div style={{ background: "#1A1A1A", padding: "20px 28px 16px" }}>
+          <div className="ui-kpibar" style={{ background: "#1A1A1A", padding: "20px 28px 16px" }}>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
               {(() => {
                 // ✓ = only what was verified by reconciliation; unreconciled accounts are shown apart, labelled as an estimate
@@ -1968,7 +2115,7 @@
                   { label: "REV Fees / Costs", value: totalCosts, color: "#FB923C" },
                   { label: "Total Expenses", value: totalExpenses, color: "#F87171" },
                 ].map((k, i) => (
-                  <div key={i} className="kpi-card" data-kpi={k.kpi || undefined}><div className="kpi-label">{k.label}</div><div className="kpi-value" style={k.color ? { color: k.color } : {}}>{fmt(k.value)}</div>{k.extra}</div>
+                  <div key={i} className="kpi-card" data-kpi={k.kpi || undefined}><div className="kpi-label">{UI.mode === 'new' && <KpiIco label={k.label} />}{k.label}</div><div className="kpi-value" style={k.color ? { color: k.color } : {}}>{fmt(k.value)}</div>{k.extra}</div>
                 ));
               })()}
             </div>
@@ -1997,7 +2144,7 @@
           </div>
           )}
 
-          <div style={{ padding: "24px 28px" }}>
+          <div className="ui-main" style={{ padding: "24px 28px" }}>
 
             {/* ============ DASHBOARD SECTION ============ */}
             {activeSection === 'dashboard' && (<>
@@ -2016,7 +2163,7 @@
                     { label: "Margin (year)", value: annualStats.margin, color: annualStats.margin >= 0 ? "#4ADE80" : "#F87171", big: true },
                   ].map((c, i) => (
                     <div key={i} className="kpi-card" style={c.big ? { borderColor: `${c.color}55`, background: `${c.color}14` } : {}}>
-                      <div className="kpi-label">{c.label}</div>
+                      <div className="kpi-label">{UI.mode === 'new' && <KpiIco label={c.label} />}{c.label}</div>
                       <div className="kpi-value" style={{ color: c.color }}>{fmt(c.value)}</div>
                     </div>
                   ))}
@@ -2101,7 +2248,7 @@
                     { label: "Month margin", value: monthPL.margin, color: monthPL.margin >= 0 ? "#16A34A" : "#DC2626", hint: "Revenue − all costs", big: true },
                   ].map((c, i) => (
                     <div key={i} style={{ border: `1px solid ${c.color}22`, borderLeft: `4px solid ${c.color}`, borderRadius: 10, padding: "16px 18px", background: c.big ? `${c.color}08` : "#222" }}>
-                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: .5, color: "#888", marginBottom: 6 }}>{c.label}</div>
+                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: .5, color: "#888", marginBottom: 6 }}>{UI.mode === 'new' && <KpiIco label={c.label} small />}{c.label}</div>
                       <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: c.big ? 28 : 22, fontWeight: 700, color: c.color }}>{fmt(c.value)}</div>
                       <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>{c.hint}</div>
                     </div>
@@ -2136,7 +2283,7 @@
                     { label: `Floor ${fmt(foundersStats.floorTotal)}`, value: foundersStats.alloc, color: foundersStats.floorOk ? "#16A34A" : "#DC2626", hint: foundersStats.floorOk ? "above floor ✓" : "BELOW floor — top up from reserve", big: true },
                   ].map((c, i) => (
                     <div key={i} style={{ border: `1px solid ${c.color}22`, borderLeft: `4px solid ${c.color}`, borderRadius: 10, padding: "16px 18px", background: c.big ? `${c.color}08` : "#222" }}>
-                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: .5, color: "#888", marginBottom: 6 }}>{c.label}</div>
+                      <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: .5, color: "#888", marginBottom: 6 }}>{UI.mode === 'new' && <KpiIco label={c.label} small />}{c.label}</div>
                       <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: c.big ? 28 : 22, fontWeight: 700, color: c.color }}>{fmt(c.value)}</div>
                       <div style={{ fontSize: 10, color: "#aaa", marginTop: 4 }}>{c.hint}</div>
                     </div>
@@ -2260,15 +2407,15 @@
                 </button>
               </div>
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", minWidth: 1030 + workers.length * 160 }}>
+                <table style={{ width: "100%", minWidth: (railOnly ? 960 : 1030) + monthWorkers.length * 160 }}>
                   <colgroup>
-                    <col style={{ width: 224 }} /><col style={{ width: 170 }} /><col style={{ width: 140 }} /><col style={{ width: 110 }} /><col style={{ width: 70 }} /><col style={{ width: 90 }} /><col style={{ width: 110 }} /><col style={{ width: 80 }} /><col style={{ width: 46 }} />
+                    <col style={{ width: railOnly ? 156 : 224 }} /><col style={{ width: 170 }} /><col style={{ width: 140 }} /><col style={{ width: 110 }} /><col style={{ width: 70 }} /><col style={{ width: 90 }} /><col style={{ width: 110 }} /><col style={{ width: 80 }} /><col style={{ width: 46 }} />
                     {monthWorkers.map(w => <col key={w.id} style={{ width: 150 }} />)}
                     <col style={{ width: 40 }} />
                   </colgroup>
                   <thead>
-                    <tr style={{ background: "#444", color: "#fff" }}>
-                      <th className="scol" style={{ padding: 0, background: "#444" }}></th>
+                    <tr className="ui-th-group" style={{ background: "#444", color: "#fff" }}>
+                      <th className="scol ui-th-group" style={{ padding: 0, background: "#444" }}></th>
                       <th colSpan={7} style={{ padding: 0 }}></th>
                       <th style={{ padding: "6px 4px", fontSize: 11, fontWeight: 600, textAlign: "right", whiteSpace: "nowrap", verticalAlign: "top" }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,.7)", fontSize: 11, letterSpacing: .5 }}>Total Revenue Per Person:<button onClick={toggleWorkerPay} title={showWorkerPay ? "Hide salaries" : "Show salaries"} style={{ background: "rgba(255,255,255,.1)", border: "none", color: showWorkerPay ? "#4ADE80" : "#888", borderRadius: 4, padding: "1px 7px", cursor: "pointer", fontSize: 12, marginLeft: 2, display: "inline-flex", alignItems: "center" }}><Icon name={showWorkerPay ? "eye" : "eye-off"} size={13} /></button><button onClick={() => setShowAddWorker(true)} style={{ background: "rgba(255,255,255,.15)", border: "none", color: "#fff", borderRadius: 4, padding: "1px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600, marginLeft: 2 }}><Icon name="plus" size={15} /></button></span>
@@ -2282,7 +2429,7 @@
                           {t.pending > 0 && <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, color: c.text, opacity: .55, filter: showWorkerPay ? 'none' : 'blur(5px)', transition: 'filter .3s', userSelect: showWorkerPay ? 'auto' : 'none' }}>+{fmt(t.pending)} pending</div>}
                         </th>
                       ); })}
-                      <th style={{ background: "#444" }}></th>
+                      <th className="ui-th-group" style={{ background: "#444" }}></th>
                     </tr>
                     
                     <tr style={{ background: "#1A1A1A", color: "#fff" }}>
@@ -2833,8 +2980,8 @@
                                 </div>
                               )}
                               <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                                <button onClick={() => { setReconcileAccount({ id: a.id, name: a.name, computed: a.accountBudget }); setReconcileForm({ actual: Math.round(a.accountBudget * 100) / 100, note: "" }); }} style={{ flex: 1, padding: "6px", background: "rgba(74,144,217,.15)", border: "1px solid rgba(74,144,217,.35)", borderRadius: 6, color: "#7db8f0", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>Reconcile</button>
-                                {recs.length > 0 && <button onClick={() => setExpandedRec(expandedRec === a.id ? null : a.id)} style={{ padding: "6px 10px", background: "rgba(255,255,255,.06)", border: "1px solid #2a2a2a", borderRadius: 6, color: "#9a9a9a", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>History ({recs.length})</button>}
+                                <button onClick={() => { setReconcileAccount({ id: a.id, name: a.name, computed: a.accountBudget }); setReconcileForm({ actual: Math.round(a.accountBudget * 100) / 100, note: "" }); }} style={{ flex: 1, padding: "6px", background: "rgba(74,144,217,.15)", border: "1px solid rgba(74,144,217,.35)", borderRadius: 6, color: "#7db8f0", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>{isNewUI && <Icon name="scale" size={12} style={{ marginRight: 5, verticalAlign: "-2px" }} />}Reconcile</button>
+                                {recs.length > 0 && <button onClick={() => setExpandedRec(expandedRec === a.id ? null : a.id)} style={{ padding: "6px 10px", background: "rgba(255,255,255,.06)", border: "1px solid #2a2a2a", borderRadius: 6, color: "#9a9a9a", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>{isNewUI && <Icon name="history" size={12} style={{ marginRight: 4, verticalAlign: "-2px" }} />}History ({recs.length})</button>}
                               </div>
                               {expandedRec === a.id && recs.length > 0 && (
                                 <div style={{ marginTop: 8, borderTop: "1px solid #2a2a2a", paddingTop: 6, maxHeight: 160, overflowY: "auto" }}>
@@ -3471,7 +3618,7 @@
     }
 
     // Read-only handle on the pure logic — used by tests/verify.test.mjs (and handy in the browser console)
-    window.__ADV_PORTAL__ = Object.freeze({ FIN, parseNum, withYear, recordISO, shortDate, incrementDate, closestYear, canon, splitRev, EMPTY_EXPENSE });
+    window.__ADV_PORTAL__ = Object.freeze({ FIN, parseNum, withYear, recordISO, shortDate, incrementDate, closestYear, canon, splitRev, EMPTY_EXPENSE, UI, reTheme });
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
