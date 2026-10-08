@@ -10,6 +10,8 @@ Live: https://admin-panel9.netlify.app (Netlify, publish directory `v10/`, deplo
 | `tools/build.mjs` | Build: source → `v10/` (esbuild, IIFE bundle, CDN tags → local vendor files). |
 | `tests/verify.test.mjs` | Tests that run the built `app.js` and check the portal's own finance formulas (`FIN.*`). |
 | `build.sh` / `verify.sh` | Entry points. |
+| `ops/backup/` | Encrypted nightly backup of the database (server cron) + pull/verify/restore drill on the Mac. |
+| `ops/import/` | One-off import of the 2024–25 Google-Sheets reports: `sheets_import.py` (xlsx → payload + reconciliation), `apply_import.mjs` (server; writes only empty/imported months, never 2026+, re-run = no-op), `reconcile.py` / `portal_check.mjs` (proof against the sheets and the pre-import state). |
 
 ## Workflow
 ```bash
